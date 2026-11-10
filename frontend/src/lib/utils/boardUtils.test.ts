@@ -8,7 +8,9 @@ import {
   getOrientedSquares,
   charToPiece,
   isCaptureMove,
-  isCheckSquare
+  isCheckSquare,
+  getEligibleSwapSquares,
+  getEligibleRevivalSquares
 } from './boardUtils';
 
 describe('boardUtils', () => {
@@ -65,6 +67,36 @@ describe('boardUtils', () => {
     const board = parseFenToMatrix(initialFen);
     expect(isCaptureMove('e2', 'e4', board)).toBe(false);
     expect(isCaptureMove('e4', 'd5', parseFenToMatrix('rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2'))).toBe(true);
+  });
+
+  it('calculates eligible swap squares strictly for friendly non-king pieces', () => {
+    const whiteSwapSquares = getEligibleSwapSquares(initialFen, 'White');
+    expect(whiteSwapSquares.length).toBe(15);
+    expect(whiteSwapSquares).not.toContain('e1'); // White King
+    expect(whiteSwapSquares).toContain('a2');
+    expect(whiteSwapSquares).toContain('d1'); // White Queen
+    // Must NOT contain any black pieces
+    expect(whiteSwapSquares).not.toContain('e7');
+    expect(whiteSwapSquares).not.toContain('c8');
+
+    const blackSwapSquares = getEligibleSwapSquares(initialFen, 'Black');
+    expect(blackSwapSquares.length).toBe(15);
+    expect(blackSwapSquares).not.toContain('e8'); // Black King
+    expect(blackSwapSquares).toContain('e7');
+    expect(blackSwapSquares).toContain('d8'); // Black Queen
+    // Must NOT contain any white pieces
+    expect(blackSwapSquares).not.toContain('e2');
+    expect(blackSwapSquares).not.toContain('c1');
+  });
+
+  it('calculates eligible revival squares in own half for empty squares', () => {
+    const whiteRevivalSquares = getEligibleRevivalSquares(initialFen, 'White');
+    // In initial position, ranks 1 and 2 are full. Ranks 3 and 4 have 8 empty squares each = 16
+    expect(whiteRevivalSquares.length).toBe(16);
+    expect(whiteRevivalSquares).toContain('e3');
+    expect(whiteRevivalSquares).toContain('e4');
+    expect(whiteRevivalSquares).not.toContain('e5'); // Opponent half
+    expect(whiteRevivalSquares).not.toContain('e2'); // Occupied
   });
 });
 

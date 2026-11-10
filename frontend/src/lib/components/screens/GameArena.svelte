@@ -1,6 +1,12 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
   import type { PlayerColor, PieceType } from '../../types/game';
+  import {
+    parseFenToMatrix,
+    getSquareIndex,
+    getEligibleSwapSquares,
+    getEligibleRevivalSquares
+  } from '../../utils/boardUtils';
   import { gameStore } from '../../stores/gameStore';
   import { connectionStore } from '../../stores/connectionStore';
   import PlayerInfo from '../game/PlayerInfo.svelte';
@@ -19,6 +25,7 @@
     submitChoice: { choice: string };
     submitSwap: { sq1: string; sq2: string };
     submitRevival: { pieceType: string; targetSquare: string };
+    showToast: { text: string; type: 'info' | 'error' | 'success' };
     resign: void;
     returnHome: void;
     playAgain: void;
@@ -41,10 +48,43 @@
 
   $: isGameOver = ['Checkmate', 'Stalemate', 'Resigned', 'DrawByInsufficientMaterial', 'DrawByFiftyMoveRule', 'DrawByThreefoldRepetition'].includes(storeState.gameStatus);
 
+  $: swapEligibleSquares = activeAbilityMode === 'swap'
+    ? getEligibleSwapSquares(storeState.boardFen, storeState.assignedColor)
+    : [];
+
+  $: revivalEligibleSquares = activeAbilityMode === 'revival' && selectedRevivalPiece
+    ? getEligibleRevivalSquares(storeState.boardFen, storeState.assignedColor, selectedRevivalPiece)
+    : [];
+
+  $: displayedValidDestinations = activeAbilityMode === 'swap'
+    ? swapEligibleSquares.filter(sq => sq !== firstSwapSquare)
+    : activeAbilityMode === 'revival'
+      ? revivalEligibleSquares
+      : storeState.validDestinations;
+
+  $: displayedSelectedSquare = activeAbilityMode === 'swap'
+    ? (firstSwapSquare || null)
+    : storeState.selectedSquare;
+
   function handleSquareSelected(event: CustomEvent<{ square: string }>) {
     const square = event.detail.square;
 
     if (activeAbilityMode === 'swap') {
+      const eligible = getEligibleSwapSquares(storeState.boardFen, storeState.assignedColor);
+      if (!eligible.includes(square)) {
+        const matrix = parseFenToMatrix(storeState.boardFen);
+        const { row, col } = getSquareIndex(square);
+        const piece = matrix[row]?.[col];
+        if (!piece) {
+          dispatch('showToast', { text: 'Select an occupied square with your own friendly piece to swap.', type: 'error' });
+        } else if (piece.type === 'King') {
+          dispatch('showToast', { text: 'Kings cannot be swapped.', type: 'error' });
+        } else if (piece.color !== storeState.assignedColor) {
+          dispatch('showToast', { text: 'Reverse can only swap your own friendly pieces. Opponent pieces cannot be swapped.', type: 'error' });
+        }
+        return;
+      }
+
       if (!firstSwapSquare) {
         firstSwapSquare = square;
       } else if (firstSwapSquare === square) {
@@ -64,15 +104,21 @@
     }
 
     if (activeAbilityMode === 'revival') {
-      if (selectedRevivalPiece) {
-        // Dispatch revival action to clicked target square
-        dispatch('submitRevival', {
-          pieceType: selectedRevivalPiece,
-          targetSquare: square
-        });
-        activeAbilityMode = 'none';
-        selectedRevivalPiece = null;
+      if (!selectedRevivalPiece) {
+        dispatch('showToast', { text: 'Please select a captured piece from your reserves first.', type: 'error' });
+        return;
       }
+      const eligible = getEligibleRevivalSquares(storeState.boardFen, storeState.assignedColor, selectedRevivalPiece);
+      if (!eligible.includes(square)) {
+        dispatch('showToast', { text: 'Revival square must be an empty square in your half of the board.', type: 'error' });
+        return;
+      }
+      dispatch('submitRevival', {
+        pieceType: selectedRevivalPiece,
+        targetSquare: square
+      });
+      activeAbilityMode = 'none';
+      selectedRevivalPiece = null;
       return;
     }
 
@@ -144,8 +190,8 @@
         perspective={storeState.assignedColor}
         activePlayer={storeState.activePlayer}
         {isMyTurn}
-        selectedSquare={storeState.selectedSquare}
-        validDestinations={storeState.validDestinations}
+        selectedSquare={displayedSelectedSquare}
+        validDestinations={displayedValidDestinations}
         lastMove={storeState.lastMove}
         inCheck={storeState.inCheck}
         {isSubmitting}

@@ -113,3 +113,36 @@ export function isCheckSquare(square: string, inCheck: boolean, activeColor: Pla
   const piece = board[row] ? board[row][col] : null;
   return piece !== null && piece.type === 'King' && piece.color === activeColor;
 }
+
+export function getEligibleSwapSquares(fen: string, color: PlayerColor): string[] {
+  const matrix = parseFenToMatrix(fen);
+  const eligible: string[] = [];
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const piece = matrix[r][c];
+      if (piece && piece.color === color && piece.type !== 'King') {
+        eligible.push(formatSquare(c, r));
+      }
+    }
+  }
+  return eligible;
+}
+
+export function getEligibleRevivalSquares(fen: string, color: PlayerColor, pieceType?: string | null): string[] {
+  const matrix = parseFenToMatrix(fen);
+  const eligible: string[] = [];
+  for (let r = 0; r < 8; r++) {
+    const rank = 8 - r;
+    const inOwnHalf = color === 'White' ? rank <= 4 : rank >= 5;
+    if (!inOwnHalf) continue;
+    if (pieceType === 'Pawn' && (rank === 1 || rank === 8)) continue;
+
+    for (let c = 0; c < 8; c++) {
+      const piece = matrix[r][c];
+      if (!piece) {
+        eligible.push(formatSquare(c, r));
+      }
+    }
+  }
+  return eligible;
+}

@@ -549,6 +549,7 @@
         on:submitChoice={handleSubmitChoice}
         on:submitSwap={handleSubmitSwap}
         on:submitRevival={handleSubmitRevival}
+        on:showToast={(e) => showToast(e.detail.text, e.detail.type)}
         on:resign={handleResign}
         on:returnHome={handleReturnHome}
         on:playAgain={handleReturnHome}

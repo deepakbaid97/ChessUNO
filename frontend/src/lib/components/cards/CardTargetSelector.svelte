@@ -3,6 +3,7 @@
   import type { PlayerColor } from '../../types/game';
 
   export let mode: 'swap' | 'revival' = 'swap';
+  export let playerColor: PlayerColor = 'White';
   export let reserves: string[] = [];
   export let selectedPieceType: string | null = null;
   export let firstSwapSquare: string | null = null;
@@ -49,7 +50,7 @@
   {:else if mode === 'swap'}
     <div class="header">
       <h4>Reverse / Swap Ability Active</h4>
-      <p class="subtitle">Select two friendly pieces on the board to swap their positions (Kings excluded):</p>
+      <p class="subtitle">Select two of your own friendly pieces on the board to swap their positions (Kings and opponent pieces cannot be swapped):</p>
     </div>
 
     <div class="swap-status">

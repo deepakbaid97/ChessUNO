@@ -479,7 +479,7 @@ public class GameHub : Hub
                 if (player.Color != s.EngineController.ActivePlayer) return (false, "NOT_YOUR_TURN");
 
                 var revivalRes = s.EngineController.SubmitRevival(player.Color, piece, Square.Parse(targetSquare));
-                if (!revivalRes.IsSuccess) return (false, "INVALID_REVIVAL");
+                if (!revivalRes.IsSuccess) return (false, revivalRes.Error ?? "INVALID_REVIVAL");
 
                 s.Status = SessionStatus.InProgress;
                 if (_chessEngine.IsTerminalState(s.EngineController.ChessState.Status))
@@ -544,7 +544,7 @@ public class GameHub : Hub
                 if (player.Color != s.EngineController.ActivePlayer) return (false, "NOT_YOUR_TURN");
 
                 var swapRes = s.EngineController.SubmitSwap(player.Color, Square.Parse(sq1), Square.Parse(sq2));
-                if (!swapRes.IsSuccess) return (false, "INVALID_SWAP");
+                if (!swapRes.IsSuccess) return (false, swapRes.Error ?? "INVALID_SWAP");
 
                 s.Status = SessionStatus.InProgress;
                 if (_chessEngine.IsTerminalState(s.EngineController.ChessState.Status))
