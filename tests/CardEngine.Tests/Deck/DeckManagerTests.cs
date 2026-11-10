@@ -92,7 +92,7 @@ public class DeckManagerTests
     public void DeckManager_KnownSeeds_ProduceExpectedSpecialCards()
     {
         var cards = _repository.LoadFromPath(_configPath);
-        Assert.Equal("card-6", new DeckManager(cards, seed: 1).Draw().Id);
+        Assert.Equal("card-3", new DeckManager(cards, seed: 1).Draw().Id);
         Assert.Equal("card-reverse", new DeckManager(cards, seed: 15).Draw().Id);
         Assert.Equal("card-wild-draw-four", new DeckManager(cards, seed: 19).Draw().Id);
         Assert.Equal("card-draw-two", new DeckManager(cards, seed: 20).Draw().Id);

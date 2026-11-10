@@ -271,15 +271,15 @@ test.describe('Chess UNO Two-Player End-to-End Experience', () => {
     await contextB.close();
   });
 
-  test('Drawing 6 Card and capturing opponent King concludes match immediately on both clients', async ({ browser }) => {
+  test('Drawing 4 Card and capturing opponent King concludes match immediately on both clients', async ({ browser }) => {
     const contextA = await browser.newContext();
     const pageA = await contextA.newPage();
 
     const contextB = await browser.newContext();
     const pageB = await contextB.newPage();
 
-    // Alice creates game with seed 1 (which guarantees card-6 on first draw)
-    await pageA.goto('/?seed=1');
+    // Alice creates game with seed 14 (which guarantees card-4 on first draw)
+    await pageA.goto('/?seed=14');
     await pageA.getByTestId('input-create-name').fill('Alice');
     await pageA.getByTestId('btn-create-game').click();
 

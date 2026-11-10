@@ -137,7 +137,7 @@
       "name": "1 Card",
       "category": "NUMBER",
       "value": 1,
-      "quantity": 8,
+      "quantity": 18,
       "effectKey": "MOVE_1",
       "description": "Make up to 1 legal chess move."
     },
@@ -146,7 +146,7 @@
       "name": "2 Card",
       "category": "NUMBER",
       "value": 2,
-      "quantity": 8,
+      "quantity": 18,
       "effectKey": "MOVE_2",
       "description": "Make up to 2 legal chess moves."
     },
@@ -155,7 +155,7 @@
       "name": "3 Card",
       "category": "NUMBER",
       "value": 3,
-      "quantity": 8,
+      "quantity": 18,
       "effectKey": "MOVE_3",
       "description": "Make up to 3 legal chess moves."
     },
@@ -164,54 +164,9 @@
       "name": "4 Card",
       "category": "NUMBER",
       "value": 4,
-      "quantity": 8,
+      "quantity": 18,
       "effectKey": "MOVE_4",
       "description": "Make up to 4 legal chess moves."
-    },
-    {
-      "id": "card-5",
-      "name": "5 Card",
-      "category": "NUMBER",
-      "value": 5,
-      "quantity": 8,
-      "effectKey": "MOVE_5",
-      "description": "Make up to 5 legal chess moves."
-    },
-    {
-      "id": "card-6",
-      "name": "6 Card",
-      "category": "NUMBER",
-      "value": 6,
-      "quantity": 8,
-      "effectKey": "MOVE_6",
-      "description": "Make up to 6 legal chess moves."
-    },
-    {
-      "id": "card-7",
-      "name": "7 Card",
-      "category": "NUMBER",
-      "value": 7,
-      "quantity": 8,
-      "effectKey": "MOVE_7",
-      "description": "Make up to 7 legal chess moves."
-    },
-    {
-      "id": "card-8",
-      "name": "8 Card",
-      "category": "NUMBER",
-      "value": 8,
-      "quantity": 8,
-      "effectKey": "MOVE_8",
-      "description": "Make up to 8 legal chess moves."
-    },
-    {
-      "id": "card-9",
-      "name": "9 Card",
-      "category": "NUMBER",
-      "value": 9,
-      "quantity": 8,
-      "effectKey": "MOVE_9",
-      "description": "Make up to 9 legal chess moves."
     },
     {
       "id": "card-reverse",

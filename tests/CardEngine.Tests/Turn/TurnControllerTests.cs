@@ -267,29 +267,29 @@ public class TurnControllerTests
     }
 
     [Fact]
-    public void TurnController_FourMoveScholarSequence_CapturingKingWith6MovesCard_EndsGameImmediately()
+    public void TurnController_FourMoveScholarSequence_CapturingKingWith4MovesCard_EndsGameImmediately()
     {
-        var controller = CreateController(seed: 1); // Seed 1 draws card-6
+        var controller = CreateController(seed: 14); // Seed 14 draws card-4
         controller.StartGame();
 
         var card = controller.DrawCard(PlayerColor.White);
-        Assert.Equal("card-6", card.Id);
-        Assert.Equal(6, controller.CurrentTurn.RemainingMoves);
+        Assert.Equal("card-4", card.Id);
+        Assert.Equal(4, controller.CurrentTurn.RemainingMoves);
 
         // Move 1: e2 -> e4
         var m1 = controller.SubmitChessMove(PlayerColor.White, new ChessMove(Square.Parse("e2"), Square.Parse("e4")));
         Assert.True(m1.IsSuccess);
-        Assert.Equal(5, controller.CurrentTurn.RemainingMoves);
+        Assert.Equal(3, controller.CurrentTurn.RemainingMoves);
 
         // Move 2: d1 -> f3
         var m2 = controller.SubmitChessMove(PlayerColor.White, new ChessMove(Square.Parse("d1"), Square.Parse("f3")));
         Assert.True(m2.IsSuccess);
-        Assert.Equal(4, controller.CurrentTurn.RemainingMoves);
+        Assert.Equal(2, controller.CurrentTurn.RemainingMoves);
 
         // Move 3: f3 -> f7
         var m3 = controller.SubmitChessMove(PlayerColor.White, new ChessMove(Square.Parse("f3"), Square.Parse("f7")));
         Assert.True(m3.IsSuccess);
-        Assert.Equal(3, controller.CurrentTurn.RemainingMoves);
+        Assert.Equal(1, controller.CurrentTurn.RemainingMoves);
 
         // Move 4: f7 -> e8 (CAPTURES BLACK KING!)
         var m4 = controller.SubmitChessMove(PlayerColor.White, new ChessMove(Square.Parse("f7"), Square.Parse("e8")));
