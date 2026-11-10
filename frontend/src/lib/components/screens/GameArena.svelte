@@ -361,9 +361,14 @@
         aria-live="polite"
       >
         <div class="coach-top">
-          <span class="coach-badge">{coachGuide.badge}</span>
+          <span class="coach-badge">
+            <span class="badge-dot"></span>
+            {coachGuide.badge}
+          </span>
           {#if storeState.inCheck && !isGameOver}
             <span class="check-alert">KING IN CHECK</span>
+          {:else if storeState.activeCard}
+            <span class="card-mod-tag">[CARD MOD: {storeState.activeCard.name.toUpperCase()}]</span>
           {/if}
         </div>
         <h2 class="coach-headline">{coachGuide.headline}</h2>
@@ -507,24 +512,51 @@
   }
 
   .coach-badge {
-    font-size: 0.66rem;
-    font-weight: 800;
-    letter-spacing: 0.06em;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.64rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
     text-transform: uppercase;
     font-family: var(--font-mono);
+    padding: 2px 7px;
+    border-radius: 3px;
+    background-color: rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--border-color);
     color: var(--text-muted);
   }
 
+  .badge-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: currentColor;
+  }
+
   .tone-your-turn .coach-badge {
-    color: var(--accent-gold);
+    color: var(--accent-gold-bright);
+    background-color: rgba(245, 158, 11, 0.16);
+    border-color: rgba(245, 158, 11, 0.35);
   }
 
   .tone-ability .coach-badge {
     color: var(--accent-green);
+    background-color: rgba(78, 222, 163, 0.15);
+    border-color: rgba(78, 222, 163, 0.35);
   }
 
   .tone-check .coach-badge {
     color: #fca5a5;
+    background-color: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.45);
+  }
+
+  .card-mod-tag {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--text-muted);
+    letter-spacing: 0.04em;
   }
 
   .check-alert {

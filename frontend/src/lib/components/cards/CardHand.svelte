@@ -65,25 +65,6 @@
 </script>
 
 <div class="card-hand-container panel" data-testid="card-hand">
-  <div class="hand-header">
-    <div class="title-group">
-      <span class="section-label">Turn Card &amp; Controls</span>
-      <span class="deck-count">Deck: <strong>{remainingDeckCount}</strong></span>
-    </div>
-
-    <div class="action-summary">
-      {#if remainingMoves > 0}
-        <span class="action-pill moves-pill">Moves left: <strong>{remainingMoves}</strong></span>
-      {/if}
-      {#if remainingRevivals > 0}
-        <span class="action-pill revivals-pill">Revivals left: <strong>{remainingRevivals}</strong></span>
-      {/if}
-      {#if canSwap}
-        <span class="action-pill swap-pill">Swap Active</span>
-      {/if}
-    </div>
-  </div>
-
   <div class="cards-display">
     {#if turnPhase === 'DrawPhase' && isMyTurn}
       <div class="draw-card-slot" data-testid="draw-card-slot">
@@ -95,11 +76,12 @@
         >
           <div class="deck-visual" aria-hidden="true">
             <span class="deck-card-layer"></span>
-            <span class="deck-badge">UNO</span>
+            <span class="deck-badge">DECK</span>
+            <span class="deck-num">#{remainingDeckCount}</span>
           </div>
           <div class="deck-copy">
             <span class="deck-cta">Draw Turn Card</span>
-            <span class="deck-sub">Tap to draw 1 card from the deck and begin your turn</span>
+            <span class="deck-sub">Tap to draw 1 card from the authoritative deck ({remainingDeckCount} left)</span>
           </div>
         </button>
       </div>
@@ -111,15 +93,12 @@
             size="md"
             on:select={handleCardClick}
           />
-          <button type="button" class="inspect-link" on:click={() => { selectedCard = activeCard; showDetails = true; }}>
-            Inspect rules
-          </button>
         </div>
 
         <div class="controls-column">
           {#if isMyTurn && turnPhase === 'AwaitingChoice' && availableChoices.length > 0}
             <div class="choices-container" data-testid="choices-container">
-              <div class="choices-title">Choose 1 Effect to Execute:</div>
+              <div class="choices-title">SELECT TACTICAL ABILITY:</div>
               <div class="choices-buttons">
                 {#each availableChoices as choice}
                   {@const meta = getChoiceMeta(choice)}
@@ -138,14 +117,21 @@
             </div>
           {:else if isMyTurn && turnPhase === 'ActionPhase'}
             <div class="action-buttons-group">
-              <div class="active-effect-summary">
-                <span class="effect-card-name">{activeCard.name}</span>
-                <p class="effect-card-desc">{activeCard.description}</p>
+              <div class="telemetry-pills">
+                {#if remainingMoves > 0}
+                  <span class="action-pill moves-pill">MOVES LEFT: {remainingMoves}</span>
+                {/if}
+                {#if remainingRevivals > 0}
+                  <span class="action-pill revivals-pill">REVIVALS LEFT: {remainingRevivals}</span>
+                {/if}
+                {#if canSwap}
+                  <span class="action-pill swap-pill">SWAP READY</span>
+                {/if}
               </div>
 
               {#if canSwap}
                 <button
-                  class="btn btn-gold btn-sm swap-action-btn"
+                  class="btn btn-gold swap-action-btn"
                   on:click={() => dispatch('activateSwap')}
                   data-testid="btn-activate-swap"
                 >
@@ -155,26 +141,30 @@
 
               {#if remainingRevivals > 0}
                 <button
-                  class="btn btn-primary btn-sm revival-action-btn"
+                  class="btn btn-primary revival-action-btn"
                   on:click={() => dispatch('activateRevival')}
                   data-testid="btn-activate-revival"
                 >
-                  Select Reserve Piece ({remainingRevivals} left)
+                  Revive Piece ({remainingRevivals})
                 </button>
               {/if}
 
-              <button
-                class="btn btn-secondary btn-sm end-turn-btn"
-                on:click={() => dispatch('endTurn')}
-                data-testid="btn-end-turn"
-              >
-                End Turn Early
-              </button>
+              <div class="dock-bottom-row">
+                <span class="deck-counter">DRAW DECK: {remainingDeckCount} LEFT</span>
+                <button
+                  class="pass-turn-link"
+                  on:click={() => dispatch('endTurn')}
+                  data-testid="btn-end-turn"
+                >
+                  Pass / End Turn ›
+                </button>
+              </div>
             </div>
           {:else}
             <div class="opponent-card-status">
-              <span class="status-tag">Opponent's Drawn Card</span>
+              <span class="status-tag">OPPONENT TURN CARD</span>
               <p class="status-desc">{activeCard.description}</p>
+              <span class="deck-counter">DRAW DECK: {remainingDeckCount} LEFT</span>
             </div>
           {/if}
         </div>
@@ -182,9 +172,9 @@
     {:else}
       <div class="empty-hand">
         <div class="card-placeholder">
-          <span class="placeholder-title">{isMyTurn ? 'Ready to Draw' : 'Opponent\'s Turn'}</span>
+          <span class="placeholder-title">{isMyTurn ? 'READY TO DRAW' : 'OPPONENT TURN'}</span>
           <span class="placeholder-sub">
-            {isMyTurn ? 'Draw a card to start your turn.' : 'Waiting for opponent to draw a card from the deck.'}
+            {isMyTurn ? 'Draw a card to start your turn.' : `Waiting for opponent • Deck: ${remainingDeckCount} left`}
           </span>
         </div>
       </div>
@@ -202,76 +192,10 @@
 
 <style>
   .card-hand-container {
-    background: var(--bg-surface);
+    background-color: var(--bg-primary);
     border: 1px solid var(--border-color);
-    padding: 12px 14px;
-    border-radius: 8px;
-  }
-
-  .hand-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    border-bottom: 1px solid var(--border-subtle);
-    padding-bottom: 6px;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .title-group {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  .section-label {
-    font-size: 0.78rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-muted);
-  }
-
-  .deck-count {
-    font-size: 0.75rem;
-    color: var(--text-dim);
-    font-family: var(--font-mono);
-  }
-
-  .deck-count strong {
-    color: var(--text-main);
-  }
-
-  .action-summary {
-    display: flex;
-    gap: 6px;
-  }
-
-  .action-pill {
-    font-size: 0.72rem;
-    font-weight: 700;
-    padding: 2px 8px;
+    padding: 10px 12px;
     border-radius: 4px;
-    font-family: var(--font-mono);
-  }
-
-  .moves-pill {
-    background: rgba(59, 130, 246, 0.15);
-    color: #60a5fa;
-    border: 1px solid rgba(59, 130, 246, 0.35);
-  }
-
-  .revivals-pill {
-    background: rgba(16, 185, 129, 0.15);
-    color: var(--accent-green);
-    border: 1px solid rgba(16, 185, 129, 0.35);
-  }
-
-  .swap-pill {
-    background: rgba(245, 158, 11, 0.15);
-    color: var(--accent-gold);
-    border: 1px solid rgba(245, 158, 11, 0.35);
   }
 
   .cards-display {
@@ -289,12 +213,12 @@
     width: 100%;
     display: flex;
     align-items: center;
-    gap: 16px;
-    padding: 14px 16px;
-    border-radius: 8px;
+    gap: 14px;
+    padding: 10px 14px;
+    border-radius: 4px;
     background-color: var(--bg-elevated);
-    border: 2px solid var(--accent-gold);
-    box-shadow: 0 0 0 3px var(--accent-gold-glow);
+    border: 1.5px solid var(--accent-gold);
+    box-shadow: 0 0 0 2px var(--accent-gold-glow);
     cursor: pointer;
     text-align: left;
     color: var(--text-main);
@@ -306,7 +230,7 @@
   }
 
   .draw-deck-btn:active:not(:disabled) {
-    transform: translateY(1px);
+    transform: scale(0.99);
   }
 
   .draw-deck-btn:disabled {
@@ -316,55 +240,64 @@
 
   .deck-visual {
     position: relative;
-    width: 54px;
-    height: 74px;
-    border-radius: 6px;
-    background-color: var(--bg-primary);
+    width: 52px;
+    height: 70px;
+    border-radius: 4px;
+    background-color: var(--bg-lowest);
     border: 1.5px solid var(--accent-gold);
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    gap: 2px;
     flex-shrink: 0;
   }
 
   .deck-card-layer {
     position: absolute;
     inset: 3px;
-    border-radius: 4px;
-    border: 1px dashed rgba(245, 158, 11, 0.45);
+    border-radius: 2px;
+    border: 1px dashed rgba(245, 158, 11, 0.4);
   }
 
   .deck-badge {
-    font-size: 0.78rem;
-    font-weight: 800;
-    letter-spacing: 0.06em;
-    color: var(--accent-gold);
     font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--accent-gold-bright);
+  }
+
+  .deck-num {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    color: var(--text-muted);
   }
 
   .deck-copy {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
   }
 
   .deck-cta {
-    font-size: 1rem;
+    font-family: var(--font-headline);
+    font-size: 0.98rem;
     font-weight: 700;
-    color: var(--accent-gold);
+    color: var(--accent-gold-bright);
   }
 
   .deck-sub {
-    font-size: 0.8rem;
+    font-size: 0.76rem;
     color: var(--text-muted);
-    line-height: 1.3;
+    line-height: 1.25;
   }
 
   /* Active Card Dock (Side-by-side Card + Controls) */
   .active-card-dock {
     display: flex;
     align-items: stretch;
-    gap: 14px;
+    gap: 12px;
     width: 100%;
   }
 
@@ -372,29 +305,15 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
     flex-shrink: 0;
-  }
-
-  .inspect-link {
-    background: none;
-    border: none;
-    color: var(--text-dim);
-    font-size: 0.68rem;
-    text-decoration: underline;
-    cursor: pointer;
-    padding: 2px 4px;
-  }
-
-  .inspect-link:hover {
-    color: var(--text-main);
   }
 
   .controls-column {
     flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: space-between;
     min-width: 0;
   }
 
@@ -403,21 +322,21 @@
     width: 100%;
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
   }
 
   .choices-title {
-    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--accent-gold);
+    letter-spacing: 0.05em;
+    color: var(--accent-gold-bright);
   }
 
   .choices-buttons {
     display: flex;
     flex-direction: column;
-    gap: 6px;
+    gap: 5px;
   }
 
   .choice-btn {
@@ -426,9 +345,9 @@
     align-items: flex-start;
     gap: 1px;
     width: 100%;
-    padding: 7px 10px;
-    border-radius: 6px;
-    background-color: var(--bg-elevated);
+    padding: 6px 10px;
+    border-radius: 4px;
+    background-color: var(--bg-surface);
     border: 1px solid var(--border-strong);
     color: var(--text-main);
     cursor: pointer;
@@ -438,17 +357,18 @@
 
   .choice-btn:hover {
     border-color: var(--accent-gold);
-    background-color: var(--bg-card-hover);
+    background-color: var(--bg-elevated);
   }
 
   .choice-name {
-    font-size: 0.8rem;
+    font-family: var(--font-headline);
+    font-size: 0.78rem;
     font-weight: 700;
     color: var(--text-main);
   }
 
   .choice-detail {
-    font-size: 0.68rem;
+    font-size: 0.66rem;
     color: var(--text-muted);
   }
 
@@ -456,60 +376,110 @@
   .action-buttons-group {
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
     gap: 8px;
     width: 100%;
+    height: 100%;
   }
 
-  .active-effect-summary {
-    background-color: var(--bg-primary);
-    border: 1px solid var(--border-subtle);
-    border-radius: 6px;
-    padding: 8px 10px;
+  .telemetry-pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
   }
 
-  .effect-card-name {
-    display: block;
-    font-size: 0.8rem;
+  .action-pill {
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
     font-weight: 700;
-    color: var(--text-main);
-    margin-bottom: 2px;
+    padding: 2px 7px;
+    border-radius: 3px;
   }
 
-  .effect-card-desc {
-    font-size: 0.74rem;
-    color: var(--text-muted);
-    line-height: 1.3;
+  .moves-pill {
+    background-color: rgba(59, 130, 246, 0.15);
+    color: #93c5fd;
+    border: 1px solid rgba(59, 130, 246, 0.35);
+  }
+
+  .revivals-pill {
+    background-color: rgba(78, 222, 163, 0.15);
+    color: var(--accent-green);
+    border: 1px solid rgba(78, 222, 163, 0.35);
+  }
+
+  .swap-pill {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: var(--accent-gold-bright);
+    border: 1px solid rgba(245, 158, 11, 0.35);
   }
 
   .swap-action-btn,
-  .revival-action-btn,
-  .end-turn-btn {
+  .revival-action-btn {
     width: 100%;
-    font-size: 0.8rem;
-    padding: 8px 12px;
+    font-size: 0.82rem;
+    padding: 9px 12px;
+  }
+
+  .dock-bottom-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding-top: 4px;
+    border-top: 1px solid var(--border-subtle);
+    margin-top: auto;
+  }
+
+  .deck-counter {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    letter-spacing: 0.04em;
+  }
+
+  .pass-turn-link {
+    background: none;
+    border: 1px solid var(--border-strong);
+    border-radius: 3px;
+    padding: 4px 10px;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .pass-turn-link:hover {
+    color: var(--accent-gold-bright);
+    border-color: var(--accent-gold);
   }
 
   .opponent-card-status {
-    background-color: var(--bg-primary);
-    border: 1px solid var(--border-subtle);
-    border-radius: 6px;
-    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 6px;
+    height: 100%;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    padding: 8px 10px;
   }
 
   .status-tag {
-    display: block;
-    font-size: 0.72rem;
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: var(--text-muted);
-    margin-bottom: 4px;
+    letter-spacing: 0.05em;
+    color: var(--accent-gold-bright);
   }
 
   .status-desc {
-    font-size: 0.78rem;
+    font-size: 0.74rem;
     color: var(--text-main);
-    line-height: 1.35;
+    line-height: 1.3;
   }
 
   /* Empty state */
@@ -519,83 +489,68 @@
 
   .card-placeholder {
     width: 100%;
-    padding: 16px;
-    border-radius: 6px;
-    border: 1px dashed var(--border-strong);
-    background-color: var(--bg-primary);
+    padding: 12px;
+    border-radius: 4px;
+    border: 1px dashed var(--border-color);
+    background-color: var(--bg-lowest);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
     text-align: center;
-    gap: 4px;
+    gap: 3px;
   }
 
   .placeholder-title {
-    font-size: 0.85rem;
-    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
     color: var(--text-muted);
+    letter-spacing: 0.05em;
   }
 
   .placeholder-sub {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: var(--text-dim);
   }
 
   @media (max-width: 900px) {
     .card-hand-container {
-      padding: 8px 10px;
-    }
-
-    .hand-header {
-      margin-bottom: 6px;
-      padding-bottom: 4px;
+      padding: 6px 8px;
     }
 
     .draw-deck-btn {
-      padding: 10px 12px;
-      gap: 12px;
+      padding: 8px 10px;
+      gap: 10px;
     }
 
     .deck-visual {
       width: 44px;
-      height: 58px;
+      height: 56px;
     }
 
     .deck-cta {
-      font-size: 0.9rem;
+      font-size: 0.88rem;
     }
 
     .deck-sub {
-      font-size: 0.72rem;
+      font-size: 0.7rem;
     }
 
     .active-card-dock {
       gap: 10px;
     }
 
-    .inspect-link {
-      display: none;
-    }
-
-    .active-effect-summary {
-      padding: 6px 8px;
-    }
-
-    .effect-card-desc {
-      font-size: 0.68rem;
-    }
-
     .choice-btn {
-      padding: 5px 8px;
+      padding: 4px 8px;
     }
 
     .choice-name {
-      font-size: 0.75rem;
+      font-size: 0.74rem;
     }
 
     .choice-detail {
-      font-size: 0.64rem;
+      font-size: 0.62rem;
     }
   }
 </style>

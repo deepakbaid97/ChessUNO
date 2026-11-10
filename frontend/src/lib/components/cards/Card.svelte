@@ -39,6 +39,18 @@
     if (card.id.includes('wild')) return 'WILD';
     return 'ACT';
   }
+
+  function getTechCode(card: CardModel): string {
+    if (card.value !== null && card.value !== undefined) {
+      return `[MOV: ${card.value}]`;
+    }
+    if (card.id.includes('reverse')) return '[REVERSE]';
+    if (card.id.includes('skip')) return '[INITIATIVE]';
+    if (card.id.includes('draw-two')) return '[REVIVE 2]';
+    if (card.id.includes('wild-draw-four')) return '[WILD +4]';
+    if (card.id.includes('wild')) return '[CHOICE]';
+    return `[${card.effectKey}]`;
+  }
 </script>
 
 <div
@@ -67,6 +79,7 @@
         {getCardSymbol(card)}
       </div>
       <div class="card-title">{card.name}</div>
+      <span class="tech-tag">{getTechCode(card)}</span>
     </div>
 
     <div class="card-footer">
@@ -78,12 +91,13 @@
 <style>
   .card-wrapper {
     position: relative;
-    border-radius: 8px;
+    border-radius: 6px;
     cursor: pointer;
     user-select: none;
     transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     box-shadow: var(--shadow-md);
     flex-shrink: 0;
+    background-color: var(--bg-elevated);
   }
 
   .card-wrapper.elevate:hover {
@@ -96,7 +110,7 @@
   }
 
   .card-wrapper:not(.playable) {
-    opacity: 0.6;
+    opacity: 0.5;
     cursor: not-allowed;
   }
 
@@ -117,41 +131,40 @@
   }
 
   .card-inner {
-    border-radius: 7px;
-    padding: 10px 12px;
+    border-radius: 5px;
+    padding: 8px 10px;
     height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.22) 100%);
   }
 
   /* Sizes */
   .sm {
-    width: 104px;
-    height: 144px;
+    width: 96px;
+    height: 134px;
   }
-  .sm .center-emblem { font-size: 1.5rem; }
-  .sm .card-title { font-size: 0.75rem; }
+  .sm .center-emblem { font-size: 1.35rem; }
+  .sm .card-title { font-size: 0.72rem; }
   .sm .description { display: none; }
 
   .md {
-    width: 136px;
-    height: 184px;
+    width: 124px;
+    height: 172px;
   }
-  .md .center-emblem { font-size: 2.1rem; }
-  .md .center-emblem.text-emblem { font-size: 1.35rem; letter-spacing: 0.04em; }
-  .md .card-title { font-size: 0.85rem; }
-  .md .description { font-size: 0.68rem; }
+  .md .center-emblem { font-size: 1.85rem; }
+  .md .center-emblem.text-emblem { font-size: 1.2rem; letter-spacing: 0.04em; }
+  .md .card-title { font-size: 0.8rem; }
+  .md .description { font-size: 0.65rem; }
 
   .lg {
-    width: 190px;
-    height: 260px;
+    width: 184px;
+    height: 256px;
   }
-  .lg .center-emblem { font-size: 3rem; }
-  .lg .center-emblem.text-emblem { font-size: 1.9rem; }
+  .lg .center-emblem { font-size: 2.8rem; }
+  .lg .center-emblem.text-emblem { font-size: 1.8rem; }
   .lg .card-title { font-size: 1.05rem; }
-  .lg .description { font-size: 0.8rem; }
+  .lg .description { font-size: 0.78rem; }
 
   .card-header {
     display: flex;
@@ -160,20 +173,20 @@
   }
 
   .category-pill {
-    font-size: 0.58rem;
+    font-size: 0.55rem;
     font-weight: 700;
     letter-spacing: 0.06em;
-    padding: 2px 5px;
-    border-radius: 3px;
-    background: rgba(0, 0, 0, 0.45);
-    color: rgba(255, 255, 255, 0.88);
+    padding: 1px 4px;
+    border-radius: 2px;
+    background-color: rgba(11, 14, 21, 0.65);
+    color: var(--accent-gold-bright);
     font-family: var(--font-mono);
   }
 
   .corner-index {
-    font-size: 0.72rem;
-    font-weight: 800;
-    color: rgba(255, 255, 255, 0.9);
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: var(--text-muted);
     font-family: var(--font-mono);
   }
 
@@ -183,60 +196,80 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    margin: 4px 0;
+    margin: 2px 0;
   }
 
   .center-emblem {
-    font-weight: 800;
-    color: #ffffff;
+    font-weight: 700;
+    color: var(--accent-gold-bright);
     line-height: 1.05;
-    font-family: var(--font-mono);
+    font-family: var(--font-headline);
+  }
+
+  .number-card .center-emblem {
+    color: #93c5fd;
+  }
+
+  .wild-card .center-emblem {
+    color: #d8b4fe;
   }
 
   .card-title {
+    font-family: var(--font-headline);
     font-weight: 700;
-    color: #ffffff;
-    margin-top: 4px;
-    letter-spacing: -0.01em;
+    color: var(--text-main);
+    margin-top: 3px;
+    letter-spacing: 0.01em;
+  }
+
+  .tech-tag {
+    font-family: var(--font-mono);
+    font-size: 0.56rem;
+    color: var(--accent-green);
+    margin-top: 1px;
   }
 
   .card-footer {
-    background: rgba(0, 0, 0, 0.35);
-    border-radius: 4px;
-    padding: 5px 6px;
+    background-color: rgba(11, 14, 21, 0.55);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 3px;
+    padding: 4px 5px;
     margin-top: auto;
   }
 
   .description {
-    color: #e5e7eb;
-    line-height: 1.22;
+    color: var(--text-muted);
+    line-height: 1.2;
     text-align: center;
   }
 
   @media (max-width: 900px) {
     .md {
-      width: 112px;
-      height: 136px;
+      width: 96px;
+      height: 124px;
     }
     .md .card-inner {
-      padding: 7px 8px;
+      padding: 6px 7px;
     }
     .md .center-emblem {
-      font-size: 1.55rem;
+      font-size: 1.35rem;
     }
     .md .center-emblem.text-emblem {
-      font-size: 1.05rem;
+      font-size: 0.95rem;
     }
     .md .card-title {
-      font-size: 0.74rem;
-      margin-top: 2px;
+      font-size: 0.68rem;
+      margin-top: 1px;
+    }
+    .md .tech-tag {
+      font-size: 0.5rem;
     }
     .md .card-footer {
-      padding: 4px 5px;
+      padding: 3px 4px;
     }
     .md .description {
-      font-size: 0.6rem;
-      line-height: 1.15;
+      font-size: 0.54rem;
+      line-height: 1.12;
       display: -webkit-box;
       -webkit-line-clamp: 2;
       -webkit-box-orient: vertical;

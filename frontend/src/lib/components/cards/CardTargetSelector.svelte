@@ -24,11 +24,11 @@
   {#if mode === 'revival'}
     <div class="selector-row">
       <div class="selector-label">
-        <span class="step-tag">Reserve Pool</span>
+        <span class="step-tag">RESERVE POOL</span>
         <span class="step-hint">
           {selectedPieceType
             ? `Deploying ${selectedPieceType}: tap a highlighted square on your half`
-            : 'Tap a captured piece to place on the board:'}
+            : 'Tap a captured piece to deploy:'}
         </span>
       </div>
 
@@ -44,7 +44,7 @@
               on:click={() => dispatch('selectReservePiece', { pieceType: piece })}
               data-testid="reserve-{piece.toLowerCase()}"
             >
-              <ChessPiece type={asPieceType(piece)} color={playerColor} size={22} />
+              <ChessPiece type={asPieceType(piece)} color={playerColor} size={20} />
               <span class="piece-name">{piece}</span>
             </button>
           {/each}
@@ -55,48 +55,47 @@
     <div class="selector-row">
       <div class="swap-stepper">
         <div class="swap-slot" class:filled={!!firstSwapSquare} class:active-slot={!firstSwapSquare}>
-          <span class="slot-label">1st Piece</span>
-          <strong class="slot-val">{firstSwapSquare ? firstSwapSquare.toUpperCase() : 'Tap board'}</strong>
+          <span class="slot-label">1ST</span>
+          <strong class="slot-val">{firstSwapSquare ? firstSwapSquare.toUpperCase() : 'Tap Board...'}</strong>
         </div>
 
-        <span class="swap-connector" aria-hidden="true">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
-          </svg>
-        </span>
+        <span class="swap-connector" aria-hidden="true">⇄</span>
 
-        <div class="swap-slot" class:filled={!!secondSwapSquare} class:active-slot={!!firstSwapSquare && !secondSwapSquare}>
-          <span class="slot-label">2nd Piece</span>
-          <strong class="slot-val">{secondSwapSquare ? secondSwapSquare.toUpperCase() : 'Tap board'}</strong>
+        <div class="swap-slot" class:filled={!!secondSwapSquare} class:pending-emerald={!!firstSwapSquare && !secondSwapSquare}>
+          <span class="slot-label">2ND</span>
+          <strong class="slot-val">{secondSwapSquare ? secondSwapSquare.toUpperCase() : 'Tap Board...'}</strong>
         </div>
       </div>
 
-      {#if firstSwapSquare}
-        <button
-          type="button"
-          class="btn btn-secondary btn-xs"
-          on:click={() => dispatch('cancel')}
-        >
-          Reset Selection
-        </button>
-      {/if}
+      <div class="stepper-right">
+        {#if firstSwapSquare}
+          <button
+            type="button"
+            class="undo-btn"
+            on:click={() => dispatch('cancel')}
+          >
+            Undo
+          </button>
+        {/if}
+        <span class="reserve-badge">Reserve ({reserves.length})</span>
+      </div>
     </div>
   {/if}
 </div>
 
 <style>
   .target-selector {
-    background-color: var(--bg-elevated);
-    border: 1px solid var(--border-strong);
-    padding: 8px 12px;
-    border-radius: 8px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    padding: 6px 10px;
+    border-radius: 4px;
   }
 
   .selector-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: wrap;
   }
 
@@ -108,19 +107,19 @@
   }
 
   .step-tag {
-    font-size: 0.68rem;
+    font-family: var(--font-mono);
+    font-size: 0.64rem;
     font-weight: 700;
-    text-transform: uppercase;
     letter-spacing: 0.05em;
     padding: 2px 6px;
-    border-radius: 4px;
-    background-color: rgba(16, 185, 129, 0.16);
+    border-radius: 3px;
+    background-color: rgba(78, 222, 163, 0.14);
     color: var(--accent-green);
-    border: 1px solid rgba(16, 185, 129, 0.35);
+    border: 1px solid rgba(78, 222, 163, 0.35);
   }
 
   .step-hint {
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     color: var(--text-muted);
   }
 
@@ -133,11 +132,11 @@
   .reserve-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
+    gap: 5px;
     background-color: var(--bg-surface);
-    border: 1.5px solid var(--border-strong);
-    border-radius: 6px;
-    padding: 5px 10px;
+    border: 1px solid var(--border-strong);
+    border-radius: 4px;
+    padding: 4px 9px;
     color: var(--text-main);
     cursor: pointer;
     transition: border-color 0.15s ease, background-color 0.15s ease;
@@ -145,22 +144,24 @@
 
   .reserve-btn:hover {
     border-color: var(--accent-gold);
-    background-color: var(--bg-card-hover);
+    background-color: var(--bg-elevated);
   }
 
   .reserve-btn.selected {
     border-color: var(--accent-green);
-    background-color: rgba(16, 185, 129, 0.18);
-    box-shadow: 0 0 0 2px var(--accent-green-glow);
+    background-color: rgba(78, 222, 163, 0.16);
+    box-shadow: 0 0 0 1px var(--accent-green);
   }
 
   .piece-name {
-    font-size: 0.78rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
     font-weight: 600;
   }
 
   .empty-reserves {
-    font-size: 0.78rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
     color: var(--text-muted);
   }
 
@@ -172,64 +173,89 @@
   }
 
   .swap-slot {
-    flex: 1;
-    background-color: var(--bg-primary);
-    border: 1px dashed var(--border-strong);
-    border-radius: 6px;
-    padding: 6px 10px;
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    gap: 6px;
+    background-color: var(--bg-lowest);
+    border: 1px dashed var(--border-strong);
+    border-radius: 4px;
+    padding: 4px 8px;
   }
 
   .swap-slot.active-slot {
-    border-style: solid;
+    border-style: dashed;
     border-color: var(--accent-gold);
+    background-color: rgba(245, 158, 11, 0.1);
   }
 
   .swap-slot.filled {
     border-style: solid;
+    border-color: var(--accent-gold);
+    background-color: rgba(245, 158, 11, 0.18);
+  }
+
+  .swap-slot.pending-emerald {
+    border-style: dashed;
     border-color: var(--accent-green);
-    background-color: rgba(16, 185, 129, 0.12);
+    background-color: rgba(78, 222, 163, 0.1);
   }
 
   .slot-label {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    font-weight: 600;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    font-weight: 700;
   }
 
   .slot-val {
-    font-size: 0.82rem;
     font-family: var(--font-mono);
+    font-size: 0.74rem;
     color: var(--text-main);
   }
 
+  .swap-slot.filled .slot-val {
+    color: var(--accent-gold-bright);
+  }
+
+  .swap-slot.pending-emerald .slot-val {
+    color: var(--accent-green);
+  }
+
   .swap-connector {
-    color: var(--accent-gold);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+
+  .stepper-right {
     display: flex;
     align-items: center;
+    gap: 6px;
   }
 
-  .btn-xs {
-    padding: 4px 10px;
-    font-size: 0.74rem;
+  .undo-btn {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-strong);
+    color: var(--text-main);
+    font-family: var(--font-headline);
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 3px;
+    cursor: pointer;
   }
 
-  @media (max-width: 900px) {
-    .target-selector {
-      padding: 6px 8px;
-    }
+  .undo-btn:hover {
+    border-color: var(--accent-gold);
+  }
 
-    .reserve-btn {
-      padding: 4px 8px;
-    }
-
-    .swap-slot {
-      padding: 4px 8px;
-    }
+  .reserve-badge {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    color: var(--text-muted);
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    padding: 3px 7px;
+    border-radius: 3px;
   }
 </style>

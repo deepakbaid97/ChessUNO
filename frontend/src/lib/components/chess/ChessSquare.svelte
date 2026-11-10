@@ -38,7 +38,7 @@
   class:dark={isDark}
   class:light={!isDark}
   class:selected={isSelected}
-  class:destination-highlight={isDestination && !!piece && !isCapture}
+  class:swap-target={isDestination && !!piece && !isCapture}
   class:last-move={isLastMove}
   class:in-check={isInCheck}
   on:click={handleClick}
@@ -56,6 +56,10 @@
     <span class="coordinate coord-file">{fileChar}</span>
   {/if}
 
+  {#if isSelected}
+    <span class="selected-tag" aria-hidden="true">1ST</span>
+  {/if}
+
   {#if piece}
     <div class="piece-scale">
       <ChessPiece type={piece.type} color={piece.color} />
@@ -63,7 +67,11 @@
   {/if}
 
   {#if isDestination && !isCapture}
-    <div class="dest-dot" class:occupied-target={!!piece} data-testid="dest-dot-{square}"></div>
+    <div class="dest-dot" class:occupied-target={!!piece} data-testid="dest-dot-{square}">
+      {#if piece}
+        <span class="target-check" aria-hidden="true">✓</span>
+      {/if}
+    </div>
   {:else if isDestination && isCapture}
     <div class="capture-ring" data-testid="capture-ring-{square}"></div>
   {/if}
@@ -81,7 +89,6 @@
     cursor: pointer;
     user-select: none;
     transition: background-color 0.12s ease;
-    overflow: hidden;
   }
 
   .square.light {
@@ -94,11 +101,12 @@
 
   .square.selected {
     background-color: var(--square-selected) !important;
-    box-shadow: inset 0 0 0 3px var(--accent-gold);
+    box-shadow: inset 0 0 0 2.5px var(--accent-gold);
   }
 
-  .square.destination-highlight {
-    box-shadow: inset 0 0 0 3px var(--accent-green);
+  .square.swap-target {
+    background-color: rgba(78, 222, 163, 0.24) !important;
+    box-shadow: inset 0 0 0 2px var(--accent-green);
   }
 
   .square.last-move:not(.selected) {
@@ -107,6 +115,23 @@
 
   .square.in-check {
     background: var(--square-check) !important;
+    box-shadow: inset 0 0 0 2px var(--accent-red);
+  }
+
+  .selected-tag {
+    position: absolute;
+    top: 1px;
+    left: 1px;
+    padding: 1px 3px;
+    border-radius: 2px;
+    background-color: var(--accent-gold);
+    color: #10131a;
+    font-family: var(--font-mono);
+    font-size: 0.5rem;
+    font-weight: 700;
+    line-height: 1;
+    z-index: 6;
+    pointer-events: none;
   }
 
   .piece-scale {
@@ -115,6 +140,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 2;
   }
 
   .piece-scale :global(.piece-container) {
@@ -124,19 +150,21 @@
 
   .coordinate {
     position: absolute;
-    font-size: 0.65rem;
-    font-weight: 700;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    font-weight: 600;
     pointer-events: none;
-    opacity: 0.82;
+    opacity: 0.65;
     line-height: 1;
+    font-variant-numeric: tabular-nums;
   }
 
   .square.light .coordinate {
-    color: #5c4631;
+    color: #4a3725;
   }
 
   .square.dark .coordinate {
-    color: #efe7d6;
+    color: #f3ede0;
   }
 
   .coord-rank {
@@ -154,35 +182,51 @@
     width: 30%;
     height: 30%;
     border-radius: 50%;
-    background-color: #10b981;
-    border: 2px solid rgba(255, 255, 255, 0.85);
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+    background-color: rgba(78, 222, 163, 0.35);
+    border: 2px solid var(--accent-green);
     pointer-events: none;
     z-index: 5;
   }
 
   .dest-dot.occupied-target {
-    width: 86%;
-    height: 86%;
-    background-color: rgba(16, 185, 129, 0.22);
-    border: 3px dashed #10b981;
-    box-shadow: none;
+    inset: 2px;
+    width: auto;
+    height: auto;
+    border-radius: 2px;
+    background-color: rgba(78, 222, 163, 0.16);
+    border: 2px solid var(--accent-green);
+  }
+
+  .target-check {
+    position: absolute;
+    top: -3px;
+    right: -3px;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background-color: var(--accent-green);
+    color: #06281b;
+    font-family: var(--font-mono);
+    font-size: 0.52rem;
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .capture-ring {
     position: absolute;
-    width: 86%;
-    height: 86%;
-    border-radius: 50%;
-    border: 4px solid var(--accent-red);
-    box-shadow: 0 0 6px var(--accent-red-glow);
+    inset: 2px;
+    border-radius: 2px;
+    border: 2.5px solid var(--accent-red);
+    background-color: rgba(239, 68, 68, 0.18);
     pointer-events: none;
     z-index: 5;
   }
 
   @media (max-width: 600px) {
     .coordinate {
-      font-size: 0.55rem;
+      font-size: 0.52rem;
     }
   }
 </style>

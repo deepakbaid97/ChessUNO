@@ -1,57 +1,62 @@
 :root {
-  /* Modern Tabletop / Tournament Studio Palette */
-  --bg-dark: #0f1115;
-  --bg-primary: #14171c;
-  --bg-surface: #1b1f26;
-  --bg-elevated: #232831;
-  --bg-card: #242933;
-  --bg-card-hover: #2d3440;
-  --border-color: #2e3440;
+  /* Stitch "Grandmaster Studio" Design System Tokens */
+  --bg-lowest: #0b0e15;
+  --bg-dark: #10131a;
+  --bg-primary: #191c23;
+  --bg-surface: #1d2027;
+  --bg-elevated: #272a31;
+  --bg-card: #272a31;
+  --bg-card-hover: #32353c;
+  --border-color: #2d3340;
   --border-strong: #3e4656;
-  --border-subtle: #20252d;
+  --border-subtle: #222630;
+  --outline-warm: rgba(160, 142, 122, 0.35);
 
-  --text-main: #f3f4f6;
-  --text-muted: #9ca3af;
-  --text-dim: #6b7280;
+  --text-main: #e0e2ec;
+  --text-muted: #d8c3ad;
+  --text-dim: #8b92a5;
 
-  /* Semantic Accents */
+  /* Tactical Semantic Accents */
   --accent-gold: #f59e0b;
-  --accent-gold-strong: #d97706;
+  --accent-gold-bright: #ffc174;
   --accent-gold-glow: rgba(245, 158, 11, 0.25);
   --accent-blue: #3b82f6;
-  --accent-green: #10b981;
-  --accent-green-glow: rgba(16, 185, 129, 0.28);
+  --accent-green: #4edea3;
+  --accent-green-strong: #10b981;
+  --accent-green-glow: rgba(78, 222, 163, 0.28);
   --accent-red: #ef4444;
+  --accent-red-soft: #ffb4ab;
   --accent-red-glow: rgba(239, 68, 68, 0.32);
   --accent-purple: #a855f7;
   --accent-purple-glow: rgba(168, 85, 247, 0.25);
 
-  /* Tournament Chessboard Squares */
+  /* Tournament Chessboard Archetypes */
   --square-light: #dfd6c3;
   --square-dark: #8c6d4f;
-  --square-selected: rgba(245, 158, 11, 0.62);
-  --square-dest-highlight: rgba(16, 185, 129, 0.42);
-  --square-capture-highlight: rgba(239, 68, 68, 0.52);
-  --square-last-move: rgba(245, 158, 11, 0.3);
-  --square-check: radial-gradient(circle, rgba(220, 38, 38, 0.85) 0%, rgba(220, 38, 38, 0.25) 70%);
+  --square-selected: rgba(245, 158, 11, 0.38);
+  --square-dest-highlight: rgba(78, 222, 163, 0.35);
+  --square-capture-highlight: rgba(239, 68, 68, 0.45);
+  --square-last-move: rgba(245, 158, 11, 0.24);
+  --square-check: radial-gradient(circle, rgba(239, 68, 68, 0.85) 0%, rgba(239, 68, 68, 0.25) 70%);
 
   /* Card Surfaces */
-  --card-num-bg: #18283e;
+  --card-num-bg: #1b2434;
   --card-num-border: #3b82f6;
-  --card-act-bg: #3b1922;
-  --card-act-border: #f43f5e;
-  --card-wild-bg: #2c1a3d;
+  --card-act-bg: #272226;
+  --card-act-border: #f59e0b;
+  --card-wild-bg: #261e32;
   --card-wild-border: #a855f7;
 
   /* Typography */
-  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --font-headline: "Space Grotesk", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   /* Elevation */
-  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
-  --shadow-md: 0 4px 10px -2px rgba(0, 0, 0, 0.45);
-  --shadow-lg: 0 12px 24px -4px rgba(0, 0, 0, 0.55);
-  --shadow-card: 0 8px 20px -4px rgba(0, 0, 0, 0.5);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.55);
+  --shadow-lg: 0 12px 28px -4px rgba(0, 0, 0, 0.65);
+  --shadow-card: 0 0 0 1px rgba(245, 158, 11, 0.35), 0 8px 20px rgba(0, 0, 0, 0.6);
   --shadow-glow: 0 0 0 2px var(--accent-gold-glow);
 }
 
@@ -73,6 +78,10 @@ html, body {
   overscroll-behavior-y: none;
 }
 
+h1, h2, h3, h4 {
+  font-family: var(--font-headline);
+}
+
 /* Accessibility */
 :focus-visible {
   outline: 2px solid var(--accent-gold);
@@ -89,14 +98,17 @@ html, body {
 
 /* App Shell */
 .app-container {
-  max-width: 1240px;
+  max-width: 1200px;
   margin: 0 auto;
-  padding: 12px 18px;
+  padding: 0 16px 12px;
   width: 100%;
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
+  background-color: var(--bg-lowest);
+  border-left: 1px solid rgba(45, 51, 64, 0.45);
+  border-right: 1px solid rgba(45, 51, 64, 0.45);
 }
 
 /* Header */
@@ -104,28 +116,30 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 10px;
+  height: 44px;
+  padding: 0 12px;
+  margin: 0 -16px 12px;
+  background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
-  margin-bottom: 12px;
   flex-shrink: 0;
 }
 
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
 }
 
 .brand-mark {
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
   background-color: var(--bg-elevated);
-  border: 1px solid var(--border-strong);
+  border: 1px solid rgba(245, 158, 11, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--accent-gold);
+  color: var(--accent-gold-bright);
   flex-shrink: 0;
 }
 
@@ -136,33 +150,37 @@ html, body {
 }
 
 .brand-title {
-  font-size: 1.05rem;
+  font-family: var(--font-headline);
+  font-size: 0.95rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--text-main);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent-gold-bright);
 }
 
 .brand-subtitle {
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-dim);
 }
 
-/* Status Badges */
+/* Telemetry Status Badges */
 .badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  padding: 3px 8px;
+  padding: 2px 8px;
   border-radius: 4px;
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   font-weight: 600;
   font-family: var(--font-mono);
   border: 1px solid var(--border-color);
-  background-color: var(--bg-surface);
+  background-color: var(--bg-lowest);
   color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .badge::before {
@@ -175,12 +193,12 @@ html, body {
 
 .badge-connected {
   color: var(--accent-green);
-  border-color: rgba(16, 185, 129, 0.3);
+  border-color: rgba(78, 222, 163, 0.35);
 }
 
 .badge-waiting {
   color: var(--accent-gold);
-  border-color: rgba(245, 158, 11, 0.3);
+  border-color: rgba(245, 158, 11, 0.35);
 }
 
 .badge-disconnected {
@@ -194,62 +212,64 @@ html, body {
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-family: inherit;
+  font-family: var(--font-headline);
   font-size: 0.875rem;
   font-weight: 600;
   padding: 9px 16px;
-  border-radius: 6px;
+  border-radius: 4px;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  transition: background-color 0.15s ease, border-color 0.15s ease, filter 0.15s ease, transform 0.1s ease;
   text-decoration: none;
   line-height: 1.2;
 }
 
 .btn:active:not(:disabled) {
-  transform: translateY(1px);
+  transform: scale(0.98);
 }
 
 .btn-primary {
-  background-color: #2563eb;
-  border-color: #3b82f6;
-  color: #ffffff;
+  background-color: var(--accent-green-strong);
+  border-color: var(--accent-green);
+  color: #06281b;
+  font-weight: 700;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background-color: #1d4ed8;
+  filter: brightness(1.08);
 }
 
 .btn-gold {
   background-color: var(--accent-gold);
-  border-color: #fbbf24;
-  color: #0f1115;
+  border-color: var(--accent-gold-bright);
+  color: #10131a;
   font-weight: 700;
 }
 
 .btn-gold:hover:not(:disabled) {
-  background-color: #fbbf24;
+  filter: brightness(1.08);
 }
 
 .btn-secondary {
-  background-color: var(--bg-elevated);
+  background-color: var(--bg-surface);
   color: var(--text-main);
   border-color: var(--border-strong);
 }
 
 .btn-secondary:hover:not(:disabled) {
-  background-color: var(--bg-card-hover);
+  border-color: var(--accent-gold);
+  background-color: var(--bg-elevated);
 }
 
 .btn-danger {
-  background-color: rgba(239, 68, 68, 0.12);
-  color: #fca5a5;
-  border-color: rgba(239, 68, 68, 0.35);
+  background-color: transparent;
+  color: var(--accent-red);
+  border-color: rgba(239, 68, 68, 0.45);
 }
 
 .btn-danger:hover:not(:disabled) {
-  background-color: rgba(239, 68, 68, 0.22);
-  color: #ffffff;
+  background-color: rgba(239, 68, 68, 0.14);
+  border-color: var(--accent-red);
 }
 
 .btn:disabled {
@@ -260,26 +280,29 @@ html, body {
 
 /* Forms & Inputs */
 input {
-  background-color: var(--bg-primary);
-  border: 1px solid var(--border-strong);
+  background-color: var(--bg-lowest);
+  border: 1px solid var(--border-color);
   color: var(--text-main);
   padding: 10px 14px;
-  border-radius: 6px;
-  font-size: 0.925rem;
+  border-radius: 4px;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
   width: 100%;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease;
 }
 
 input:focus {
   outline: none;
   border-color: var(--accent-gold);
-  box-shadow: 0 0 0 2px var(--accent-gold-glow);
 }
 
 label {
   display: block;
-  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
   color: var(--text-muted);
   margin-bottom: 6px;
 }
@@ -288,8 +311,8 @@ label {
 .panel {
   background-color: var(--bg-surface);
   border: 1px solid var(--border-color);
-  border-radius: 8px;
-  padding: 20px;
+  border-radius: 4px;
+  padding: 18px;
   box-shadow: var(--shadow-md);
 }
 
@@ -307,13 +330,14 @@ label {
 }
 
 .toast {
-  padding: 10px 14px;
-  border-radius: 6px;
+  padding: 9px 14px;
+  border-radius: 4px;
   background-color: var(--bg-elevated);
   color: var(--text-main);
   box-shadow: var(--shadow-lg);
   border: 1px solid var(--border-strong);
-  font-size: 0.825rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
   font-weight: 500;
   animation: slideIn 0.2s ease-out;
 }
@@ -325,21 +349,23 @@ label {
 
 @media (max-width: 900px) {
   .app-container {
-    padding: 6px 8px;
+    max-width: 480px;
+    padding: 0 8px 6px;
   }
 
   .app-header {
-    padding-bottom: 6px;
-    margin-bottom: 6px;
+    height: 36px;
+    padding: 0 10px;
+    margin: 0 -8px 6px;
   }
 
   .brand-mark {
-    width: 22px;
-    height: 22px;
+    width: 20px;
+    height: 20px;
   }
 
   .brand-title {
-    font-size: 0.92rem;
+    font-size: 0.82rem;
   }
 
   .brand-subtitle {
@@ -347,12 +373,12 @@ label {
   }
 
   .badge {
-    font-size: 0.62rem;
-    padding: 2px 6px;
+    font-size: 0.58rem;
+    padding: 2px 5px;
   }
 
   .toast-container {
-    top: 42px;
+    top: 40px;
     bottom: auto;
     right: 8px;
     left: 8px;
