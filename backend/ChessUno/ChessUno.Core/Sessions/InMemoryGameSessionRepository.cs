@@ -28,12 +28,16 @@ public interface IGameSessionRepository
     Task<int> CleanupExpiredSessionsAsync();
     Task<string> ExportSessionSnapshotJsonAsync(Guid gameId);
     Task<GameSession?> RestoreSessionSnapshotJsonAsync(string snapshotJson);
+    Task<bool> TryRecordActionAsync(Guid gameId, string actionId, string actionType, string playerToken, int expectedRevision, string payloadJson, string resultJson);
+    Task<string?> GetActionResultAsync(Guid gameId, string actionId);
+    Task<bool> UpdatePlayerConnectionStatusAsync(Guid gameId, PlayerColor color, bool isConnected);
 }
 
 public class InMemoryGameSessionRepository : IGameSessionRepository
 {
     private readonly ConcurrentDictionary<Guid, GameSession> _sessionsById = new();
     private readonly ConcurrentDictionary<string, Guid> _sessionIdsByToken = new();
+    private readonly ConcurrentDictionary<string, string> _actionResultsById = new();
     private readonly GameConfig _config;
     private readonly ICardRepository _cardRepository;
     private readonly IChessEngine _chessEngine;
@@ -281,5 +285,37 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
         _sessionIdsByToken[session.InvitationToken] = session.GameId;
 
         return Task.FromResult<GameSession?>(session);
+    }
+
+    public Task<bool> TryRecordActionAsync(Guid gameId, string actionId, string actionType, string playerToken, int expectedRevision, string payloadJson, string resultJson)
+    {
+        var key = $"{gameId}_{actionId}";
+        var added = _actionResultsById.TryAdd(key, resultJson);
+        return Task.FromResult(added);
+    }
+
+    public Task<string?> GetActionResultAsync(Guid gameId, string actionId)
+    {
+        var key = $"{gameId}_{actionId}";
+        _actionResultsById.TryGetValue(key, out var res);
+        return Task.FromResult(res);
+    }
+
+    public Task<bool> UpdatePlayerConnectionStatusAsync(Guid gameId, PlayerColor color, bool isConnected)
+    {
+        if (_sessionsById.TryGetValue(gameId, out var session))
+        {
+            if (color == PlayerColor.White && session.PlayerWhite != null)
+            {
+                session.PlayerWhite = session.PlayerWhite with { IsConnected = isConnected };
+                return Task.FromResult(true);
+            }
+            if (color == PlayerColor.Black && session.PlayerBlack != null)
+            {
+                session.PlayerBlack = session.PlayerBlack with { IsConnected = isConnected };
+                return Task.FromResult(true);
+            }
+        }
+        return Task.FromResult(false);
     }
 }
