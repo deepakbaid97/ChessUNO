@@ -81,7 +81,30 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
         throw new FileNotFoundException("Cannot locate configs/chess-uno.json.");
     }
 
-    public static string HashToken(string token) => TokenHasher.HashToken(token);
+    public static async Task<int> SanitizeAllExistingSnapshotsAsync(ChessUnoDbContext db)
+    {
+        var legacySessions = await db.Sessions
+            .Where(s => s.SnapshotJson.Contains("SecretToken") || s.SnapshotJson.Contains("\"InvitationToken\""))
+            .ToListAsync();
+
+        int sanitizedCount = 0;
+        foreach (var entity in legacySessions)
+        {
+            var clean = LegacySnapshotSanitizer.Sanitize(entity.SnapshotJson);
+            if (clean != entity.SnapshotJson)
+            {
+                entity.SnapshotJson = clean;
+                sanitizedCount++;
+            }
+        }
+
+        if (sanitizedCount > 0)
+        {
+            await db.SaveChangesAsync();
+        }
+
+        return sanitizedCount;
+    }
 
     private ChessUnoDbContext CreateContext() => _dbContextFactory.CreateDbContext();
 
@@ -233,6 +256,8 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
                 return null;
             }
 
+            var previousSnapshotJson = CreateSnapshotJson(session);
+
             var blackToken = GameSession.GenerateSecureToken(24);
             var opponent = PlayerSession.Create(
                 playerId: Guid.NewGuid(),
@@ -242,28 +267,48 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
                 isConnected: false
             );
 
-            session.PlayerBlack = opponent;
-            session.Status = SessionStatus.Ready;
-            session.GameRevision++;
-
-            var snapshotJson = CreateSnapshotJson(session);
-
             var db = CreateContext();
             try
             {
+                await using var tx = await db.Database.BeginTransactionAsync();
                 var entity = await db.Sessions.FirstOrDefaultAsync(s => s.GameId == session.GameId);
-                if (entity != null)
+                if (entity == null || entity.Status != SessionStatus.WaitingForPlayer || entity.PlayerBlackId != null)
                 {
-                    entity.PlayerBlackId = opponent.PlayerId;
-                    entity.PlayerBlackName = opponent.PlayerName;
-                    entity.PlayerBlackTokenHash = opponent.TokenHash;
-                    entity.Status = session.Status;
-                    entity.GameRevision = session.GameRevision;
-                    entity.UpdatedAt = DateTimeOffset.UtcNow;
-                    entity.SnapshotJson = snapshotJson;
-
-                    await db.SaveChangesAsync();
+                    await tx.RollbackAsync();
+                    return null;
                 }
+
+                if (entity.GameRevision != session.GameRevision)
+                {
+                    await tx.RollbackAsync();
+                    RestoreSessionInPlace(session, entity.SnapshotJson);
+                    return null;
+                }
+
+                var newRevision = session.GameRevision + 1;
+                session.PlayerBlack = opponent;
+                session.Status = SessionStatus.Ready;
+                session.GameRevision = newRevision;
+
+                var snapshotJson = CreateSnapshotJson(session);
+
+                entity.PlayerBlackId = opponent.PlayerId;
+                entity.PlayerBlackName = opponent.PlayerName;
+                entity.PlayerBlackTokenHash = opponent.TokenHash;
+                entity.Status = session.Status;
+                entity.GameRevision = newRevision;
+                entity.UpdatedAt = DateTimeOffset.UtcNow;
+                entity.SnapshotJson = snapshotJson;
+
+                await db.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                return (session, opponent);
+            }
+            catch
+            {
+                RestoreSessionInPlace(session, previousSnapshotJson);
+                throw;
             }
             finally
             {
@@ -272,8 +317,6 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
                     await db.DisposeAsync();
                 }
             }
-
-            return (session, opponent);
         }
         finally
         {
@@ -283,34 +326,62 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
 
     public async Task<bool> UpdateSessionAsync(GameSession session)
     {
-        _sessionsById[session.GameId] = session;
-        var snapshotJson = CreateSnapshotJson(session);
-
-        var db = CreateContext();
+        await session.SessionLock.WaitAsync();
         try
         {
-            var entity = await db.Sessions.FirstOrDefaultAsync(s => s.GameId == session.GameId);
-            if (entity != null)
-            {
-                entity.BoardFen = session.EngineController.ChessState.Fen;
-                entity.Status = session.Status;
-                entity.GameRevision = session.GameRevision;
-                entity.Winner = session.EngineController.ChessState.Winner?.ToString();
-                entity.UpdatedAt = DateTimeOffset.UtcNow;
-                entity.SnapshotJson = snapshotJson;
+            _sessionsById[session.GameId] = session;
+            var previousSnapshotJson = CreateSnapshotJson(session);
 
-                await db.SaveChangesAsync();
+            var db = CreateContext();
+            try
+            {
+                await using var tx = await db.Database.BeginTransactionAsync();
+                var entity = await db.Sessions.FirstOrDefaultAsync(s => s.GameId == session.GameId);
+                if (entity != null)
+                {
+                    if (entity.GameRevision != session.GameRevision)
+                    {
+                        await tx.RollbackAsync();
+                        RestoreSessionInPlace(session, entity.SnapshotJson);
+                        return false;
+                    }
+
+                    var snapshotJson = CreateSnapshotJson(session);
+                    entity.BoardFen = session.EngineController.ChessState.Fen;
+                    entity.Status = session.Status;
+                    entity.GameRevision = session.GameRevision;
+                    entity.Winner = session.EngineController.ChessState.Winner?.ToString();
+                    entity.UpdatedAt = DateTimeOffset.UtcNow;
+                    entity.SnapshotJson = snapshotJson;
+
+                    await db.SaveChangesAsync();
+                    await tx.CommitAsync();
+                }
+                else
+                {
+                    await tx.RollbackAsync();
+                    return false;
+                }
             }
+            catch
+            {
+                RestoreSessionInPlace(session, previousSnapshotJson);
+                throw;
+            }
+            finally
+            {
+                if (_dbContextFactory is not NonDisposingDbContextFactory)
+                {
+                    await db.DisposeAsync();
+                }
+            }
+
+            return true;
         }
         finally
         {
-            if (_dbContextFactory is not NonDisposingDbContextFactory)
-            {
-                await db.DisposeAsync();
-            }
+            session.SessionLock.Release();
         }
-
-        return true;
     }
 
     public async Task<bool> CancelSessionAsync(Guid gameId, string playerToken)
@@ -326,28 +397,51 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
 
             if (!isAuthorized) return false;
 
-            if (session.Status == SessionStatus.Completed || session.Status == SessionStatus.Expired)
+            if (session.Status == SessionStatus.Completed || session.Status == SessionStatus.Expired || session.Status == SessionStatus.Cancelled)
             {
                 return false;
             }
 
-            session.Status = SessionStatus.Cancelled;
-            session.GameRevision++;
-
-            var snapshotJson = CreateSnapshotJson(session);
+            var previousSnapshotJson = CreateSnapshotJson(session);
 
             var db = CreateContext();
             try
             {
+                await using var tx = await db.Database.BeginTransactionAsync();
                 var entity = await db.Sessions.FirstOrDefaultAsync(s => s.GameId == session.GameId);
-                if (entity != null)
+                if (entity == null || entity.Status == SessionStatus.Completed || entity.Status == SessionStatus.Expired || entity.Status == SessionStatus.Cancelled)
                 {
-                    entity.Status = SessionStatus.Cancelled;
-                    entity.GameRevision = session.GameRevision;
-                    entity.UpdatedAt = DateTimeOffset.UtcNow;
-                    entity.SnapshotJson = snapshotJson;
-                    await db.SaveChangesAsync();
+                    await tx.RollbackAsync();
+                    return false;
                 }
+
+                if (entity.GameRevision != session.GameRevision)
+                {
+                    await tx.RollbackAsync();
+                    RestoreSessionInPlace(session, entity.SnapshotJson);
+                    return false;
+                }
+
+                var newRevision = session.GameRevision + 1;
+                session.Status = SessionStatus.Cancelled;
+                session.GameRevision = newRevision;
+
+                var snapshotJson = CreateSnapshotJson(session);
+
+                entity.Status = SessionStatus.Cancelled;
+                entity.GameRevision = newRevision;
+                entity.UpdatedAt = DateTimeOffset.UtcNow;
+                entity.SnapshotJson = snapshotJson;
+
+                await db.SaveChangesAsync();
+                await tx.CommitAsync();
+
+                return true;
+            }
+            catch
+            {
+                RestoreSessionInPlace(session, previousSnapshotJson);
+                throw;
             }
             finally
             {
@@ -356,8 +450,6 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
                     await db.DisposeAsync();
                 }
             }
-
-            return true;
         }
         finally
         {
@@ -425,13 +517,28 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
         return Task.FromResult(session);
     }
 
+    public static string NormalizeJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return "{}";
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return JsonSerializer.Serialize(doc.RootElement);
+        }
+        catch
+        {
+            return json.Trim();
+        }
+    }
+
     public async Task<(bool Success, string? ErrorCode, int NewRevision, bool IsIdempotentReplay)> ExecuteActionAtomicallyAsync(
         Guid gameId,
         string? actionId,
         string actionType,
         PlayerColor playerColor,
         int? expectedRevision,
-        Func<GameSession, (bool Success, string? ErrorCode)> mutateState)
+        Func<GameSession, (bool Success, string? ErrorCode)> mutateState,
+        string? payloadJson = null)
     {
         var session = await GetByIdAsync(gameId);
         if (session == null)
@@ -442,11 +549,9 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
         await session.SessionLock.WaitAsync();
         try
         {
-            if (expectedRevision.HasValue && expectedRevision.Value != session.GameRevision)
-            {
-                return (false, "REVISION_MISMATCH", session.GameRevision, false);
-            }
+            var normalizedPayload = NormalizeJson(payloadJson);
 
+            // Step 1: Idempotency check BEFORE checking stale expectedRevision
             if (!string.IsNullOrEmpty(actionId))
             {
                 var dbCheck = CreateContext();
@@ -456,11 +561,15 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
                         .FirstOrDefaultAsync(a => a.GameId == gameId && a.ActionId == actionId);
                     if (existingAction != null)
                     {
-                        if (existingAction.ActionType != actionType || existingAction.PlayerColor != playerColor.ToString())
+                        var normalizedStored = NormalizeJson(existingAction.PayloadJson);
+
+                        if (existingAction.ActionType != actionType ||
+                            existingAction.PlayerColor != playerColor.ToString() ||
+                            normalizedStored != normalizedPayload)
                         {
-                            return (false, "IDEMPOTENCY_MISMATCH", session.GameRevision, false);
+                            return (false, "IDEMPOTENCY_CONFLICT", session.GameRevision, false);
                         }
-                        return (true, null, session.GameRevision, true);
+                        return (true, null, existingAction.Revision + 1, true);
                     }
                 }
                 finally
@@ -470,6 +579,12 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
                         await dbCheck.DisposeAsync();
                     }
                 }
+            }
+
+            // Step 2: Revision check
+            if (expectedRevision.HasValue && expectedRevision.Value != session.GameRevision)
+            {
+                return (false, "REVISION_MISMATCH", session.GameRevision, false);
             }
 
             var previousSnapshotJson = CreateSnapshotJson(session);
@@ -521,7 +636,7 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
                             ActionType = actionType,
                             PlayerColor = playerColor.ToString(),
                             Revision = newRevision - 1,
-                            PayloadJson = "{}",
+                            PayloadJson = normalizedPayload,
                             ResultJson = "{\"success\":true}",
                             CreatedAt = DateTimeOffset.UtcNow
                         };
@@ -537,6 +652,40 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
                 {
                     await tx.RollbackAsync();
                     RestoreSessionInPlace(session, previousSnapshotJson);
+                    return (false, "CONCURRENCY_CONFLICT", session.GameRevision, false);
+                }
+                catch (DbUpdateException)
+                {
+                    await tx.RollbackAsync();
+                    RestoreSessionInPlace(session, previousSnapshotJson);
+
+                    if (!string.IsNullOrEmpty(actionId))
+                    {
+                        var dbVerify = CreateContext();
+                        try
+                        {
+                            var racedAction = await dbVerify.Actions.AsNoTracking()
+                                .FirstOrDefaultAsync(a => a.GameId == gameId && a.ActionId == actionId);
+                            if (racedAction != null)
+                            {
+                                var normalizedStored = NormalizeJson(racedAction.PayloadJson);
+                                if (racedAction.ActionType == actionType &&
+                                    racedAction.PlayerColor == playerColor.ToString() &&
+                                    normalizedStored == normalizedPayload)
+                                {
+                                    return (true, null, racedAction.Revision + 1, true);
+                                }
+                                return (false, "IDEMPOTENCY_CONFLICT", session.GameRevision, false);
+                            }
+                        }
+                        finally
+                        {
+                            if (_dbContextFactory is not NonDisposingDbContextFactory)
+                            {
+                                await dbVerify.DisposeAsync();
+                            }
+                        }
+                    }
                     return (false, "CONCURRENCY_CONFLICT", session.GameRevision, false);
                 }
                 catch (Exception)
@@ -705,9 +854,10 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
         }
     }
 
-    private GameSession? RestoreFromSnapshotJson(string snapshotJson)
+    public GameSession? RestoreFromSnapshotJson(string snapshotJson)
     {
-        var snapshot = JsonSerializer.Deserialize<GameSessionSnapshot>(snapshotJson);
+        var cleanJson = LegacySnapshotSanitizer.Sanitize(snapshotJson);
+        var snapshot = JsonSerializer.Deserialize<GameSessionSnapshot>(cleanJson);
         if (snapshot == null) return null;
 
         var gameState = new GameState(

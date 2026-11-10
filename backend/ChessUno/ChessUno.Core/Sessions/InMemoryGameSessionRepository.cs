@@ -37,7 +37,8 @@ public interface IGameSessionRepository
         string actionType,
         PlayerColor playerColor,
         int? expectedRevision,
-        Func<GameSession, (bool Success, string? ErrorCode)> mutateState
+        Func<GameSession, (bool Success, string? ErrorCode)> mutateState,
+        string? payloadJson = null
     );
 }
 
@@ -46,7 +47,7 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
     private readonly ConcurrentDictionary<Guid, GameSession> _sessionsById = new();
     private readonly ConcurrentDictionary<string, Guid> _sessionIdsByTokenHash = new();
     private readonly ConcurrentDictionary<string, string> _actionResultsById = new();
-    private readonly ConcurrentDictionary<string, (string ActionType, string PlayerColor)> _actionMetadataById = new();
+    private readonly ConcurrentDictionary<string, (string ActionType, string PlayerColor, string PayloadJson, int Revision)> _actionMetadataById = new();
     private readonly GameConfig _config;
     private readonly ICardRepository _cardRepository;
     private readonly IChessEngine _chessEngine;
@@ -244,7 +245,8 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
 
     public Task<GameSession?> RestoreSessionSnapshotJsonAsync(string snapshotJson)
     {
-        var snapshot = JsonSerializer.Deserialize<GameSessionSnapshot>(snapshotJson);
+        var cleanJson = LegacySnapshotSanitizer.Sanitize(snapshotJson);
+        var snapshot = JsonSerializer.Deserialize<GameSessionSnapshot>(cleanJson);
         if (snapshot == null) return Task.FromResult<GameSession?>(null);
 
         var gameState = new GameState(
@@ -298,13 +300,28 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
         return Task.FromResult<GameSession?>(session);
     }
 
+    public static string NormalizeJson(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json)) return "{}";
+        try
+        {
+            using var doc = JsonDocument.Parse(json);
+            return JsonSerializer.Serialize(doc.RootElement);
+        }
+        catch
+        {
+            return json.Trim();
+        }
+    }
+
     public async Task<(bool Success, string? ErrorCode, int NewRevision, bool IsIdempotentReplay)> ExecuteActionAtomicallyAsync(
         Guid gameId,
         string? actionId,
         string actionType,
         PlayerColor playerColor,
         int? expectedRevision,
-        Func<GameSession, (bool Success, string? ErrorCode)> mutateState)
+        Func<GameSession, (bool Success, string? ErrorCode)> mutateState,
+        string? payloadJson = null)
     {
         if (!_sessionsById.TryGetValue(gameId, out var session))
         {
@@ -314,11 +331,9 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
         await session.SessionLock.WaitAsync();
         try
         {
-            if (expectedRevision.HasValue && expectedRevision.Value != session.GameRevision)
-            {
-                return (false, "REVISION_MISMATCH", session.GameRevision, false);
-            }
+            var normalizedPayload = NormalizeJson(payloadJson);
 
+            // Step 1: Idempotency check BEFORE checking stale expectedRevision
             if (!string.IsNullOrEmpty(actionId))
             {
                 var actionKey = $"{gameId}_{actionId}";
@@ -326,13 +341,22 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
                 {
                     if (_actionMetadataById.TryGetValue(actionKey, out var meta))
                     {
-                        if (meta.ActionType != actionType || meta.PlayerColor != playerColor.ToString())
+                        if (meta.ActionType != actionType ||
+                            meta.PlayerColor != playerColor.ToString() ||
+                            meta.PayloadJson != normalizedPayload)
                         {
-                            return (false, "IDEMPOTENCY_MISMATCH", session.GameRevision, false);
+                            return (false, "IDEMPOTENCY_CONFLICT", session.GameRevision, false);
                         }
+                        return (true, null, meta.Revision + 1, true);
                     }
                     return (true, null, session.GameRevision, true);
                 }
+            }
+
+            // Step 2: Revision check
+            if (expectedRevision.HasValue && expectedRevision.Value != session.GameRevision)
+            {
+                return (false, "REVISION_MISMATCH", session.GameRevision, false);
             }
 
             var previousSnapshotJson = await ExportSessionSnapshotJsonAsync(gameId);
@@ -350,7 +374,7 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
             {
                 var actionKey = $"{gameId}_{actionId}";
                 _actionResultsById[actionKey] = "{\"success\":true}";
-                _actionMetadataById[actionKey] = (actionType, playerColor.ToString());
+                _actionMetadataById[actionKey] = (actionType, playerColor.ToString(), normalizedPayload, newRevision - 1);
             }
 
             return (true, null, newRevision, false);

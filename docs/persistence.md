@@ -63,13 +63,23 @@ When the backend application restarts (e.g., container redeployment, host restar
 
 ---
 
-## 4. Idempotency & Concurrency Strategy
+## 4. Idempotency, Session Mutations & Concurrency Strategy
 
 1. **Atomic Transaction Scope**: State updates and action records commit within an atomic EF Core `IDbContextTransaction`. If the database write fails, the in-memory game state is rolled back to a pre-action snapshot.
-2. **Action Idempotency**: If a client sends an `actionId`:
-   - The repository queries `game_actions` for `(gameId, actionId)`.
-   - If found, it immediately returns the cached success result without re-executing or double-incrementing moves or card draws.
-3. **Cross-Instance Concurrency**:
+2. **Comprehensive Action Idempotency**:
+   - The client supplies a unique `actionId`.
+   - The normalized action payload is persisted in `game_actions.payload_json`.
+   - The repository queries `game_actions` for `(gameId, actionId)` **before** checking `expectedRevision`. This ensures that retries carrying stale revisions from prior network failures are correctly recognized rather than rejected.
+   - When an existing action is found:
+     - It validates that `action_type`, `player_color`, and normalized `payload_json` match the original invocation.
+     - If matched, it returns the original result without re-executing game rules or advancing revisions.
+     - If any parameter mismatches (e.g. reusing an action ID for a different move or different player), it rejects the request with `IDEMPOTENCY_CONFLICT`.
+3. **Atomic Session Mutations**:
+   - `JoinSessionAsync`, `CancelSessionAsync`, and `UpdateSessionAsync` execute inside database transactions with optimistic revision checks.
+   - If a database failure or concurrent join collision occurs across cluster nodes, the transaction aborts and in-memory state is restored in-place from the pre-mutation snapshot.
+4. **Cross-Instance Concurrency**:
    - The repository validates that `entity.GameRevision == session.GameRevision` at the database level.
    - If a competing instance committed another action, a `CONCURRENCY_CONFLICT` is returned and the losing instance reloads the authoritative database state.
-4. **Database Thread-Safety**: The repository utilizes `IDbContextFactory<ChessUnoDbContext>` to create short-lived, isolated context instances for each operation, preventing context multithreading collisions in singleton service lifecycles.
+5. **Database Thread-Safety & Isolation**:
+   - The repository utilizes `IDbContextFactory<ChessUnoDbContext>` to create short-lived, isolated context instances for each operation, preventing context multithreading collisions in singleton service lifecycles.
+   - Integration tests use `PostgreSqlTestDatabaseManager` to provision isolated ephemeral databases matching `^chessuno_test_isolated_[a-f0-9]{8,32}$` with cryptographic run tokens and marker tables.

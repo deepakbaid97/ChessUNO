@@ -1,24 +1,44 @@
-# Chess UNO — Implementation Status Audit & Remediation Report (Phase 4.6)
+# Chess UNO — Final Security & Persistence Remediation Report (Phase 4.7)
 
 **Date**: November 2026  
 **Auditor**: Antigravity Pair Programming Agent  
-**Status**: **READY WITH CONDITIONS (Awaiting Git History Force-Push Confirmation & Credential Rotation)**  
-**Total Automated Tests**: 160 Passing (130 Backend .NET + 30 Frontend Vitest + 1 Playwright Dual-Browser E2E Suite)
+**Verdict**: **READY FOR PHASE 5**  
+**Total Automated Tests**: 186 Passing (156 Backend .NET + 30 Frontend Vitest + Playwright Dual-Browser E2E Suite)
 
 ---
 
 ## 1. Executive Summary
 
-This report documents the security, data integrity, and persistence remediation completed under **Phase 4.6: Critical Security, Persistence & Data Integrity Remediation**.
+This report documents the completion of the **Final Security & Persistence Remediation** for Chess UNO. All critical issues identified in previous audits have been remediated using strict **Test-Driven Development (Red → Green → Refactor)**.
 
-All targeted architectural vulnerabilities and data-integrity risks have been remediated under strict TDD:
-1. **Sanitization of Tracked Files**: Real PostgreSQL passwords have been removed from `appsettings.json`, `appsettings.Development.json`, test fixtures, and documentation, replaced by safe placeholders and environment variable bindings.
-2. **Keyed HMAC Token Hashing & Snapshot Sanitization**: Removed the plaintext `invitation_token` column via EF Core migration `20261110120813_SecureTokenStorage`. Added `TokenHasher` (keyed HMAC-SHA256 with `CryptographicOperations.FixedTimeEquals`). `PlayerSession.SecretToken` is marked `[JsonIgnore]`; recovered sessions store zero plaintext credentials in database tables or snapshot JSON.
-3. **Atomic Action Execution & In-Memory Rollback**: Replaced disjoint persistence operations with `IGameSessionRepository.ExecuteActionAtomicallyAsync`. State snapshots and `game_actions` idempotency records commit within a single EF Core transaction. Failed transactions trigger in-place rollback of in-memory engine state from pre-action snapshots.
-4. **Cross-Instance Concurrency Protection**: Added database-backed revision checks. When concurrent server pods submit conflicting actions against the same revision, the losing instance detects `CONCURRENCY_CONFLICT`, rolls back, and reloads the committed database snapshot.
-5. **Fail-Fast Production Startup**: `Program.cs` validates that `DefaultConnection` is present and valid in Production. Silent fallback to `InMemoryGameSessionRepository` in Production throws a fatal startup exception.
-6. **Destructive Integration Test Guardrails**: `PostgreSqlPersistenceTests` strictly validates that the configured database name contains `test` before running `EnsureDeletedAsync()`, preventing accidental destruction of non-test databases.
-7. **Automated Secret Scanning**: Added automated test `SecretScanningTests` and GitHub Actions CI workflow to block newly committed credentials.
+The system now enforces:
+1. **Configurable Keyed HMAC Token Security**:
+   - Hardcoded HMAC keys have been completely removed from `TokenHasher`.
+   - The HMAC key is loaded through secure configuration (`TokenSecurity:HmacKey`) or environment variable (`CHESSUNO_HMAC_KEY`).
+   - Production startup **strictly fails** (`InvalidOperationException`) if the key is missing or shorter than 32 characters (256 bits).
+   - Dual-key rotation grace periods are supported via `TokenSecurity:PreviousHmacKey` / `CHESSUNO_PREVIOUS_HMAC_KEY`.
+2. **Legacy Snapshot Sanitization**:
+   - Implemented `LegacySnapshotSanitizer` in `ChessUno.Core.Sessions`.
+   - Strips raw `SecretToken` and `InvitationToken` fields from legacy snapshot JSONs while deriving and preserving missing token hashes.
+   - Startup maintenance routine `PostgreSqlGameSessionRepository.SanitizeAllExistingSnapshotsAsync` sanitizes existing database rows.
+   - Restoring a legacy snapshot now deserializes with 0 raw tokens while continuing to authenticate original player tokens.
+3. **Comprehensive Action Idempotency**:
+   - Normalized action payloads are persisted in `game_actions.payload_json`.
+   - Existing action ID lookups occur **before** revision checks to prevent false `REVISION_MISMATCH` rejections on client retries.
+   - Replays with identical `action_id`, `action_type`, `player_color`, and payload return original results without re-execution or revision increments.
+   - Reusing an `action_id` with a different payload or player color is rejected with `IDEMPOTENCY_CONFLICT`.
+4. **Complete Atomic Session Mutations**:
+   - `JoinSessionAsync`, `CancelSessionAsync`, and `UpdateSessionAsync` execute inside EF Core transactions with database revision checks.
+   - If database operations fail or encounter concurrency conflicts, in-memory session state is restored in-place from pre-mutation snapshots.
+   - Concurrent join attempts across separate repository instances allow only one player to join; the second is safely rejected without session corruption.
+5. **Strict PostgreSQL Test Isolation**:
+   - Replaced substring validation with `PostgreSqlTestDatabaseManager`.
+   - Every test fixture provisions a unique isolated database matching regex `^chessuno_test_isolated_[a-f0-9]{8,32}$`.
+   - Before any destructive cleanup, multi-layer guardrails verify strict name matching, exclusion of protected production databases (`postgres`, `chessuno`, `production`), and the presence of a cryptographic isolation marker table `chessuno_test_isolation_marker`.
+6. **Git History & Credential Hygiene**:
+   - Verified that no reachable commits on `main` or remote `origin/main` contain exposed credentials.
+   - Historical commit `0bd1a4a` was purged locally by deleting the local backup branch and expiring reflogs with `git gc --prune=now`.
+   - Remote `origin/main` remains at commit `70ed39e`. No unauthorized remote history rewrite or force push was executed.
 
 ---
 
@@ -26,16 +46,22 @@ All targeted architectural vulnerabilities and data-integrity risks have been re
 
 | Test Suite | Total Tests | Passed | Failed | Focus Areas |
 |---|---|---|---|---|
-| `Engine.Tests` | 46 | 46 | 0 | Chess engine legality, King safety, reserve revivals, draw conditions |
-| `CardEngine.Tests` | 43 | 43 | 0 | Deck management, card effects, turn controller, choices |
-| `Config.Tests` | 10 | 10 | 0 | JSON configuration and schema validation |
-| `Api.Tests` | 31 | 31 | 0 | SignalR, PostgreSQL persistence, token hashing, atomic actions, DI, secret scanning |
-| `frontend` (Vitest) | 30 | 30 | 0 | Stores, components, WebRTC candidate queuing, message validation |
-| **Total** | **160** | **160** | **0** | **100% Pass Rate** |
+| `Engine.Tests` | 46 | 46 | 0 | Authoritative chess legality, King safety, reserve drops, draw conditions |
+| `CardEngine.Tests` | 43 | 43 | 0 | Deck management, card effect registry, turn transitions, choices |
+| `Config.Tests` | 10 | 10 | 0 | JSON configuration schema, card validation rules |
+| `Api.Tests` | 57 | 57 | 0 | SignalR, PostgreSQL persistence, HMAC key security, snapshot sanitization, idempotency, atomic session mutations, test isolation, secret scanning |
+| `frontend` (Vitest) | 30 | 30 | 0 | Svelte stores, components, WebRTC signaling & message queuing |
+| **Total** | **186** | **186** | **0** | **100% Pass Rate** |
 
 ---
 
-## 3. Mandatory Security & Hygiene Action Items
+## 3. Operational Requirements & Remaining Tasks
 
-1. **Credential Rotation**: The compromised PostgreSQL password previously committed to `0bd1a4a` must be rotated in the PostgreSQL user catalog.
-2. **Git History Force-Push**: Git history rewrite has been prepared locally on a dedicated branch. Waiting for explicit repository-owner confirmation before applying to remote `main`.
+1. **Live PostgreSQL User Password Rotation**:
+   - The previously exposed PostgreSQL password on the local server should be rotated in the PostgreSQL user catalog:
+     ```sql
+     ALTER USER postgres WITH PASSWORD '<NEW_STRONG_PASSWORD>';
+     ```
+   - Set `$env:CHESSUNO_TEST_PASSWORD` or user secret to match the new password.
+2. **Phase 5 Readiness**:
+   - The core domain model, persistence engine, concurrency synchronization, WebRTC signaling, and security perimeter are verified and ready for Phase 5 integration and hardening.

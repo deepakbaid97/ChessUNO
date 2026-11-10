@@ -26,6 +26,11 @@ public class GameSessionTests
 
     public GameSessionTests()
     {
+        if (!TokenHasher.IsInitialized)
+        {
+            TokenHasher.Initialize("ChessUnoCardEngineTestKeyMustBe32BytesLong!");
+        }
+
         var baseDir = AppContext.BaseDirectory;
         var projectRoot = Path.GetFullPath(Path.Combine(baseDir, "..", "..", "..", "..", ".."));
         var configPath = Path.Combine(projectRoot, "configs", "chess-uno.json");

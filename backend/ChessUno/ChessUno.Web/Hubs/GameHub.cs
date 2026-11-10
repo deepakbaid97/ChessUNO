@@ -177,7 +177,8 @@ public class GameHub : Hub
                 {
                     return (false, "INVALID_ACTION");
                 }
-            }
+            },
+            payloadJson: System.Text.Json.JsonSerializer.Serialize(new { action = "DrawCard" })
         );
 
         if (!result.Success)
@@ -240,7 +241,8 @@ public class GameHub : Hub
                     s.Status = SessionStatus.Completed;
                 }
                 return (true, null);
-            }
+            },
+            payloadJson: System.Text.Json.JsonSerializer.Serialize(new { choiceEffectKey })
         );
 
         if (!result.Success)
@@ -305,7 +307,8 @@ public class GameHub : Hub
                     s.Status = SessionStatus.Completed;
                 }
                 return (true, null);
-            }
+            },
+            payloadJson: System.Text.Json.JsonSerializer.Serialize(new { from, to, promotion })
         );
 
         if (!result.Success)
@@ -417,7 +420,8 @@ public class GameHub : Hub
                     s.Status = SessionStatus.Completed;
                 }
                 return (true, null);
-            }
+            },
+            payloadJson: System.Text.Json.JsonSerializer.Serialize(new { action = "EndTurn" })
         );
 
         if (!result.Success)
@@ -478,7 +482,8 @@ public class GameHub : Hub
                     s.Status = SessionStatus.Completed;
                 }
                 return (true, null);
-            }
+            },
+            payloadJson: System.Text.Json.JsonSerializer.Serialize(new { pieceType, targetSquare })
         );
 
         if (!result.Success)
@@ -542,7 +547,8 @@ public class GameHub : Hub
                     s.Status = SessionStatus.Completed;
                 }
                 return (true, null);
-            }
+            },
+            payloadJson: System.Text.Json.JsonSerializer.Serialize(new { sq1, sq2 })
         );
 
         if (!result.Success)

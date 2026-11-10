@@ -14,65 +14,66 @@ namespace Api.Tests;
 
 public class PostgreSqlPersistenceTests : IAsyncLifetime
 {
-    private static string GetSafeTestConnectionString()
-    {
-        var envConn = Environment.GetEnvironmentVariable("CHESSUNO_TEST_CONNECTION_STRING");
-        if (!string.IsNullOrWhiteSpace(envConn))
-        {
-            ValidateTestDatabase(envConn);
-            return envConn;
-        }
-
-        var password = Environment.GetEnvironmentVariable("CHESSUNO_TEST_PASSWORD") ??
-                       Environment.GetEnvironmentVariable("POSTGRES_PASSWORD") ??
-                       "postgres";
-
-        var conn = $"Host=localhost;Port=5432;Database=chessuno_test;Username=postgres;Password={password};Include Error Detail=true;";
-        ValidateTestDatabase(conn);
-        return conn;
-    }
-
-    private static void ValidateTestDatabase(string connectionString)
-    {
-        var builder = new NpgsqlConnectionStringBuilder(connectionString);
-        var dbName = builder.Database?.ToLowerInvariant() ?? string.Empty;
-
-        if (!dbName.Contains("test"))
-        {
-            throw new InvalidOperationException(
-                $"SAFETY VIOLATION: Refusing to perform destructive database operations against non-test database '{dbName}'. Test database name MUST contain 'test'.");
-        }
-    }
-
-    private readonly string _connectionString = GetSafeTestConnectionString();
+    private string _adminConnectionString = null!;
+    private string _connectionString = null!;
+    private string _databaseName = null!;
+    private string _runToken = null!;
     private DbContextOptions<ChessUnoDbContext> _options = null!;
 
     public async Task InitializeAsync()
     {
-        ValidateTestDatabase(_connectionString);
+        if (!TokenHasher.IsInitialized)
+        {
+            TokenHasher.Initialize("ChessUnoPersistenceTestsKeyMustBe32Bytes!");
+        }
+
+        var baseConn = Environment.GetEnvironmentVariable("CHESSUNO_TEST_CONNECTION_STRING");
+        var password = Environment.GetEnvironmentVariable("CHESSUNO_TEST_PASSWORD") ??
+                       Environment.GetEnvironmentVariable("POSTGRES_PASSWORD") ??
+                       "postgres";
+
+        _adminConnectionString = !string.IsNullOrWhiteSpace(baseConn)
+            ? new NpgsqlConnectionStringBuilder(baseConn) { Database = "postgres" }.ConnectionString
+            : new NpgsqlConnectionStringBuilder
+            {
+                Host = "localhost",
+                Port = 5432,
+                Database = "postgres",
+                Username = "postgres",
+                Password = password,
+                IncludeErrorDetail = true
+            }.ConnectionString;
+
+        (_connectionString, _databaseName, _runToken) = await PostgreSqlTestDatabaseManager.CreateIsolatedDatabaseAsync(_adminConnectionString);
 
         _options = new DbContextOptionsBuilder<ChessUnoDbContext>()
             .UseNpgsql(_connectionString)
             .Options;
 
         await using var db = new ChessUnoDbContext(_options);
-        await db.Database.EnsureDeletedAsync();
         await db.Database.MigrateAsync();
     }
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public async Task DisposeAsync()
+    {
+        if (!string.IsNullOrEmpty(_connectionString))
+        {
+            await PostgreSqlTestDatabaseManager.DropIsolatedDatabaseAsync(_adminConnectionString, _connectionString, _runToken);
+        }
+    }
 
     [Fact]
     public void ValidateTestDatabase_RejectsProductionOrNonTestDatabaseNames()
     {
         var prodConn = "Host=localhost;Port=5432;Database=chessuno;Username=postgres;Password=secret;";
-        Assert.Throws<InvalidOperationException>(() => ValidateTestDatabase(prodConn));
+        Assert.Throws<InvalidOperationException>(() => PostgreSqlTestDatabaseManager.ValidateIsolatedDatabaseName(prodConn));
 
         var anotherNonTest = "Host=localhost;Port=5432;Database=production_db;Username=postgres;Password=secret;";
-        Assert.Throws<InvalidOperationException>(() => ValidateTestDatabase(anotherNonTest));
+        Assert.Throws<InvalidOperationException>(() => PostgreSqlTestDatabaseManager.ValidateIsolatedDatabaseName(anotherNonTest));
 
-        var validTest = "Host=localhost;Port=5432;Database=chessuno_test;Username=postgres;Password=secret;";
-        ValidateTestDatabase(validTest); // Should not throw
+        var runId = Guid.NewGuid().ToString("N").Substring(0, 12);
+        var validTest = $"Host=localhost;Port=5432;Database=chessuno_test_isolated_{runId};Username=postgres;Password=secret;";
+        PostgreSqlTestDatabaseManager.ValidateIsolatedDatabaseName(validTest); // Should not throw
     }
 
     [Fact]

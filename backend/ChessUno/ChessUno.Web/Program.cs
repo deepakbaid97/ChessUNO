@@ -17,12 +17,37 @@ var isProduction = builder.Environment.IsProduction();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 var useInMemory = builder.Configuration.GetValue<bool>("UseInMemoryRepository", false);
 
+// HMAC Token Security Key Configuration
+var hmacKey = builder.Configuration["TokenSecurity:HmacKey"]
+              ?? Environment.GetEnvironmentVariable("CHESSUNO_HMAC_KEY");
+var prevHmacKey = builder.Configuration["TokenSecurity:PreviousHmacKey"]
+                  ?? Environment.GetEnvironmentVariable("CHESSUNO_PREVIOUS_HMAC_KEY");
+
 if (isProduction)
 {
     if (string.IsNullOrWhiteSpace(connectionString) || connectionString.Contains("YOUR_POSTGRES_PASSWORD_HERE") || useInMemory)
     {
         throw new InvalidOperationException(
             "FATAL CONFIGURATION ERROR: PostgreSQL connection string 'DefaultConnection' is mandatory in Production. Fallback to in-memory repository is strictly prohibited in production environments.");
+    }
+
+    if (string.IsNullOrWhiteSpace(hmacKey) || hmacKey.Length < 32 || hmacKey.Contains("DEVELOPMENT_ONLY"))
+    {
+        throw new InvalidOperationException(
+            "FATAL CONFIGURATION ERROR: 'TokenSecurity:HmacKey' (or env 'CHESSUNO_HMAC_KEY') with at least 32 characters (256 bits) is mandatory in Production. Fallback to default or weak keys is strictly prohibited.");
+    }
+    TokenHasher.Initialize(hmacKey, prevHmacKey);
+}
+else
+{
+    if (!string.IsNullOrWhiteSpace(hmacKey) && hmacKey.Length >= 32)
+    {
+        TokenHasher.Initialize(hmacKey, prevHmacKey);
+    }
+    else
+    {
+        Console.WriteLine("[ChessUNO Startup] WARNING: Using ephemeral non-production HMAC key for Development/Testing.");
+        TokenHasher.Initialize("ChessUnoDevTestHmacKeyMustBe32BytesMin!", prevHmacKey);
     }
 }
 
@@ -37,6 +62,7 @@ if (!string.IsNullOrWhiteSpace(connectionString) && !useInMemory && !connectionS
         var factory = sp.GetRequiredService<IDbContextFactory<ChessUnoDbContext>>();
         using var initDb = factory.CreateDbContext();
         initDb.Database.Migrate();
+        PostgreSqlGameSessionRepository.SanitizeAllExistingSnapshotsAsync(initDb).GetAwaiter().GetResult();
         return new PostgreSqlGameSessionRepository(factory);
     });
 }

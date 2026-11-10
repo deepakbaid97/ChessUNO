@@ -7,13 +7,26 @@
 2. **Keyed HMAC-SHA256 Token Hashing**:
    - Plaintext invitation tokens and player secret tokens are **never stored** in the database or serialized into snapshots.
    - All tokens are hashed using a keyed HMAC-SHA256 (`TokenHasher.HashToken`) and compared using constant-time equality checks (`CryptographicOperations.FixedTimeEquals`) to eliminate timing attacks.
+   - The HMAC key is loaded at startup from `TokenSecurity:HmacKey` (or environment variable `CHESSUNO_HMAC_KEY`).
+   - Production startup **strictly fails** with `InvalidOperationException` if the key is missing or shorter than 32 characters (256 bits). Fallback to development keys in production is completely forbidden.
+   - In development/testing, an ephemeral 32-byte non-production key is initialized with a startup warning if not explicitly configured.
    - Database tables `game_sessions` store only `invitation_token_hash`, `player_white_token_hash`, and `player_black_token_hash`.
    - The plaintext column `invitation_token` has been removed from the database schema via EF Core migration `SecureTokenStorage`.
-3. **Snapshot Security**:
+3. **HMAC Key Rotation & Existing Sessions**:
+   - `TokenHasher` supports dual-key grace periods via `TokenSecurity:PreviousHmacKey` (or environment variable `CHESSUNO_PREVIOUS_HMAC_KEY`).
+   - During key rotation:
+     - New hashes are always computed using the primary key.
+     - Token authentication checks the primary key first, and if unmatched, falls back to the previous key.
+     - Once active matches conclude, the previous key configuration is cleared, revoking old sessions.
+4. **Legacy Snapshot Sanitization**:
+   - `LegacySnapshotSanitizer` automatically scrubs legacy snapshot JSONs stored in `game_sessions.snapshot_json` and on-disk files.
+   - If an old snapshot contains raw `SecretToken` or `InvitationToken` fields, the sanitizer derives missing token hashes via `TokenHasher` and strips all raw secrets.
+   - On application startup after migration, `PostgreSqlGameSessionRepository.SanitizeAllExistingSnapshotsAsync` sweeps existing database records to purge historical raw tokens.
+5. **Snapshot Security**:
    - In-memory `GameSessionSnapshot` serializes only `InvitationTokenHash` and `TokenHash`.
    - `SecretToken` on `PlayerSession` is marked `[JsonIgnore]` and is strictly transient in memory during initial creation/joining HTTP responses.
    - Recovered sessions after server restart or across instances restore authentication via token hash verification, preventing credential exposure even if snapshot JSON or database backups are exfiltrated.
-4. **No Credential Logging**:
+6. **No Credential Logging**:
    - Player secret tokens are sanitized from all server logs, frontend console logs, and SignalR event broadcasts.
    - Opponent state snapshots contain zero secrets about the other player's tokens or cards in draw deck order.
 
@@ -35,15 +48,22 @@
 ## 3. Atomic State Persistence & Action Idempotency
 
 1. **Single-Transaction Atomicity**:
-   - State mutations and idempotency records are committed within an atomic EF Core database transaction (`IDbContextTransaction`).
+   - State mutations, session status updates, and idempotency records are committed within an atomic EF Core database transaction (`IDbContextTransaction`).
    - If either the game snapshot update or action record insertion fails, both roll back completely.
 2. **In-Memory State Rollback**:
-   - Before mutating the in-memory `TurnController` and `GameState`, a snapshot is taken.
+   - Before mutating the in-memory `TurnController` and `GameState` (or session status in `JoinSessionAsync`, `CancelSessionAsync`, `UpdateSessionAsync`), a snapshot is taken.
    - If the database transaction fails or encounters a concurrency conflict, the in-memory state is restored in-place from the snapshot, guaranteeing memory never drifts ahead of persistent storage.
-3. **Idempotency Scoping**:
+3. **Comprehensive Idempotency Enforcement**:
    - Action idempotency keys are protected by composite primary key `(game_id, action_id)`.
-   - Retries return cached action results without executing game rules or incrementing game revisions twice.
-   - Mismatched payloads or action types for an existing action ID are rejected with `IDEMPOTENCY_MISMATCH`.
+   - The actual action payload is normalized and stored in `game_actions.payload_json`.
+   - When a retry arrives:
+     - The repository checks for existing `(game_id, action_id)` **before** performing revision checks. This prevents false `REVISION_MISMATCH` errors when a client retries with the initial revision.
+     - Compares `action_type`, `player_color`, and `payload_json`.
+     - Exact retries return the original successful result without re-executing game rules or advancing revisions.
+     - Reusing an action ID with a different payload or player is rejected with `IDEMPOTENCY_CONFLICT`.
+4. **Complete Atomic Session Mutations**:
+   - `JoinSessionAsync` and `CancelSessionAsync` execute inside database transactions with optimistic revision checks.
+   - If two instances attempt to join the same game room concurrently, exactly one succeeds; the second receives `null` and memory is cleanly rolled back without session corruption.
 
 ---
 
@@ -55,12 +75,18 @@
 
 ---
 
-## 5. Safe Integration Test Environment
+## 5. Strict PostgreSQL Test Isolation & Multi-Layer Guardrails
 
-1. **Destructive Operation Guardrails**:
-   - Integration tests executing `EnsureDeletedAsync()` validate that the configured database name explicitly contains `test` (e.g. `chessuno_test`).
-   - If pointed at `chessuno` or a production database, tests fail-fast with `InvalidOperationException`.
-2. **Credential Sanitization in Tests**:
+1. **Ephemeral Per-Fixture Databases**:
+   - Real PostgreSQL integration tests do not share a single static database name.
+   - `PostgreSqlTestDatabaseManager` provisions a unique isolated database per fixture matching strict regex: `^chessuno_test_isolated_[a-f0-9]{8,32}$`.
+2. **Multi-Layer Destructive Operation Guardrails**:
+   - Before any cleanup or drop operation:
+     1. Database name must match the strict isolation regex.
+     2. Database name must not contain protected keywords (`prod`, `production`, `postgres`, `template1`, `chessuno`).
+     3. An explicit test isolation marker table `chessuno_test_isolation_marker` must exist in the database and contain the matching ephemeral `run_token`.
+   - Dropping or deleting any database lacking the valid isolation marker is strictly blocked with `InvalidOperationException`.
+3. **Credential Sanitization in Tests**:
    - Tests read credentials via `CHESSUNO_TEST_PASSWORD` or `CHESSUNO_TEST_CONNECTION_STRING` environment variables rather than hardcoded credentials.
 
 ---

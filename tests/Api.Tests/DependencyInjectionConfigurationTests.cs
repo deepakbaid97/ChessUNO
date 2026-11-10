@@ -93,6 +93,56 @@ public class DependencyInjectionConfigurationTests
     }
 
     [Fact]
+    public void Production_WithoutHmacKey_ThrowsInvalidOperationException()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Production
+        });
+
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["TokenSecurity:HmacKey"] = ""
+        });
+
+        var isProduction = builder.Environment.IsProduction();
+        var hmacKey = builder.Configuration["TokenSecurity:HmacKey"];
+
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            if (isProduction && (string.IsNullOrWhiteSpace(hmacKey) || hmacKey.Length < 32))
+            {
+                throw new InvalidOperationException("HMAC key is mandatory in Production.");
+            }
+        });
+    }
+
+    [Fact]
+    public void Production_WithWeakHmacKey_ThrowsInvalidOperationException()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = Environments.Production
+        });
+
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["TokenSecurity:HmacKey"] = "short-weak-key"
+        });
+
+        var isProduction = builder.Environment.IsProduction();
+        var hmacKey = builder.Configuration["TokenSecurity:HmacKey"];
+
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            if (isProduction && (string.IsNullOrWhiteSpace(hmacKey) || hmacKey.Length < 32))
+            {
+                throw new InvalidOperationException("HMAC key is too weak for Production.");
+            }
+        });
+    }
+
+    [Fact]
     public void Development_WithExplicitInMemoryFlag_RegistersInMemoryGameSessionRepository()
     {
         var factory = new WebApplicationFactory<Program>()
