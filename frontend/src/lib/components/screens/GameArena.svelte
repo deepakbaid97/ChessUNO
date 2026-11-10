@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { createEventDispatcher } from 'svelte';
+  import { createEventDispatcher, onMount, onDestroy } from 'svelte';
   import type { PlayerColor, PieceType } from '../../types/game';
   import {
     parseFenToMatrix,
@@ -15,6 +15,8 @@
   import CardTargetSelector from '../cards/CardTargetSelector.svelte';
   import GameHistory from '../game/GameHistory.svelte';
   import GameOverModal from '../game/GameOverModal.svelte';
+  import CardRevealOverlay from '../animation/CardRevealOverlay.svelte';
+  import { cardAnimationService } from '../../services/cardAnimationService';
 
   export let isSubmitting: boolean = false;
 
@@ -203,6 +205,7 @@
   })();
 
   function handleSquareSelected(event: CustomEvent<{ square: string }>) {
+    cardAnimationService.dismiss();
     const square = event.detail.square;
 
     if (activeAbilityMode === 'swap') {
@@ -262,6 +265,7 @@
   }
 
   function handleMoveProposed(event: CustomEvent<{ from: string; to: string; promotion?: PieceType }>) {
+    cardAnimationService.dismiss();
     if (activeAbilityMode === 'swap') {
       dispatch('submitSwap', {
         sq1: event.detail.from,
@@ -320,6 +324,59 @@
       floatingMoveToast = null;
     }, 2200);
   }
+
+  function getElementRect(selector: string): { x: number; y: number; width: number; height: number } | null {
+    if (typeof document === 'undefined') return null;
+    const el = document.querySelector(selector);
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { x: r.left, y: r.top, width: r.width, height: r.height };
+  }
+
+  let lastHandledCardKey: string | null = null;
+  let previousTurnPhase: string = '';
+
+  onMount(() => {
+    // If mounting into an already active card (e.g. page reload), record it so we don't replay
+    if (storeState.activeCard?.id) {
+      lastHandledCardKey = `${storeState.activeCard.id}-${storeState.activeCard.value}-${storeState.revision}`;
+    }
+  });
+
+  onDestroy(() => {
+    cardAnimationService.dismiss();
+  });
+
+  $: if (isGameOver) {
+    cardAnimationService.dismiss();
+  }
+
+  // Authoritative Card Reveal Trigger
+  $: if (storeState.activeCard && storeState.activeCard.id) {
+    const currentKey = `${storeState.activeCard.id}-${storeState.activeCard.value}-${storeState.revision}`;
+    if (currentKey !== lastHandledCardKey) {
+      // Trigger when entering ActionPhase or AwaitingChoice from DrawPhase (or a confirmed fresh card draw)
+      const isFreshDraw = previousTurnPhase === 'DrawPhase' || (!lastHandledCardKey && storeState.turnPhase !== 'TurnEnded');
+      if (isFreshDraw) {
+        lastHandledCardKey = currentKey;
+        const isLocal = storeState.activePlayer === storeState.assignedColor;
+
+        const sourceRect = isLocal
+          ? (getElementRect('[data-testid="draw-card-slot"]') || getElementRect('.draw-card-slot'))
+          : getElementRect('[data-testid="opponent-info"]');
+
+        const targetRect = getElementRect('.card-column') || getElementRect('[data-testid="card-hand"]');
+
+        cardAnimationService.triggerCardReveal(storeState.activeCard, {
+          drawerColor: storeState.activePlayer,
+          isLocalPlayer: isLocal,
+          sourceRect,
+          targetRect
+        });
+      }
+    }
+  }
+  $: previousTurnPhase = storeState.turnPhase;
 </script>
 
 <div class="game-arena" data-testid="game-arena">
@@ -454,6 +511,9 @@
     on:returnHome={() => dispatch('returnHome')}
     on:playAgain={() => dispatch('playAgain')}
   />
+
+  <!-- Cinematic Card Reveal Animation Overlay -->
+  <CardRevealOverlay />
 </div>
 
 <style>
