@@ -27,5 +27,22 @@ describe('apiConfig', () => {
     expect(inviteUrl).toContain(`/join/${token}`);
     expect(inviteUrl.startsWith('http')).toBe(true);
   });
+
+  it('detects subpath from window.location.pathname automatically', () => {
+    const originalLocation = window.location;
+    // @ts-ignore
+    delete window.location;
+    // @ts-ignore
+    window.location = {
+      origin: 'https://tappedit.com',
+      pathname: '/game/chessUno/'
+    };
+
+    expect(getAppBaseUrl()).toBe('https://tappedit.com/game/chessUno');
+    expect(buildInvitationUrl('abc123')).toBe('https://tappedit.com/game/chessUno/join/abc123');
+
+    // Restore
+    window.location = originalLocation;
+  });
 });
 

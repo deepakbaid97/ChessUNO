@@ -18,7 +18,10 @@ export function getAppBaseUrl(): string {
     return envUrl.trim().replace(/\/+$/, '');
   }
   if (typeof window !== 'undefined' && window.location && window.location.origin) {
-    return window.location.origin.replace(/\/+$/, '');
+    const origin = window.location.origin.replace(/\/+$/, '');
+    const pathname = window.location.pathname || '';
+    const basePath = pathname.split('/join/')[0].replace(/\/+$/, '');
+    return basePath ? `${origin}${basePath}` : origin;
   }
   return 'http://localhost:5173';
 }
