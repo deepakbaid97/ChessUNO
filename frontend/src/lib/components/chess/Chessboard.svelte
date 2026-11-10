@@ -1,11 +1,12 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { PlayerColor, PieceType } from '../../types/game';
+  import type { PlayerColor, PieceType, BoardPiece } from '../../types/game';
   import {
     parseFenToMatrix,
     getSquareIndex,
     getSquareColor,
     getOrientedSquares,
+    getOrientedSquareCoords,
     isCaptureMove,
     isCheckSquare
   } from '../../utils/boardUtils';
@@ -22,6 +23,7 @@
   export let inCheck: boolean = false;
   export let isSubmitting: boolean = false;
   export let mode: 'normal' | 'swap' | 'revival' = 'normal';
+  export let isCheckmate: boolean = false;
 
   const dispatch = createEventDispatcher<{
     squareSelected: { square: string };
@@ -31,8 +33,43 @@
   let showPromotionModal = false;
   let pendingPromotionMove: { from: string; to: string } | null = null;
 
+  let prevBoardMatrix: (BoardPiece | null)[][] | null = null;
+  let captureSquare: string | null = null;
+  let captureTimer: ReturnType<typeof setTimeout> | null = null;
+  let lastMoveKey = '';
+
   $: boardMatrix = parseFenToMatrix(fen);
   $: orientedSquares = getOrientedSquares(perspective);
+
+  // Monitor move changes to trigger slide animation & capture impact
+  $: if (lastMove && lastMove.from && lastMove.to) {
+    const currentKey = `${lastMove.from}-${lastMove.to}-${fen}`;
+    if (currentKey !== lastMoveKey) {
+      lastMoveKey = currentKey;
+      if (prevBoardMatrix) {
+        const { row: toRow, col: toCol } = getSquareIndex(lastMove.to);
+        const hadPiece = prevBoardMatrix[toRow]?.[toCol];
+        if (hadPiece) {
+          captureSquare = lastMove.to;
+          if (captureTimer) clearTimeout(captureTimer);
+          captureTimer = setTimeout(() => {
+            captureSquare = null;
+          }, 450);
+        }
+      }
+    }
+  }
+  $: prevBoardMatrix = boardMatrix;
+
+  function getSlideOffset(square: string, move: { from: string; to: string } | null, playerPerspective: PlayerColor) {
+    if (!move || move.to !== square || !move.from) return null;
+    const fromCoords = getOrientedSquareCoords(move.from, playerPerspective);
+    const toCoords = getOrientedSquareCoords(move.to, playerPerspective);
+    return {
+      deltaX: (fromCoords.col - toCoords.col) * 100,
+      deltaY: (fromCoords.row - toCoords.row) * 100
+    };
+  }
 
   function handleSquareClick(event: CustomEvent<{ square: string }>) {
     const clickedSquare = event.detail.square;
@@ -90,6 +127,7 @@
   class:active-turn={isMyTurn}
   class:swap-mode={mode === 'swap'}
   class:revival-mode={mode === 'revival'}
+  class:checkmate-mode={isCheckmate}
   class:disabled={!isMyTurn || isSubmitting}
 >
   <div class="chessboard" data-testid="chessboard">
@@ -104,6 +142,8 @@
       {@const isDark = getSquareColor(square) === 'dark'}
       {@const showRank = perspective === 'White' ? square.charAt(0) === 'a' : square.charAt(0) === 'h'}
       {@const showFile = perspective === 'White' ? square.charAt(1) === '1' : square.charAt(1) === '8'}
+      {@const slide = getSlideOffset(square, lastMove, perspective)}
+      {@const isCaptImpact = captureSquare === square}
 
       <ChessSquare
         {square}
@@ -114,12 +154,27 @@
         isCapture={isCapt}
         isLastMove={isLast}
         isInCheck={isCheck}
+        slideOffset={slide}
+        isCaptureImpact={isCaptImpact}
         showCoordinateRank={showRank}
         showCoordinateFile={showFile}
         on:select={handleSquareClick}
       />
     {/each}
   </div>
+
+  {#if inCheck && !isCheckmate}
+    <div class="check-banner" data-testid="check-banner" aria-live="assertive">
+      <span class="check-pulse-dot" aria-hidden="true"></span>
+      <span>CHECK</span>
+    </div>
+  {/if}
+
+  {#if isCheckmate}
+    <div class="checkmate-banner" data-testid="checkmate-banner" aria-live="assertive">
+      <span class="checkmate-text">CHECKMATE</span>
+    </div>
+  {/if}
 
   {#if isSubmitting}
     <div class="submitting-overlay" data-testid="board-loading">
@@ -160,6 +215,84 @@
 
   .chessboard-wrapper.revival-mode {
     border-color: var(--accent-green);
+  }
+
+  .chessboard-wrapper.checkmate-mode {
+    border-color: var(--accent-red);
+    box-shadow: 0 0 24px rgba(239, 68, 68, 0.45), var(--shadow-lg);
+  }
+
+  .check-banner {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 12px;
+    border-radius: 20px;
+    background-color: rgba(239, 68, 68, 0.92);
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.65), var(--shadow-md);
+    color: #ffffff;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    z-index: 20;
+    pointer-events: none;
+    animation: checkBannerIn 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes checkBannerIn {
+    from { transform: translate(-50%, -10px) scale(0.8); opacity: 0; }
+    to { transform: translate(-50%, 0) scale(1); opacity: 1; }
+  }
+
+  .check-pulse-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: #ffffff;
+    animation: checkDotPulse 0.8s infinite alternate ease-in-out;
+  }
+
+  @keyframes checkDotPulse {
+    from { transform: scale(0.7); opacity: 0.6; }
+    to { transform: scale(1.3); opacity: 1; }
+  }
+
+  .checkmate-banner {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, rgba(15, 17, 21, 0.4) 0%, rgba(15, 17, 21, 0.82) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 25;
+    pointer-events: none;
+    animation: checkmateFadeIn 0.4s ease-out;
+  }
+
+  @keyframes checkmateFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .checkmate-text {
+    font-family: var(--font-headline);
+    font-size: 2rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    color: var(--accent-gold-bright);
+    text-shadow: 0 0 20px rgba(245, 158, 11, 0.7), 0 4px 12px rgba(0, 0, 0, 0.9);
+    animation: checkmatePop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes checkmatePop {
+    0% { transform: scale(0.6); opacity: 0; }
+    70% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
   }
 
   .chessboard {

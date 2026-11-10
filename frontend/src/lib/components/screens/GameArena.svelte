@@ -297,6 +297,29 @@
       dispatch('resign');
     }
   }
+
+  let floatingMoveToast: { actor: string; from: string; to: string } | null = null;
+  let moveToastTimer: ReturnType<typeof setTimeout> | null = null;
+  let prevLastMove: { from: string; to: string } | null = null;
+  let showMatchStartBanner = true;
+
+  setTimeout(() => {
+    showMatchStartBanner = false;
+  }, 2400);
+
+  $: if (storeState.lastMove && (storeState.lastMove.from !== prevLastMove?.from || storeState.lastMove.to !== prevLastMove?.to)) {
+    prevLastMove = storeState.lastMove;
+    const actor = storeState.activePlayer === storeState.assignedColor ? (storeState.opponentName || 'Opponent') : 'You';
+    floatingMoveToast = {
+      actor,
+      from: storeState.lastMove.from.toUpperCase(),
+      to: storeState.lastMove.to.toUpperCase()
+    };
+    if (moveToastTimer) clearTimeout(moveToastTimer);
+    moveToastTimer = setTimeout(() => {
+      floatingMoveToast = null;
+    }, 2200);
+  }
 </script>
 
 <div class="game-arena" data-testid="game-arena">
@@ -315,6 +338,18 @@
 
     <!-- Chessboard -->
     <div class="area-board">
+      {#if showMatchStartBanner && storeState.revision <= 1}
+        <div class="match-start-pill" aria-live="polite">
+          <span class="start-dot"></span>
+          <span>MATCH START • WHITE TO MOVE</span>
+        </div>
+      {:else if floatingMoveToast}
+        <div class="floating-move-toast" aria-live="polite">
+          <span class="move-toast-actor">{floatingMoveToast.actor}:</span>
+          <span class="move-toast-text">{floatingMoveToast.from} ➔ {floatingMoveToast.to}</span>
+        </div>
+      {/if}
+
       <Chessboard
         fen={storeState.boardFen}
         perspective={storeState.assignedColor}
@@ -324,6 +359,7 @@
         validDestinations={displayedValidDestinations}
         lastMove={storeState.lastMove}
         inCheck={storeState.inCheck}
+        isCheckmate={storeState.gameStatus === 'Checkmate'}
         {isSubmitting}
         mode={activeAbilityMode === 'none' ? 'normal' : activeAbilityMode}
         on:squareSelected={handleSquareSelected}
@@ -452,9 +488,61 @@
 
   .area-board {
     grid-area: board;
+    position: relative;
     display: flex;
     justify-content: center;
     width: 100%;
+  }
+
+  .match-start-pill,
+  .floating-move-toast {
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 3px 12px;
+    border-radius: 20px;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--accent-gold);
+    box-shadow: 0 0 12px var(--accent-gold-glow), var(--shadow-md);
+    color: var(--accent-gold-bright);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    z-index: 30;
+    pointer-events: none;
+    animation: toastFloatIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    white-space: nowrap;
+  }
+
+  @keyframes toastFloatIn {
+    from { transform: translate(-50%, -8px) scale(0.9); opacity: 0; }
+    to { transform: translate(-50%, 0) scale(1); opacity: 1; }
+  }
+
+  .start-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background-color: var(--accent-green);
+    animation: dotPulse 1.2s infinite alternate;
+  }
+
+  @keyframes dotPulse {
+    from { transform: scale(0.8); opacity: 0.6; }
+    to { transform: scale(1.3); opacity: 1; }
+  }
+
+  .move-toast-actor {
+    color: var(--text-muted);
+  }
+
+  .move-toast-text {
+    color: var(--accent-gold-bright);
   }
 
   .area-player {

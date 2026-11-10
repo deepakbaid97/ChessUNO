@@ -79,12 +79,37 @@
     background-color: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    transition: border-color 0.15s ease, background-color 0.15s ease;
+    transition: border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
   }
 
   .player-info.active-turn {
     border-color: var(--accent-gold);
-    background-color: rgba(245, 158, 11, 0.06);
+    background-color: rgba(245, 158, 11, 0.08);
+    box-shadow: 0 0 0 1px var(--accent-gold), 0 0 14px var(--accent-gold-glow);
+    animation: activePanelBreath 2.8s infinite ease-in-out;
+  }
+
+  @keyframes activePanelBreath {
+    0%, 100% {
+      border-color: var(--accent-gold);
+      box-shadow: 0 0 0 1px var(--accent-gold), 0 0 10px var(--accent-gold-glow);
+    }
+    50% {
+      border-color: var(--accent-gold-bright);
+      box-shadow: 0 0 0 1px var(--accent-gold-bright), 0 0 18px rgba(245, 158, 11, 0.45);
+    }
+  }
+
+  .player-info.opponent.active-turn {
+    border-color: rgba(255, 255, 255, 0.45);
+    background-color: rgba(255, 255, 255, 0.05);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2), 0 0 12px rgba(255, 255, 255, 0.1);
+    animation: opponentTurnBreath 2.8s infinite ease-in-out;
+  }
+
+  @keyframes opponentTurnBreath {
+    0%, 100% { border-color: rgba(255, 255, 255, 0.35); }
+    50% { border-color: rgba(255, 255, 255, 0.65); box-shadow: 0 0 14px rgba(255, 255, 255, 0.18); }
   }
 
   .player-identity {
@@ -106,6 +131,11 @@
     font-weight: 800;
     font-size: 0.8rem;
     flex-shrink: 0;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .active-turn .avatar-badge {
+    transform: scale(1.05);
   }
 
   .white-avatar {
@@ -132,10 +162,24 @@
 
   .connection-dot.online {
     background-color: var(--accent-green);
+    box-shadow: 0 0 6px var(--accent-green-glow);
+    animation: connPulse 2.4s infinite ease-in-out;
+  }
+
+  @keyframes connPulse {
+    0%, 100% { transform: scale(1); opacity: 0.9; }
+    50% { transform: scale(1.18); opacity: 1; }
   }
 
   .connection-dot.offline {
     background-color: var(--accent-red);
+    box-shadow: 0 0 6px var(--accent-red-glow);
+    animation: offlinePulse 1.2s infinite ease-in-out;
+  }
+
+  @keyframes offlinePulse {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.25); opacity: 1; }
   }
 
   .name-group {

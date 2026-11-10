@@ -6,6 +6,7 @@ import {
   getRankAndFile,
   getSquareIndex,
   getOrientedSquares,
+  getOrientedSquareCoords,
   charToPiece,
   isCaptureMove,
   isCheckSquare,
@@ -97,6 +98,20 @@ describe('boardUtils', () => {
     expect(whiteRevivalSquares).toContain('e4');
     expect(whiteRevivalSquares).not.toContain('e5'); // Opponent half
     expect(whiteRevivalSquares).not.toContain('e2'); // Occupied
+  });
+
+  it('computes oriented grid coordinates for piece movement animation', () => {
+    // White perspective: a8 is (0, 0), h1 is (7, 7), e2 is (4, 6), e4 is (4, 4)
+    expect(getOrientedSquareCoords('a8', 'White')).toEqual({ col: 0, row: 0 });
+    expect(getOrientedSquareCoords('h1', 'White')).toEqual({ col: 7, row: 7 });
+    expect(getOrientedSquareCoords('e2', 'White')).toEqual({ col: 4, row: 6 });
+    expect(getOrientedSquareCoords('e4', 'White')).toEqual({ col: 4, row: 4 });
+
+    // Black perspective: h1 is (0, 0), a8 is (7, 7), e7 is (3, 6), e5 is (3, 4)
+    expect(getOrientedSquareCoords('h1', 'Black')).toEqual({ col: 0, row: 0 });
+    expect(getOrientedSquareCoords('a8', 'Black')).toEqual({ col: 7, row: 7 });
+    expect(getOrientedSquareCoords('e7', 'Black')).toEqual({ col: 3, row: 6 });
+    expect(getOrientedSquareCoords('e5', 'Black')).toEqual({ col: 3, row: 4 });
   });
 });
 

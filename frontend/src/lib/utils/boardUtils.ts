@@ -102,6 +102,22 @@ export function getOrientedSquares(perspective: PlayerColor): string[] {
   return squares;
 }
 
+export function getOrientedSquareCoords(square: string, perspective: PlayerColor): { col: number; row: number } {
+  const file = square.charCodeAt(0) - 'a'.charCodeAt(0);
+  const rank = parseInt(square.charAt(1), 10);
+  if (perspective === 'White') {
+    return {
+      col: file,
+      row: 8 - rank
+    };
+  } else {
+    return {
+      col: 7 - file,
+      row: rank - 1
+    };
+  }
+}
+
 export function isCaptureMove(from: string, to: string, board: (BoardPiece | null)[][]): boolean {
   const { row, col } = getSquareIndex(to);
   return board[row] && board[row][col] !== null;

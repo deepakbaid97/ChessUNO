@@ -139,6 +139,18 @@
   .history-item.newest {
     color: var(--text-main);
     font-weight: 600;
+    animation: logSlideIn 0.24s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes logSlideIn {
+    from {
+      transform: translateY(-8px);
+      opacity: 0;
+    }
+    to {
+      transform: translateY(0);
+      opacity: 1;
+    }
   }
 
   .bullet {

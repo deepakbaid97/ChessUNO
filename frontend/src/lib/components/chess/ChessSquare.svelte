@@ -13,6 +13,8 @@
   export let isInCheck: boolean = false;
   export let showCoordinateRank: boolean = false;
   export let showCoordinateFile: boolean = false;
+  export let slideOffset: { deltaX: number; deltaY: number } | null = null;
+  export let isCaptureImpact: boolean = false;
 
   const dispatch = createEventDispatcher<{
     select: { square: string };
@@ -61,9 +63,17 @@
   {/if}
 
   {#if piece}
-    <div class="piece-scale">
+    <div
+      class="piece-scale"
+      class:piece-sliding={!!slideOffset}
+      style={slideOffset ? `--slide-x: ${slideOffset.deltaX}%; --slide-y: ${slideOffset.deltaY}%;` : ''}
+    >
       <ChessPiece type={piece.type} color={piece.color} />
     </div>
+  {/if}
+
+  {#if isCaptureImpact}
+    <div class="capture-impact-ripple" aria-hidden="true"></div>
   {/if}
 
   {#if isDestination && !isCapture}
@@ -101,7 +111,7 @@
 
   .square.selected {
     background-color: var(--square-selected) !important;
-    box-shadow: inset 0 0 0 2.5px var(--accent-gold);
+    box-shadow: inset 0 0 0 2.5px var(--accent-gold), 0 0 14px var(--accent-gold-glow);
   }
 
   .square.swap-target {
@@ -114,8 +124,18 @@
   }
 
   .square.in-check {
-    background: var(--square-check) !important;
-    box-shadow: inset 0 0 0 2px var(--accent-red);
+    animation: checkPulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes checkPulse {
+    0%, 100% {
+      background: var(--square-check) !important;
+      box-shadow: inset 0 0 0 2px var(--accent-red), inset 0 0 14px rgba(239, 68, 68, 0.6);
+    }
+    50% {
+      background: radial-gradient(circle, rgba(239, 68, 68, 0.95) 0%, rgba(239, 68, 68, 0.4) 75%) !important;
+      box-shadow: inset 0 0 0 3px #ff7878, inset 0 0 24px rgba(239, 68, 68, 0.95), 0 0 12px rgba(239, 68, 68, 0.6);
+    }
   }
 
   .selected-tag {
@@ -132,6 +152,12 @@
     line-height: 1;
     z-index: 6;
     pointer-events: none;
+    animation: tagPop 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes tagPop {
+    from { transform: scale(0.5); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
   }
 
   .piece-scale {
@@ -141,6 +167,52 @@
     align-items: center;
     justify-content: center;
     z-index: 2;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.18s ease;
+  }
+
+  .piece-scale.piece-sliding {
+    animation: slidePiece 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  @keyframes slidePiece {
+    from {
+      transform: translate(var(--slide-x), var(--slide-y));
+    }
+    to {
+      transform: translate(0, 0);
+    }
+  }
+
+  .square.selected .piece-scale {
+    transform: translateY(-4px) scale(1.08);
+    filter: drop-shadow(0 4px 10px rgba(245, 158, 11, 0.5)) drop-shadow(0 0 6px rgba(245, 158, 11, 0.35));
+  }
+
+  .capture-impact-ripple {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 3px solid var(--accent-red);
+    box-shadow: 0 0 14px var(--accent-red-glow);
+    pointer-events: none;
+    z-index: 8;
+    animation: captureRipple 0.38s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+  }
+
+  @keyframes captureRipple {
+    0% {
+      transform: scale(0.2);
+      opacity: 1;
+      border-color: #ff9999;
+    }
+    50% {
+      opacity: 0.9;
+    }
+    100% {
+      transform: scale(1.4);
+      opacity: 0;
+      border-color: var(--accent-red);
+    }
   }
 
   .piece-scale :global(.piece-container) {
@@ -182,19 +254,33 @@
     width: 30%;
     height: 30%;
     border-radius: 50%;
-    background-color: rgba(78, 222, 163, 0.35);
+    background-color: rgba(78, 222, 163, 0.45);
     border: 2px solid var(--accent-green);
+    box-shadow: 0 0 8px var(--accent-green-glow);
     pointer-events: none;
     z-index: 5;
+    animation: dotEntrance 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), dotPulse 1.8s ease-in-out infinite alternate;
+  }
+
+  @keyframes dotEntrance {
+    0% { transform: scale(0.2); opacity: 0; }
+    80% { transform: scale(1.15); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes dotPulse {
+    0% { transform: scale(1); box-shadow: 0 0 4px var(--accent-green-glow); }
+    100% { transform: scale(1.1); box-shadow: 0 0 10px rgba(78, 222, 163, 0.65); }
   }
 
   .dest-dot.occupied-target {
     inset: 2px;
     width: auto;
     height: auto;
-    border-radius: 2px;
-    background-color: rgba(78, 222, 163, 0.16);
+    border-radius: 4px;
+    background-color: rgba(78, 222, 163, 0.2);
     border: 2px solid var(--accent-green);
+    animation: dotEntrance 0.18s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .target-check {
@@ -217,11 +303,23 @@
   .capture-ring {
     position: absolute;
     inset: 2px;
-    border-radius: 2px;
+    border-radius: 4px;
     border: 2.5px solid var(--accent-red);
-    background-color: rgba(239, 68, 68, 0.18);
+    background-color: rgba(239, 68, 68, 0.2);
+    box-shadow: inset 0 0 8px rgba(239, 68, 68, 0.45);
     pointer-events: none;
     z-index: 5;
+    animation: ringEntrance 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), ringPulse 1.6s ease-in-out infinite alternate;
+  }
+
+  @keyframes ringEntrance {
+    0% { transform: scale(0.6); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+
+  @keyframes ringPulse {
+    0% { border-color: var(--accent-red); box-shadow: inset 0 0 4px rgba(239, 68, 68, 0.3); }
+    100% { border-color: #ff7878; box-shadow: inset 0 0 12px 2px rgba(239, 68, 68, 0.65); }
   }
 
   @media (max-width: 600px) {

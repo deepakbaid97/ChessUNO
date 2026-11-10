@@ -7,6 +7,8 @@
   export let isPlayable: boolean = true;
   export let size: 'sm' | 'md' | 'lg' = 'md';
   export let elevation: boolean = true;
+  export let isExhausted: boolean = false;
+  export let animateEntrance: boolean = true;
 
   const dispatch = createEventDispatcher<{
     select: { card: CardModel };
@@ -61,6 +63,8 @@
   class:action-card={isAction}
   class:wild-card={isWild}
   class:elevate={elevation}
+  class:exhausted={isExhausted}
+  class:draw-reveal={animateEntrance}
   on:click={handleClick}
   on:keydown={handleKeyDown}
   tabindex="0"
@@ -94,19 +98,48 @@
     border-radius: 6px;
     cursor: pointer;
     user-select: none;
-    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.18s ease, opacity 0.25s ease, filter 0.25s ease;
     box-shadow: var(--shadow-md);
     flex-shrink: 0;
     background-color: var(--bg-elevated);
   }
 
+  .card-wrapper.draw-reveal {
+    animation: cardDealFlip 0.35s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+
+  @keyframes cardDealFlip {
+    0% {
+      transform: perspective(700px) rotateY(-80deg) scale(0.65) translateY(24px);
+      opacity: 0;
+    }
+    65% {
+      transform: perspective(700px) rotateY(6deg) scale(1.04) translateY(-3px);
+      opacity: 1;
+    }
+    100% {
+      transform: perspective(700px) rotateY(0deg) scale(1) translateY(0);
+      opacity: 1;
+    }
+  }
+
   .card-wrapper.elevate:hover {
-    transform: translateY(-2px);
+    transform: translateY(-3px) scale(1.02);
     box-shadow: var(--shadow-card);
   }
 
+  .card-wrapper:active:not(.exhausted) {
+    transform: translateY(-1px) scale(0.99);
+  }
+
   .card-wrapper.selected {
-    box-shadow: 0 0 0 2px var(--accent-gold), var(--shadow-card);
+    box-shadow: 0 0 0 2px var(--accent-gold), 0 0 16px var(--accent-gold-glow), var(--shadow-card);
+  }
+
+  .card-wrapper.exhausted {
+    opacity: 0.55;
+    filter: grayscale(40%);
+    transform: scale(0.98);
   }
 
   .card-wrapper:not(.playable) {

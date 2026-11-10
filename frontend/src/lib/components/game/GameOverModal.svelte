@@ -101,13 +101,13 @@
   .gameover-backdrop {
     position: fixed;
     inset: 0;
-    background: rgba(10, 12, 16, 0.85);
-    backdrop-filter: blur(4px);
+    background: rgba(10, 12, 16, 0.88);
+    backdrop-filter: blur(8px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    animation: fadeIn 0.2s ease-out;
+    animation: fadeIn 0.25s ease-out;
   }
 
   .gameover-card {
@@ -119,14 +119,22 @@
     max-width: 420px;
     width: 92%;
     box-shadow: var(--shadow-lg);
+    animation: modalPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes modalPop {
+    0% { transform: scale(0.85) translateY(18px); opacity: 0; }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
   }
 
   .gameover-card.victory {
     border-color: var(--accent-gold);
+    box-shadow: 0 0 32px rgba(245, 158, 11, 0.25), var(--shadow-lg);
   }
 
   .gameover-card.defeat {
     border-color: var(--accent-red);
+    box-shadow: 0 0 32px rgba(239, 68, 68, 0.25), var(--shadow-lg);
   }
 
   .gameover-card.draw {
@@ -143,16 +151,25 @@
     justify-content: center;
     background-color: var(--bg-elevated);
     border: 1px solid var(--border-strong);
+    transition: transform 0.2s ease;
   }
 
   .victory .outcome-emblem {
     color: var(--accent-gold);
-    border-color: rgba(245, 158, 11, 0.4);
+    border-color: rgba(245, 158, 11, 0.5);
+    box-shadow: 0 0 20px rgba(245, 158, 11, 0.35);
+    animation: trophyGlow 2.5s infinite ease-in-out;
+  }
+
+  @keyframes trophyGlow {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 16px rgba(245, 158, 11, 0.3); }
+    50% { transform: scale(1.08); box-shadow: 0 0 28px rgba(245, 158, 11, 0.6); }
   }
 
   .defeat .outcome-emblem {
     color: var(--accent-red);
-    border-color: rgba(239, 68, 68, 0.4);
+    border-color: rgba(239, 68, 68, 0.5);
+    box-shadow: 0 0 18px rgba(239, 68, 68, 0.3);
   }
 
   .draw .outcome-emblem {

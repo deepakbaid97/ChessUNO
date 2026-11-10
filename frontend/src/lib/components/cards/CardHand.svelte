@@ -47,6 +47,25 @@
   let selectedCard: CardModel | null = null;
   let showDetails: boolean = false;
 
+  let bumpMoves = false;
+  let bumpRevivals = false;
+  let prevMoves = remainingMoves;
+  let prevRevivals = remainingRevivals;
+
+  $: if (remainingMoves !== prevMoves) {
+    prevMoves = remainingMoves;
+    bumpMoves = true;
+    setTimeout(() => { bumpMoves = false; }, 300);
+  }
+
+  $: if (remainingRevivals !== prevRevivals) {
+    prevRevivals = remainingRevivals;
+    bumpRevivals = true;
+    setTimeout(() => { bumpRevivals = false; }, 300);
+  }
+
+  $: isCardExhausted = isMyTurn && turnPhase === 'ActionPhase' && remainingMoves === 0 && remainingRevivals === 0 && !canSwap;
+
   function handleCardClick(event: CustomEvent<{ card: CardModel }>) {
     selectedCard = event.detail.card;
     showDetails = true;
@@ -70,6 +89,8 @@
       <div class="draw-card-slot" data-testid="draw-card-slot">
         <button
           class="draw-deck-btn"
+          class:deck-ready={isMyTurn && !isDrawing}
+          class:is-drawing={isDrawing}
           on:click={() => dispatch('drawCard')}
           disabled={isDrawing}
           data-testid="draw-card-btn"
@@ -91,6 +112,7 @@
           <Card
             card={activeCard}
             size="md"
+            isExhausted={isCardExhausted}
             on:select={handleCardClick}
           />
         </div>
@@ -119,10 +141,10 @@
             <div class="action-buttons-group">
               <div class="telemetry-pills">
                 {#if remainingMoves > 0}
-                  <span class="action-pill moves-pill">MOVES LEFT: {remainingMoves}</span>
+                  <span class="action-pill moves-pill" class:bump={bumpMoves}>MOVES LEFT: {remainingMoves}</span>
                 {/if}
                 {#if remainingRevivals > 0}
-                  <span class="action-pill revivals-pill">REVIVALS LEFT: {remainingRevivals}</span>
+                  <span class="action-pill revivals-pill" class:bump={bumpRevivals}>REVIVALS LEFT: {remainingRevivals}</span>
                 {/if}
                 {#if canSwap}
                   <span class="action-pill swap-pill">SWAP READY</span>
@@ -222,13 +244,33 @@
     cursor: pointer;
     text-align: left;
     color: var(--text-main);
-    transition: background-color 0.15s ease, transform 0.1s ease;
+    transition: background-color 0.15s ease, transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, border-color 0.2s ease;
     min-width: 0;
     overflow: hidden;
   }
 
+  .draw-deck-btn.deck-ready {
+    animation: deckIdlePulse 2.2s infinite ease-in-out;
+  }
+
+  @keyframes deckIdlePulse {
+    0%, 100% {
+      border-color: var(--accent-gold);
+      box-shadow: 0 0 0 1px var(--accent-gold-glow), var(--shadow-sm);
+    }
+    50% {
+      border-color: var(--accent-gold-bright);
+      box-shadow: 0 0 0 2.5px rgba(245, 158, 11, 0.45), 0 0 16px rgba(245, 158, 11, 0.25);
+    }
+  }
+
   .draw-deck-btn:hover:not(:disabled) {
     background-color: var(--bg-card-hover);
+    transform: translateY(-1px);
+  }
+
+  .draw-deck-btn:hover:not(:disabled) .deck-visual {
+    transform: translateY(-2px) rotate(-1.5deg);
   }
 
   .draw-deck-btn:active:not(:disabled) {
@@ -253,6 +295,17 @@
     justify-content: center;
     gap: 2px;
     flex-shrink: 0;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .draw-deck-btn.is-drawing .deck-visual {
+    animation: deckDealOut 0.35s ease-out;
+  }
+
+  @keyframes deckDealOut {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.92) translateY(-4px); }
+    100% { transform: scale(1); }
   }
 
   .deck-card-layer {
@@ -360,12 +413,17 @@
     color: var(--text-main);
     cursor: pointer;
     text-align: left;
-    transition: border-color 0.15s ease, background-color 0.15s ease;
+    transition: border-color 0.15s ease, background-color 0.15s ease, transform 0.12s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .choice-btn:hover {
     border-color: var(--accent-gold);
     background-color: var(--bg-elevated);
+    transform: translateX(3px);
+  }
+
+  .choice-btn:active {
+    transform: scale(0.99);
   }
 
   .choice-name {
@@ -404,6 +462,17 @@
     font-weight: 700;
     padding: 2px 7px;
     border-radius: 3px;
+    transition: transform 0.15s ease, filter 0.15s ease;
+  }
+
+  .action-pill.bump {
+    animation: countBump 0.28s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes countBump {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.26); filter: brightness(1.4); }
+    100% { transform: scale(1); }
   }
 
   .moves-pill {

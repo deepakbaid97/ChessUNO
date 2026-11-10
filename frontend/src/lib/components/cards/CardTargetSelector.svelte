@@ -139,18 +139,24 @@
     padding: 4px 9px;
     color: var(--text-main);
     cursor: pointer;
-    transition: border-color 0.15s ease, background-color 0.15s ease;
+    transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.15s ease, background-color 0.15s ease;
   }
 
   .reserve-btn:hover {
     border-color: var(--accent-gold);
     background-color: var(--bg-elevated);
+    transform: translateY(-2px);
+  }
+
+  .reserve-btn:active {
+    transform: scale(0.96);
   }
 
   .reserve-btn.selected {
     border-color: var(--accent-green);
     background-color: rgba(78, 222, 163, 0.16);
-    box-shadow: 0 0 0 1px var(--accent-green);
+    box-shadow: 0 0 0 1px var(--accent-green), 0 0 8px var(--accent-green-glow);
+    transform: scale(1.04);
   }
 
   .piece-name {
@@ -182,24 +188,33 @@
     border-radius: 4px;
     padding: 4px 8px;
     min-width: 0;
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 
   .swap-slot.active-slot {
     border-style: dashed;
     border-color: var(--accent-gold);
     background-color: rgba(245, 158, 11, 0.1);
+    box-shadow: 0 0 6px var(--accent-gold-glow);
   }
 
   .swap-slot.filled {
     border-style: solid;
     border-color: var(--accent-gold);
     background-color: rgba(245, 158, 11, 0.18);
+    animation: slotFill 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes slotFill {
+    from { transform: scale(0.92); }
+    to { transform: scale(1); }
   }
 
   .swap-slot.pending-emerald {
     border-style: dashed;
     border-color: var(--accent-green);
     background-color: rgba(78, 222, 163, 0.1);
+    box-shadow: 0 0 6px var(--accent-green-glow);
   }
 
   .slot-label {
