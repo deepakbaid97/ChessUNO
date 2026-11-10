@@ -92,6 +92,7 @@
     align-items: center;
     gap: 10px;
     min-width: 0;
+    flex: 1;
   }
 
   .avatar-badge {
@@ -142,12 +143,14 @@
     flex-direction: column;
     gap: 1px;
     min-width: 0;
+    flex: 1;
   }
 
   .name-line {
     display: flex;
     align-items: center;
     gap: 6px;
+    min-width: 0;
   }
 
   .player-name {
@@ -184,6 +187,9 @@
   .sub-line {
     font-size: 0.72rem;
     line-height: 1.2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .turn-indicator {

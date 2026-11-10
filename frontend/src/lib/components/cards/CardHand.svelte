@@ -223,6 +223,8 @@
     text-align: left;
     color: var(--text-main);
     transition: background-color 0.15s ease, transform 0.1s ease;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .draw-deck-btn:hover:not(:disabled) {
@@ -278,6 +280,8 @@
     display: flex;
     flex-direction: column;
     gap: 3px;
+    min-width: 0;
+    overflow: hidden;
   }
 
   .deck-cta {
@@ -285,12 +289,16 @@
     font-size: 0.98rem;
     font-weight: 700;
     color: var(--accent-gold-bright);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .deck-sub {
     font-size: 0.76rem;
     color: var(--text-muted);
     line-height: 1.25;
+    word-break: break-word;
   }
 
   /* Active Card Dock (Side-by-side Card + Controls) */
@@ -379,6 +387,7 @@
     justify-content: space-between;
     gap: 8px;
     width: 100%;
+    min-width: 0;
     height: 100%;
   }
 
@@ -386,6 +395,7 @@
     display: flex;
     gap: 6px;
     flex-wrap: wrap;
+    min-width: 0;
   }
 
   .action-pill {
@@ -429,6 +439,7 @@
     padding-top: 4px;
     border-top: 1px solid var(--border-subtle);
     margin-top: auto;
+    min-width: 0;
   }
 
   .deck-counter {
@@ -436,6 +447,9 @@
     font-size: 0.62rem;
     color: var(--text-dim);
     letter-spacing: 0.04em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .pass-turn-link {
@@ -448,6 +462,8 @@
     font-weight: 600;
     color: var(--text-muted);
     cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
     transition: color 0.15s ease, border-color 0.15s ease;
   }
 

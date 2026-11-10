@@ -109,6 +109,7 @@ h1, h2, h3, h4 {
   background-color: var(--bg-lowest);
   border-left: 1px solid rgba(45, 51, 64, 0.45);
   border-right: 1px solid rgba(45, 51, 64, 0.45);
+  overflow-x: hidden;
 }
 
 /* Header */
@@ -118,7 +119,7 @@ h1, h2, h3, h4 {
   align-items: center;
   height: 44px;
   padding: 0 12px;
-  margin: 0 -16px 12px;
+  margin: 0 0 12px 0;
   background-color: var(--bg-surface);
   border-bottom: 1px solid var(--border-color);
   flex-shrink: 0;
@@ -349,14 +350,16 @@ label {
 
 @media (max-width: 900px) {
   .app-container {
-    max-width: 480px;
-    padding: 0 8px 6px;
+    max-width: 100%;
+    padding: 0 10px 8px;
+    border-left: none;
+    border-right: none;
   }
 
   .app-header {
-    height: 36px;
+    height: 38px;
     padding: 0 10px;
-    margin: 0 -8px 6px;
+    margin: 0 -10px 8px -10px;
   }
 
   .brand-mark {

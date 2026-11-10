@@ -170,6 +170,7 @@
     align-items: center;
     gap: 8px;
     flex: 1;
+    min-width: 0;
   }
 
   .swap-slot {
@@ -180,6 +181,7 @@
     border: 1px dashed var(--border-strong);
     border-radius: 4px;
     padding: 4px 8px;
+    min-width: 0;
   }
 
   .swap-slot.active-slot {
@@ -231,6 +233,7 @@
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-shrink: 0;
   }
 
   .undo-btn {

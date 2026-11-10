@@ -428,6 +428,7 @@
     display: flex;
     flex-direction: column;
     flex: 1;
+    min-width: 0;
   }
 
   .arena-layout {
@@ -440,6 +441,8 @@
     gap: 10px 24px;
     justify-content: center;
     align-items: start;
+    width: 100%;
+    min-width: 0;
   }
 
   .area-opponent {
@@ -598,18 +601,20 @@
         "command"
         "player";
       gap: 6px;
-      max-width: 500px;
+      max-width: 100%;
       margin: 0 auto;
       width: 100%;
     }
 
     .area-command {
       gap: 6px;
+      min-width: 0;
     }
 
     .coach-banner {
       padding: 8px 10px;
       gap: 2px;
+      min-width: 0;
     }
 
     .coach-headline {

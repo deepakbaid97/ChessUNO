@@ -91,6 +91,7 @@
     display: none;
     flex: 1;
     min-width: 0;
+    overflow: hidden;
   }
 
   .ticker-text {
@@ -101,6 +102,7 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    max-width: 100%;
   }
 
   .toggle-history-btn {
