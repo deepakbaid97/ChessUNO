@@ -125,6 +125,79 @@ npx playwright test
 
 ---
 
+## 📦 Deployment & Publishing
+
+### 1. Publish the Backend (Ubuntu / Linux)
+
+#### Option A: Self-Contained Deployment (Recommended)
+*Bundles the .NET runtime directly into the output folder—no .NET runtime installation required on the server.*
+
+```bash
+dotnet publish backend/ChessUno/ChessUno.Web/ChessUno.Web.csproj \
+  -c Release \
+  -r linux-x64 \
+  --self-contained true \
+  -o ./publish
+```
+*(For ARM64 servers, such as AWS Graviton or Oracle Ampere, use `-r linux-arm64`).*
+
+#### Option B: Framework-Dependent Deployment
+*Produces a lightweight build (~20MB); requires the .NET 10 runtime to be installed on the server.*
+
+```bash
+dotnet publish backend/ChessUno/ChessUno.Web/ChessUno.Web.csproj \
+  -c Release \
+  -o ./publish
+```
+
+> [!NOTE]
+> The rule definitions file (`configs/chess-uno.json`) is automatically packaged into `./publish/configs/chess-uno.json` during publish.
+
+---
+
+### 2. Build the Frontend
+
+Inside the `frontend/` directory, build the static distribution bundle:
+
+```bash
+cd frontend
+
+# Set environment variables for your deployment domain or subpath:
+VITE_APP_BASE_URL="https://yourdomain.com" npm run build
+```
+*(Or create a `frontend/.env.production` file containing `VITE_APP_BASE_URL=https://yourdomain.com` before running `npm run build`).*
+
+Copy the built files from `frontend/dist/` to your web server root (e.g. `/var/chessUno/frontend/` or `/var/www/html/`).
+
+---
+
+### 3. Production Service & Environment Setup (Systemd)
+
+Production deployment templates are available in the [`deployment/`](deployment/) directory:
+
+1. **Configure Environment Variables** (`/etc/chessuno/chessuno.env`):
+   ```bash
+   sudo mkdir -p /etc/chessuno
+   sudo cp deployment/chessuno.env.example /etc/chessuno/chessuno.env
+   sudo chmod 600 /etc/chessuno/chessuno.env
+   sudo nano /etc/chessuno/chessuno.env
+   ```
+   *Required variables*:
+   - `ConnectionStrings__DefaultConnection`: PostgreSQL connection string.
+   - `CHESSUNO_HMAC_KEY`: 32+ character secret key for session token hashing (`openssl rand -base64 32`).
+   - `ASPNETCORE_URLS`: Listening address (e.g., `http://127.0.0.1:5005`).
+   - `FrontendBaseUrl`: Frontend URL for player invitation links.
+
+2. **Install and Start the Service**:
+   ```bash
+   sudo cp deployment/chessuno.service /etc/systemd/system/chessuno.service
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now chessuno
+   sudo systemctl status chessuno
+   ```
+
+---
+
 ## ⚙️ Configuration & Customization
 
 Game rules, board settings, piece constraints, card definitions, and deck quantities are completely data-driven and configured in:
