@@ -44,6 +44,10 @@
         readonly
         value={invitationUrl}
         aria-label="Invitation Link"
+        spellcheck="false"
+        data-gramm="false"
+        data-gramm_editor="false"
+        data-enable-grammarly="false"
         data-testid="invite-url-input"
       />
       <button

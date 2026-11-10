@@ -71,6 +71,11 @@
           bind:value={createPlayerName}
           placeholder="Enter your name"
           disabled={isCreating}
+          autocomplete="off"
+          spellcheck="false"
+          data-gramm="false"
+          data-gramm_editor="false"
+          data-enable-grammarly="false"
           data-testid="input-create-name"
         />
       </div>
@@ -98,6 +103,11 @@
           id="join-name"
           bind:value={joinPlayerName}
           placeholder="Enter your name"
+          autocomplete="off"
+          spellcheck="false"
+          data-gramm="false"
+          data-gramm_editor="false"
+          data-enable-grammarly="false"
           data-testid="input-join-name"
         />
       </div>
@@ -108,6 +118,11 @@
           id="join-token"
           bind:value={joinToken}
           placeholder="Paste invitation URL or token"
+          autocomplete="off"
+          spellcheck="false"
+          data-gramm="false"
+          data-gramm_editor="false"
+          data-enable-grammarly="false"
           data-testid="input-join-token"
         />
       </div>

@@ -97,6 +97,11 @@
             bind:value={playerName}
             placeholder="Enter your name"
             disabled={isSubmitting}
+            autocomplete="off"
+            spellcheck="false"
+            data-gramm="false"
+            data-gramm_editor="false"
+            data-enable-grammarly="false"
             data-testid="input-join-player-name"
           />
         </div>

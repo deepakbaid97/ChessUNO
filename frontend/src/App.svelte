@@ -25,6 +25,7 @@
   let customSeed: number | undefined = undefined;
   let isCreating = false;
   let isSubmitting = false;
+  let isRestoringSession = false;
   let errorMessage = '';
 
   // Toasts
@@ -228,6 +229,7 @@
     const path = window.location.pathname;
 
     if (savedSession && savedSession.gameId && savedSession.playerToken) {
+      isRestoringSession = true;
       gameStore.setPlayerSession(savedSession);
       signalRService.connect().then(async () => {
         connectionStore.setSignalR('Connected');
@@ -243,6 +245,8 @@
         }
       }).catch(() => {
         sessionStorage.removeItem('chess_uno_session');
+      }).finally(() => {
+        isRestoringSession = false;
       });
     } else if (tokenQuery) {
       directJoinToken = tokenQuery;
@@ -525,7 +529,13 @@
 
   <!-- Screens -->
   <main class="main-content">
-    {#if currentView === 'LOBBY'}
+    {#if isRestoringSession}
+      <div class="session-loader panel" role="status" aria-live="polite">
+        <div class="loader-spinner"></div>
+        <div class="loader-title">Restoring Match Session</div>
+        <div class="loader-sub">Synchronizing board state with authoritative server...</div>
+      </div>
+    {:else if currentView === 'LOBBY'}
       <HomeScreen
         defaultSeed={customSeed}
         {isCreating}
@@ -586,6 +596,44 @@
   .status-bar {
     display: flex;
     gap: 8px;
+  }
+
+  .session-loader {
+    max-width: 420px;
+    margin: 40px auto;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 10px;
+    padding: 32px 24px;
+  }
+
+  .loader-spinner {
+    width: 32px;
+    height: 32px;
+    border: 3px solid rgba(245, 158, 11, 0.2);
+    border-top-color: var(--accent-gold);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  .loader-title {
+    font-family: var(--font-headline);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--accent-gold-bright);
+  }
+
+  .loader-sub {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 
   .toast-info {
