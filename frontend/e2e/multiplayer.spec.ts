@@ -11,7 +11,7 @@ test.describe('Chess UNO Two-Player End-to-End Experience', () => {
     const pageB = await contextB.newPage();
     pageB.on('console', msg => console.log('[Page B Console]', msg.type(), msg.text()));
 
-    await pageA.goto('/');
+    await pageA.goto('/?seed=42');
 
     // Verify Home Screen loaded
     await expect(pageA.getByTestId('home-screen')).toBeVisible();

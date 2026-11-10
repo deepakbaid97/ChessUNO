@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using ChessUno.Core.Cards;
 using ChessUno.Core.Config;
 using ChessUno.Core.Decks;
@@ -10,6 +11,7 @@ using ChessUno.Core.Domain.Pieces;
 using ChessUno.Core.Domain.Turn;
 using ChessUno.Core.Effects;
 using ChessUno.Core.GameEngine;
+using ChessUno.Core.Sessions;
 using ChessUno.Core.Turn;
 using ChessUno.Core.Validation;
 using Xunit;
@@ -161,5 +163,54 @@ public class GameSessionTests
         // Since White is in check and has 0 moves to escape, checkmate defeat is triggered immediately
         Assert.Equal(GameStatus.Checkmate, controller.ChessState.Status);
         Assert.Equal(PlayerColor.Black, controller.ChessState.Winner);
+    }
+
+    [Fact]
+    public async Task SessionRepository_ExportAndRestore_PreservesFullSessionState()
+    {
+        var repo = new InMemoryGameSessionRepository();
+        var session = await repo.CreateSessionAsync("Alice", seed: 42);
+
+        // White draws card and makes move
+        session.EngineController.StartGame();
+        var drawn = session.EngineController.DrawCard(PlayerColor.White);
+        var moveResult = session.EngineController.SubmitChessMove(PlayerColor.White, new ChessMove(Square.Parse("e2"), Square.Parse("e4")));
+
+        // Export snapshot
+        var snapshotJson = await repo.ExportSessionSnapshotJsonAsync(session.GameId);
+        Assert.NotNull(snapshotJson);
+        Assert.Contains(session.GameId.ToString(), snapshotJson);
+
+        // Restore in a fresh repository instance
+        var newRepo = new InMemoryGameSessionRepository();
+        var restored = await newRepo.RestoreSessionSnapshotJsonAsync(snapshotJson);
+
+        Assert.NotNull(restored);
+        Assert.Equal(session.GameId, restored.GameId);
+        Assert.Equal(session.InvitationToken, restored.InvitationToken);
+        Assert.Equal(session.PlayerWhite!.SecretToken, restored.PlayerWhite!.SecretToken);
+        Assert.Equal(session.EngineController.ChessState.Fen, restored.EngineController.ChessState.Fen);
+        Assert.Equal(session.EngineController.DeckManager.RemainingCount, restored.EngineController.DeckManager.RemainingCount);
+        Assert.Equal(session.EngineController.DeckManager.DiscardCount, restored.EngineController.DeckManager.DiscardCount);
+    }
+
+    [Fact]
+    public async Task SessionRepository_Lifecycle_HandlesCancellationAndExpiration()
+    {
+        var repo = new InMemoryGameSessionRepository();
+        var session = await repo.CreateSessionAsync("Alice");
+
+        // Cancel session
+        var cancelSuccess = await repo.CancelSessionAsync(session.GameId, session.PlayerWhite!.SecretToken);
+        Assert.True(cancelSuccess);
+        Assert.Equal(SessionStatus.Cancelled, session.Status);
+
+        // Create expired session
+        var expiredSession = await repo.CreateSessionAsync("Bob");
+        expiredSession.ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(-5);
+
+        var cleanedCount = await repo.CleanupExpiredSessionsAsync();
+        Assert.True(cleanedCount >= 1);
+        Assert.Equal(SessionStatus.Expired, expiredSession.Status);
     }
 }

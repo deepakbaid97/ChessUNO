@@ -21,6 +21,7 @@
   let currentView: AppView = 'LOBBY';
 
   let directJoinToken = '';
+  let customSeed: number | undefined = undefined;
   let isCreating = false;
   let isSubmitting = false;
   let errorMessage = '';
@@ -140,6 +141,11 @@
       showToast(`${data.player} swapped ${data.square1} and ${data.square2}`, 'info');
     });
 
+    signalRService.onEffectChosen((data) => {
+      gameStore.onEffectChosen(data);
+      showToast(`${data.player} chose ability: ${data.choice}`, 'info');
+    });
+
     signalRService.onReceiveSignal(async (signalType, payload) => {
       await webrtcService.handleSignal(signalType, payload);
     });
@@ -173,6 +179,11 @@
 
     const params = new URLSearchParams(window.location.search);
     const tokenQuery = params.get('join');
+    const seedParam = params.get('seed');
+    if (seedParam) {
+      const parsedSeed = parseInt(seedParam, 10);
+      if (!isNaN(parsedSeed)) customSeed = parsedSeed;
+    }
     const path = window.location.pathname;
 
     if (savedSession && savedSession.gameId && savedSession.playerToken) {
@@ -313,7 +324,7 @@
   }
 
   async function handleDrawCard() {
-    console.log('[handleDrawCard] Invoking DrawCard on hub with:', storeState.gameId, storeState.playerToken);
+    console.log('[handleDrawCard] Invoking DrawCard on hub with gameId:', storeState.gameId);
     try {
       const success = await signalRService.drawCard(storeState.gameId, storeState.playerToken);
       console.log('[handleDrawCard] Result:', success);
@@ -323,6 +334,21 @@
     } catch (err: any) {
       console.error('[handleDrawCard] Threw:', err);
       showToast(`Draw failed: ${err.message}`, 'error');
+    }
+  }
+
+  async function handleSubmitChoice(event: CustomEvent<{ choice: string }>) {
+    try {
+      const success = await signalRService.submitChoice(
+        storeState.gameId,
+        storeState.playerToken,
+        event.detail.choice
+      );
+      if (!success) {
+        showToast('Choice rejected by server.', 'error');
+      }
+    } catch (err: any) {
+      showToast(`Choice failed: ${err.message}`, 'error');
     }
   }
 
@@ -429,7 +455,7 @@
   <main class="main-content">
     {#if currentView === 'LOBBY'}
       <HomeScreen
-        defaultSeed={42}
+        defaultSeed={customSeed}
         {isCreating}
         {errorMessage}
         on:createGame={handleCreateGame}
@@ -456,6 +482,7 @@
         on:proposeMove={handleProposeMove}
         on:drawCard={handleDrawCard}
         on:endTurn={handleEndTurn}
+        on:submitChoice={handleSubmitChoice}
         on:submitSwap={handleSubmitSwap}
         on:submitRevival={handleSubmitRevival}
         on:resign={handleResign}

@@ -4,6 +4,25 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Chess UNO - Multiplayer</title>
+    <script>
+      // Automatically unregister stale Service Workers registered from other localhost projects
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for (var reg of registrations) {
+            reg.unregister().then(function() {
+              console.log('[ServiceWorker] Unregistered stale worker:', reg);
+            });
+          }
+        });
+        if ('caches' in window) {
+          caches.keys().then(function(names) {
+            for (var name of names) {
+              caches.delete(name);
+            }
+          });
+        }
+      }
+    </script>
   </head>
   <body>
     <div id="app"></div>

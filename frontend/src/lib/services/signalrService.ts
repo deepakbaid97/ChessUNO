@@ -6,7 +6,8 @@ import type {
   MoveAcceptedData,
   PlayerConnectedData,
   PieceRevivedData,
-  PiecesSwappedData
+  PiecesSwappedData,
+  EffectChosenData
 } from '../types/game';
 
 export class SignalRService {
@@ -62,7 +63,7 @@ export class SignalRService {
   async joinGameRoom(gameId: string, playerToken: string): Promise<boolean> {
     if (!this.hubConnection) throw new Error('Not connected to SignalR');
     const result = await this.hubConnection.invoke('JoinGameRoom', gameId, playerToken);
-    console.log('[SignalR] JoinGameRoom invoked for', gameId, 'token:', playerToken.substring(0, 6) + '...', 'result:', result);
+    console.log('[SignalR] JoinGameRoom invoked for', gameId, 'result:', result);
     return result;
   }
 
@@ -74,6 +75,11 @@ export class SignalRService {
   async drawCard(gameId: string, playerToken: string): Promise<boolean> {
     if (!this.hubConnection) throw new Error('Not connected to SignalR');
     return this.hubConnection.invoke('DrawCard', gameId, playerToken);
+  }
+
+  async submitChoice(gameId: string, playerToken: string, choiceEffectKey: string): Promise<boolean> {
+    if (!this.hubConnection) throw new Error('Not connected to SignalR');
+    return this.hubConnection.invoke('SubmitChoice', gameId, playerToken, choiceEffectKey);
   }
 
   async submitMove(gameId: string, playerToken: string, from: string, to: string, promotion?: string): Promise<boolean> {
@@ -128,6 +134,10 @@ export class SignalRService {
 
   onPiecesSwapped(callback: (data: PiecesSwappedData) => void): void {
     this.registerHandler('PiecesSwapped', callback);
+  }
+
+  onEffectChosen(callback: (data: EffectChosenData) => void): void {
+    this.registerHandler('EffectChosen', callback);
   }
 
   onReceiveSignal(callback: (signalType: string, payload: string) => void): void {

@@ -14,6 +14,7 @@ public interface IDeckManager
     void Discard(CardInstance card);
     void Shuffle();
     IReadOnlyList<CardInstance> PeekAll();
+    IReadOnlyList<CardInstance> PeekDiscard();
 }
 
 public class DeckManager : IDeckManager
@@ -42,6 +43,16 @@ public class DeckManager : IDeckManager
         }
 
         Shuffle();
+    }
+
+    public DeckManager(IEnumerable<CardInstance> drawPile, IEnumerable<CardInstance> discardPile, int? seed = null)
+    {
+        if (seed.HasValue)
+        {
+            _seededRandom = new Random(seed.Value);
+        }
+        _drawPile.AddRange(drawPile ?? Array.Empty<CardInstance>());
+        _discardPile.AddRange(discardPile ?? Array.Empty<CardInstance>());
     }
 
     public void Shuffle()
@@ -84,5 +95,6 @@ public class DeckManager : IDeckManager
     }
 
     public IReadOnlyList<CardInstance> PeekAll() => _drawPile.AsReadOnly();
+    public IReadOnlyList<CardInstance> PeekDiscard() => _discardPile.AsReadOnly();
 }
 

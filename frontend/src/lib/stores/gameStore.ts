@@ -33,6 +33,7 @@ export interface GameStoreState {
   whiteReserves: string[];
   blackReserves: string[];
   legalMoves: string[];
+  availableChoices: string[];
   revision: number;
 
   // UI Interactive State
@@ -68,6 +69,7 @@ export function createGameStore() {
     whiteReserves: [],
     blackReserves: [],
     legalMoves: [],
+    availableChoices: [],
     revision: 0,
     selectedSquare: null,
     validDestinations: [],
@@ -131,6 +133,7 @@ export function createGameStore() {
           whiteReserves: snapshot.whiteReserves || s.whiteReserves,
           blackReserves: snapshot.blackReserves || s.blackReserves,
           legalMoves: snapshot.legalMoves || s.legalMoves,
+          availableChoices: snapshot.availableChoices || [],
           revision: snapshot.revision || s.revision,
           opponentName: snapshot.assignedColor === 'White'
             ? (snapshot.playerBlackName || s.opponentName)
@@ -166,6 +169,7 @@ export function createGameStore() {
           whiteReserves: updateData.whiteReserves || s.whiteReserves,
           blackReserves: updateData.blackReserves || s.blackReserves,
           legalMoves: updateData.legalMoves || s.legalMoves,
+          availableChoices: updateData.availableChoices || [],
           selectedSquare: null,
           validDestinations: []
         };
@@ -190,6 +194,10 @@ export function createGameStore() {
         remainingDeckCount: data.remainingDeckCount
       }));
       log(`${data.player} drew card: ${data.cardName}`);
+    },
+
+    onEffectChosen: (data: { player: string; choice: string }) => {
+      log(`${data.player} chose ability: ${data.choice}`);
     },
 
     onPlayerConnected: (data: PlayerConnectedData) => {

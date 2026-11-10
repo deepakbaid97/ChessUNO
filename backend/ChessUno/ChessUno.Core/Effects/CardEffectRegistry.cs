@@ -47,28 +47,33 @@ public class CardEffectExecutor
         _chessEngine = chessEngine ?? throw new ArgumentNullException(nameof(chessEngine));
     }
 
-    public EffectExecutionResult ExecuteCardEffect(GameState state, PlayerColor player, CardInstance card, long sequenceNumber)
+    public EffectExecutionResult ExecuteCardEffect(GameState state, PlayerColor player, CardInstance card, long sequenceNumber) =>
+        ExecuteEffectKey(state, player, card.EffectKey, sequenceNumber);
+
+    public EffectExecutionResult ExecuteEffectKey(GameState state, PlayerColor player, string effectKey, long sequenceNumber)
     {
         var events = new List<IGameEvent>
         {
-            new CardEffectStartedEvent(Guid.NewGuid(), sequenceNumber++, DateTimeOffset.UtcNow, player, card.EffectKey)
+            new CardEffectStartedEvent(Guid.NewGuid(), sequenceNumber++, DateTimeOffset.UtcNow, player, effectKey)
         };
 
-        if (!_config.Effects.TryGetValue(card.EffectKey, out var effectDef))
+        if (!_config.Effects.TryGetValue(effectKey, out var effectDef))
         {
-            var failEvent = new CardEffectFailedEvent(Guid.NewGuid(), sequenceNumber++, DateTimeOffset.UtcNow, player, card.EffectKey, $"Unknown effectKey '{card.EffectKey}'.");
+            var failEvent = new CardEffectFailedEvent(Guid.NewGuid(), sequenceNumber++, DateTimeOffset.UtcNow, player, effectKey, $"Unknown effectKey '{effectKey}'.");
             events.Add(failEvent);
-            return EffectExecutionResult.Failure(state, events, $"Unknown effectKey '{card.EffectKey}'.");
+            return EffectExecutionResult.Failure(state, events, $"Unknown effectKey '{effectKey}'.");
         }
 
         if (!_registry.TryGetHandler(effectDef.Type, out var handler) || handler == null)
         {
-            var failEvent = new CardEffectFailedEvent(Guid.NewGuid(), sequenceNumber++, DateTimeOffset.UtcNow, player, card.EffectKey, $"No registered handler for effect type '{effectDef.Type}'.");
+            var failEvent = new CardEffectFailedEvent(Guid.NewGuid(), sequenceNumber++, DateTimeOffset.UtcNow, player, effectKey, $"No registered handler for effect type '{effectDef.Type}'.");
             events.Add(failEvent);
             return EffectExecutionResult.Failure(state, events, $"No handler for '{effectDef.Type}'.");
         }
 
-        var context = new EffectExecutionContext(state, player, card, effectDef, _chessEngine, sequenceNumber);
+        var dummyDef = new CardDefinition("adhoc", effectKey, "ACTION", 1, effectKey, effectDef.Description);
+        var dummyCard = new CardInstance(Guid.NewGuid(), dummyDef);
+        var context = new EffectExecutionContext(state, player, dummyCard, effectDef, _chessEngine, sequenceNumber);
         try
         {
             var result = handler.Handle(context);
@@ -76,18 +81,18 @@ public class CardEffectExecutor
 
             if (result.IsSuccess)
             {
-                events.Add(new CardEffectResolvedEvent(Guid.NewGuid(), sequenceNumber++, DateTimeOffset.UtcNow, player, card.EffectKey, effectDef.Description));
+                events.Add(new CardEffectResolvedEvent(Guid.NewGuid(), sequenceNumber++, DateTimeOffset.UtcNow, player, effectKey, effectDef.Description));
                 return result with { EmittedEvents = events };
             }
             else
             {
-                events.Add(new CardEffectFailedEvent(Guid.NewGuid(), sequenceNumber++, DateTimeOffset.UtcNow, player, card.EffectKey, result.ErrorMessage ?? "Execution failed."));
+                events.Add(new CardEffectFailedEvent(Guid.NewGuid(), sequenceNumber++, DateTimeOffset.UtcNow, player, effectKey, result.ErrorMessage ?? "Execution failed."));
                 return result with { EmittedEvents = events };
             }
         }
         catch (Exception ex)
         {
-            events.Add(new CardEffectFailedEvent(Guid.NewGuid(), sequenceNumber++, DateTimeOffset.UtcNow, player, card.EffectKey, ex.Message));
+            events.Add(new CardEffectFailedEvent(Guid.NewGuid(), sequenceNumber++, DateTimeOffset.UtcNow, player, effectKey, ex.Message));
             return EffectExecutionResult.Failure(state, events, ex.Message);
         }
     }

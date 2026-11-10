@@ -1,3 +1,6 @@
+> [!NOTE]
+> For the authoritative architecture and multiplayer protocol documentation, see [architecture.md](file:///c:/ProdProjects/TrackLord/UnoChess/docs/architecture.md) and [multiplayer-protocol.md](file:///c:/ProdProjects/TrackLord/UnoChess/docs/multiplayer-protocol.md).
+
 # Chess UNO — Game State Architecture, Effect System & Event Contracts (Phase 0)
 
 ## 1. Authoritative vs Projected Client State

@@ -34,7 +34,8 @@ public record GameState(
     [property: JsonPropertyName("halfMoveClock")] int HalfMoveClock,
     [property: JsonPropertyName("fullMoveNumber")] int FullMoveNumber,
     [property: JsonPropertyName("reserves")] IReadOnlyDictionary<PlayerColor, IReadOnlyList<ReservePiece>> Reserves,
-    [property: JsonPropertyName("moveHistory")] IReadOnlyList<ChessActionRecord> MoveHistory
+    [property: JsonPropertyName("moveHistory")] IReadOnlyList<ChessActionRecord> MoveHistory,
+    [property: JsonPropertyName("initialFen")] string? InitialFen = null
 )
 {
     public Piece? GetPieceAt(Square square)

@@ -1,7 +1,15 @@
 using System;
+using System.Collections.Generic;
 using System.Security.Cryptography;
 using System.Text.Json.Serialization;
+using System.Threading;
+using ChessUno.Core.Cards;
 using ChessUno.Core.Domain.Common;
+using ChessUno.Core.Domain.Game;
+using ChessUno.Core.Domain.Moves;
+using ChessUno.Core.Domain.Pieces;
+using ChessUno.Core.Domain.Reserves;
+using ChessUno.Core.Domain.Turn;
 using ChessUno.Core.Turn;
 
 namespace ChessUno.Core.Sessions;
@@ -37,6 +45,9 @@ public class GameSession
     public int GameRevision { get; set; }
     public TurnController EngineController { get; init; }
 
+    [JsonIgnore]
+    public SemaphoreSlim SessionLock { get; } = new(1, 1);
+
     public GameSession(
         Guid gameId,
         string invitationToken,
@@ -64,3 +75,26 @@ public class GameSession
     }
 }
 
+public record GameSessionSnapshot(
+    Guid GameId,
+    string InvitationToken,
+    SessionStatus Status,
+    PlayerSession? PlayerWhite,
+    PlayerSession? PlayerBlack,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? ExpiresAt,
+    int GameRevision,
+    string BoardFen,
+    string ConfigVersion,
+    long EventSequenceNumber,
+    GameStatus GameStatus,
+    PlayerColor? Winner,
+    bool InCheck,
+    int HalfMoveClock,
+    int FullMoveNumber,
+    IReadOnlyDictionary<PlayerColor, IReadOnlyList<ReservePiece>> Reserves,
+    IReadOnlyList<ChessActionRecord> MoveHistory,
+    TurnState TurnState,
+    IReadOnlyList<CardInstance> DrawDeck,
+    IReadOnlyList<CardInstance> DiscardPile
+);

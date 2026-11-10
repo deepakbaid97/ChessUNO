@@ -12,13 +12,26 @@
   export let canSwap: boolean = false;
   export let remainingDeckCount: number = 108;
   export let isDrawing: boolean = false;
+  export let availableChoices: string[] = [];
 
   const dispatch = createEventDispatcher<{
     drawCard: void;
     activateSwap: void;
     activateRevival: void;
     endTurn: void;
+    submitChoice: { choice: string };
   }>();
+
+  function getChoiceLabel(choice: string): string {
+    switch (choice) {
+      case 'MOVE_1': return '♟️ 1 Chess Move';
+      case 'REVIVE_UP_TO_TWO': return '✨ Revive up to 2 Pieces';
+      case 'SWAP_OWN_PIECES': return '🔄 Swap 2 Friendly Pieces';
+      case 'REVIVE_UP_TO_FOUR': return '🌟 Revive up to 4 Pieces';
+      case 'REVIVE_TWO_AND_MOVE_TWO': return '⚡ Revive 2 & Move 2';
+      default: return choice;
+    }
+  }
 
   let selectedCard: CardModel | null = null;
   let showDetails: boolean = false;
@@ -83,6 +96,22 @@
           on:select={handleCardClick}
         />
         <div class="card-hint">Click card to view details or activate</div>
+        {#if isMyTurn && turnPhase === 'AwaitingChoice' && availableChoices.length > 0}
+          <div class="choices-container" data-testid="choices-container">
+            <div class="choices-title">Select Ability:</div>
+            <div class="choices-buttons">
+              {#each availableChoices as choice}
+                <button
+                  class="btn btn-primary btn-sm choice-btn"
+                  data-testid="btn-choice-{choice.toLowerCase()}"
+                  on:click={() => dispatch('submitChoice', { choice })}
+                >
+                  {getChoiceLabel(choice)}
+                </button>
+              {/each}
+            </div>
+          </div>
+        {/if}
         {#if isMyTurn && turnPhase === 'ActionPhase'}
           <button class="btn btn-secondary btn-sm end-turn-btn" on:click={() => dispatch('endTurn')} data-testid="btn-end-turn">
             End Turn ⏭️
@@ -193,6 +222,35 @@
   .card-hint {
     font-size: 0.75rem;
     color: var(--text-muted);
+  }
+
+  .choices-container {
+    width: 100%;
+    background: rgba(251, 191, 36, 0.08);
+    border: 1px solid rgba(251, 191, 36, 0.25);
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 6px;
+    text-align: center;
+  }
+
+  .choices-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--accent-gold);
+    margin-bottom: 6px;
+  }
+
+  .choices-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .choice-btn {
+    font-size: 0.8rem;
+    padding: 6px 10px;
+    text-align: left;
   }
 
   .end-turn-btn {

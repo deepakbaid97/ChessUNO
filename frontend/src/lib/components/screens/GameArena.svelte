@@ -16,6 +16,7 @@
     proposeMove: { from: string; to: string; promotion?: PieceType };
     drawCard: void;
     endTurn: void;
+    submitChoice: { choice: string };
     submitSwap: { sq1: string; sq2: string };
     submitRevival: { pieceType: string; targetSquare: string };
     resign: void;
@@ -162,9 +163,11 @@
         remainingMoves={storeState.remainingMoves}
         remainingRevivals={storeState.remainingRevivals}
         canSwap={storeState.canSwap}
+        availableChoices={storeState.availableChoices || []}
         remainingDeckCount={storeState.remainingDeckCount}
         on:drawCard={() => dispatch('drawCard')}
         on:endTurn={() => dispatch('endTurn')}
+        on:submitChoice={(e) => dispatch('submitChoice', e.detail)}
         on:activateSwap={handleActivateSwap}
         on:activateRevival={handleActivateRevival}
       />

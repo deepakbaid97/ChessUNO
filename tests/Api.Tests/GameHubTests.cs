@@ -190,6 +190,55 @@ public class GameHubTests : IClassFixture<WebApplicationFactory<Program>>
         var completed = await Task.WhenAny(updateTcs.Task, Task.Delay(5000));
         Assert.Equal(updateTcs.Task, completed);
     }
+
+    [Fact]
+    public async Task TerminalSession_RejectsFurtherActions()
+    {
+        var createResponse = await _httpClient.PostAsJsonAsync("/api/games", new { PlayerName = "Alice" });
+        var created = await createResponse.Content.ReadFromJsonAsync<CreateGameResponse>();
+
+        await using var connectionA = CreateHubConnection();
+        await connectionA.StartAsync();
+        await connectionA.InvokeAsync<bool>("JoinGameRoom", created!.GameId, created.PlayerToken);
+
+        // Alice resigns
+        var resignSuccess = await connectionA.InvokeAsync<bool>("Resign", created.GameId, created.PlayerToken);
+        Assert.True(resignSuccess);
+
+        // Further actions should now be rejected by the authoritative hub
+        var drawResult = await connectionA.InvokeAsync<bool>("DrawCard", created.GameId, created.PlayerToken);
+        Assert.False(drawResult);
+
+        var moveResult = await connectionA.InvokeAsync<bool>("SubmitMove", created.GameId, created.PlayerToken, "e2", "e4", null);
+        Assert.False(moveResult);
+    }
+
+    [Fact]
+    public async Task SubmitChoice_WhenWildCardDrawn_SetsActionQuota()
+    {
+        var createResponse = await _httpClient.PostAsJsonAsync("/api/games", new { PlayerName = "Alice" });
+        var created = await createResponse.Content.ReadFromJsonAsync<CreateGameResponse>();
+
+        // Inject WILD_CHOICE card directly into session controller for test
+        var sessionRepo = _factory.Services.GetService(typeof(ChessUno.Core.Sessions.IGameSessionRepository)) as ChessUno.Core.Sessions.IGameSessionRepository;
+        var session = await sessionRepo!.GetByIdAsync(created!.GameId);
+        var wildCard = new ChessUno.Core.Cards.CardInstance(Guid.NewGuid(), new ChessUno.Core.Cards.CardDefinition("card-wild", "Wild", "WILD", 4, "WILD_CHOICE", ""));
+        session!.EngineController.InjectNextCard(wildCard);
+
+        await using var connectionA = CreateHubConnection();
+        await connectionA.StartAsync();
+        await connectionA.InvokeAsync<bool>("JoinGameRoom", created.GameId, created.PlayerToken);
+
+        // Draw card (now in AwaitingChoice)
+        await connectionA.InvokeAsync<bool>("DrawCard", created.GameId, created.PlayerToken);
+        Assert.Equal(ChessUno.Core.Domain.Turn.TurnPhase.AwaitingChoice, session.EngineController.CurrentTurn.Phase);
+
+        // Submit choice MOVE_1
+        var choiceSuccess = await connectionA.InvokeAsync<bool>("SubmitChoice", created.GameId, created.PlayerToken, "MOVE_1");
+        Assert.True(choiceSuccess);
+        Assert.Equal(ChessUno.Core.Domain.Turn.TurnPhase.ActionPhase, session.EngineController.CurrentTurn.Phase);
+        Assert.Equal(1, session.EngineController.CurrentTurn.RemainingMoves);
+    }
 }
 
 public record GameSnapshotDto(

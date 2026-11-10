@@ -12,7 +12,8 @@ public enum ChessActionType
     Castling,
     EnPassant,
     PawnPromotion,
-    Revival
+    Revival,
+    Swap
 }
 
 public record ChessMove(

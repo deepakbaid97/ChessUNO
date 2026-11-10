@@ -32,6 +32,30 @@ public class RobustnessTests
     }
 
     [Fact]
+    public void TerminalState_MoveAfterResignationOrDraw_IsRejected()
+    {
+        var game = _engine.CreateInitialGame();
+        var resignedGame = game with { Status = GameStatus.Resigned, Winner = PlayerColor.Black };
+
+        Assert.Throws<InvalidOperationException>(() =>
+            _engine.ApplyMove(resignedGame, new ChessMove(Square.Parse("e2"), Square.Parse("e4"))));
+
+        var drawGame = game with { Status = GameStatus.DrawByFiftyMoveRule };
+        Assert.Throws<InvalidOperationException>(() =>
+            _engine.ApplyMove(drawGame, new ChessMove(Square.Parse("e2"), Square.Parse("e4"))));
+    }
+
+    [Fact]
+    public void TerminalState_RevivalAfterTerminalState_IsRejected()
+    {
+        var game = _engine.CreateInitialGame();
+        var resignedGame = game with { Status = GameStatus.Resigned, Winner = PlayerColor.Black };
+
+        Assert.Throws<InvalidOperationException>(() =>
+            _engine.ApplyRevival(resignedGame, PlayerColor.White, PieceType.Pawn, Square.Parse("e3")));
+    }
+
+    [Fact]
     public void WrongPlayer_SubmittingMove_IsRejected()
     {
         var game = _engine.CreateInitialGame(); // White to move

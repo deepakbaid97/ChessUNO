@@ -53,6 +53,8 @@ export interface GameSnapshot {
   blackReserves: string[];
   legalMoves: string[];
   revision: number;
+  availableChoices?: string[];
+  sessionStatus?: string;
 }
 
 export interface GameStateUpdate {
@@ -71,6 +73,8 @@ export interface GameStateUpdate {
   whiteReserves?: string[];
   blackReserves?: string[];
   legalMoves?: string[];
+  availableChoices?: string[];
+  sessionStatus?: string;
 }
 
 export interface MoveAcceptedData {
@@ -103,6 +107,11 @@ export interface PiecesSwappedData {
   square1: string;
   square2: string;
   boardFen: string;
+}
+
+export interface EffectChosenData {
+  player: string;
+  choice: string;
 }
 
 export interface InvitationInfo {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using ChessUno.Core.Cards;
 using ChessUno.Core.Config;
 using ChessUno.Core.Decks;
@@ -12,6 +13,7 @@ using ChessUno.Core.Effects;
 using ChessUno.Core.Events;
 using ChessUno.Core.GameEngine;
 using ChessUno.Core.Validation;
+using ChessDotNet;
 
 namespace ChessUno.Core.Turn;
 
@@ -45,7 +47,9 @@ public class TurnController
         IDeckManager deckManager,
         CardEffectExecutor effectExecutor,
         ICardValidator validator,
-        GameState initialGame)
+        GameState initialGame,
+        TurnState? currentTurn = null,
+        long sequenceNumber = 1)
     {
         _config = config ?? throw new ArgumentNullException(nameof(config));
         _chessEngine = chessEngine ?? throw new ArgumentNullException(nameof(chessEngine));
@@ -53,7 +57,8 @@ public class TurnController
         _effectExecutor = effectExecutor ?? throw new ArgumentNullException(nameof(effectExecutor));
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         ChessState = initialGame ?? throw new ArgumentNullException(nameof(initialGame));
-        CurrentTurn = TurnState.StartDrawPhase(PlayerColor.White);
+        CurrentTurn = currentTurn ?? TurnState.StartDrawPhase(PlayerColor.White);
+        _sequenceNumber = sequenceNumber;
     }
 
     public void InjectNextCard(CardInstance card)
@@ -69,6 +74,11 @@ public class TurnController
 
     public CardInstance DrawCard(PlayerColor player)
     {
+        if (_chessEngine.IsTerminalState(ChessState.Status))
+        {
+            throw new InvalidOperationException($"Cannot draw card in terminal game state '{ChessState.Status}'.");
+        }
+
         if (player != ActivePlayer)
         {
             throw new InvalidOperationException($"Cannot draw out of turn. Active player is {ActivePlayer}.");
@@ -109,8 +119,16 @@ public class TurnController
             throw new InvalidOperationException($"Card effect failed: {execution.ErrorMessage}");
         }
 
-        // Check Decision A2: Immediate defeat if in check and drawn card gives 0 moves/escape
-        if (ChessState.InCheck && execution.RemainingMoves == 0 && !execution.CanSwap && execution.RemainingRevivals == 0)
+        int playerReservesCount = ChessState.Reserves.TryGetValue(player, out var res) ? res.Count : 0;
+        bool canEscapeWithRevival = execution.RemainingRevivals > 0 && playerReservesCount > 0;
+
+        // Immediate defeat if in check and drawn card gives 0 moves/escape routes
+        if (ChessState.InCheck &&
+            execution.RemainingMoves == 0 &&
+            !execution.CanSwap &&
+            !canEscapeWithRevival &&
+            !execution.AwaitingChoice &&
+            (execution.PendingSequence == null || execution.PendingSequence.Count == 0))
         {
             ChessState = ChessState with
             {
@@ -121,42 +139,47 @@ public class TurnController
             return card;
         }
 
-        // Apply new TurnState
-        if (execution.SkipOpponent)
-        {
-            // Skip opponent: active player draws again for a new turn!
-            CurrentTurn = TurnState.StartDrawPhase(player);
-            EmitEvent(new TurnChangedEvent(Guid.NewGuid(), _sequenceNumber++, DateTimeOffset.UtcNow, player, ChessState.FullMoveNumber));
-        }
-        else if (execution.AwaitingChoice)
-        {
-            CurrentTurn = CurrentTurn with
-            {
-                Phase = TurnPhase.AwaitingChoice,
-                ActiveCard = card,
-                AvailableChoices = execution.AvailableChoices
-            };
-        }
-        else
-        {
-            CurrentTurn = CurrentTurn with
-            {
-                Phase = TurnPhase.ActionPhase,
-                ActiveCard = card,
-                RemainingMoves = execution.RemainingMoves,
-                RemainingRevivals = execution.RemainingRevivals,
-                CanSwap = execution.CanSwap,
-                PendingSequence = execution.PendingSequence
-            };
-
-            // If 0 moves and no actions, pass turn
-            if (CurrentTurn.RemainingMoves == 0 && !CurrentTurn.CanSwap && CurrentTurn.RemainingRevivals == 0)
-            {
-                EndTurnInternal();
-            }
-        }
-
+        ApplyExecutionResult(execution, card);
         return card;
+    }
+
+    public ActionResult SubmitChoice(PlayerColor player, string choiceEffectKey)
+    {
+        if (player != ActivePlayer)
+        {
+            return ActionResult.Failure($"Not player '{player}' turn.");
+        }
+
+        if (_chessEngine.IsTerminalState(ChessState.Status))
+        {
+            return ActionResult.Failure($"Cannot submit choice in terminal game state '{ChessState.Status}'.");
+        }
+
+        if (CurrentTurn.Phase != TurnPhase.AwaitingChoice)
+        {
+            return ActionResult.Failure("Cannot submit choice outside AwaitingChoice phase.");
+        }
+
+        if (CurrentTurn.AvailableChoices == null || !CurrentTurn.AvailableChoices.Contains(choiceEffectKey, StringComparer.OrdinalIgnoreCase))
+        {
+            return ActionResult.Failure($"Invalid choice '{choiceEffectKey}'.");
+        }
+
+        EmitEvent(new EffectChosenEvent(Guid.NewGuid(), _sequenceNumber++, DateTimeOffset.UtcNow, player, choiceEffectKey));
+
+        var execution = _effectExecutor.ExecuteEffectKey(ChessState, player, choiceEffectKey, _sequenceNumber++);
+        foreach (var evt in execution.EmittedEvents)
+        {
+            _eventLog.Add(evt);
+        }
+
+        if (!execution.IsSuccess)
+        {
+            return ActionResult.Failure(execution.ErrorMessage ?? "Choice execution failed.");
+        }
+
+        ApplyExecutionResult(execution, CurrentTurn.ActiveCard);
+        return ActionResult.Success();
     }
 
     public ActionResult SubmitChessMove(PlayerColor player, ChessMove move)
@@ -164,6 +187,11 @@ public class TurnController
         if (player != ActivePlayer)
         {
             return ActionResult.Failure($"Not player '{player}' turn.");
+        }
+
+        if (_chessEngine.IsTerminalState(ChessState.Status))
+        {
+            return ActionResult.Failure($"Cannot move in terminal game state '{ChessState.Status}'.");
         }
 
         if (CurrentTurn.Phase != TurnPhase.ActionPhase || CurrentTurn.RemainingMoves <= 0)
@@ -174,16 +202,20 @@ public class TurnController
         try
         {
             bool hasMoreMoves = CurrentTurn.RemainingMoves > 1;
-            // When more moves remain on the card, keep turn initiative for sequential multi-moves
             ChessState = _chessEngine.ApplyMove(ChessState, move, toggleTurn: !hasMoreMoves);
+
+            if (_chessEngine.IsTerminalState(ChessState.Status))
+            {
+                CurrentTurn = CurrentTurn with { Phase = TurnPhase.TurnEnded, RemainingMoves = 0 };
+                return ActionResult.Success();
+            }
 
             int remaining = CurrentTurn.RemainingMoves - 1;
             CurrentTurn = CurrentTurn with { RemainingMoves = remaining };
 
             if (remaining == 0)
             {
-                // Move quota completed
-                EndTurnInternal();
+                OnActionStepCompleted();
             }
 
             return ActionResult.Success();
@@ -201,6 +233,11 @@ public class TurnController
             return ActionResult.Failure($"Not player '{player}' turn.");
         }
 
+        if (_chessEngine.IsTerminalState(ChessState.Status))
+        {
+            return ActionResult.Failure($"Cannot revive in terminal game state '{ChessState.Status}'.");
+        }
+
         if (CurrentTurn.Phase != TurnPhase.ActionPhase || CurrentTurn.RemainingRevivals <= 0)
         {
             return ActionResult.Failure("No remaining revivals available.");
@@ -209,12 +246,19 @@ public class TurnController
         try
         {
             ChessState = _chessEngine.ApplyRevival(ChessState, player, pieceType, targetSquare);
+
+            if (_chessEngine.IsTerminalState(ChessState.Status))
+            {
+                CurrentTurn = CurrentTurn with { Phase = TurnPhase.TurnEnded, RemainingRevivals = 0 };
+                return ActionResult.Success();
+            }
+
             int remaining = CurrentTurn.RemainingRevivals - 1;
             CurrentTurn = CurrentTurn with { RemainingRevivals = remaining };
 
             if (remaining == 0)
             {
-                EndTurnInternal();
+                OnActionStepCompleted();
             }
 
             return ActionResult.Success();
@@ -232,45 +276,52 @@ public class TurnController
             return ActionResult.Failure($"Not player '{player}' turn.");
         }
 
+        if (_chessEngine.IsTerminalState(ChessState.Status))
+        {
+            return ActionResult.Failure($"Cannot swap in terminal game state '{ChessState.Status}'.");
+        }
+
         if (!CurrentTurn.CanSwap)
         {
             return ActionResult.Failure("Swap action is not permitted.");
         }
 
-        var p1 = ChessState.GetPieceAt(sq1);
-        var p2 = ChessState.GetPieceAt(sq2);
-
-        if (p1 == null || p2 == null)
+        try
         {
-            return ActionResult.Failure("Both squares must contain pieces to swap.");
-        }
+            ChessState = _chessEngine.ApplySwap(ChessState, player, sq1, sq2);
+            CurrentTurn = CurrentTurn with { CanSwap = false };
 
-        if (p1.Color != player || p2.Color != player)
+            if (_chessEngine.IsTerminalState(ChessState.Status))
+            {
+                CurrentTurn = CurrentTurn with { Phase = TurnPhase.TurnEnded };
+                return ActionResult.Success();
+            }
+
+            OnActionStepCompleted();
+            return ActionResult.Success();
+        }
+        catch (Exception ex)
         {
-            return ActionResult.Failure("Can only swap friendly pieces.");
+            return ActionResult.Failure(ex.Message);
         }
-
-        if (p1.Type == PieceType.King || p2.Type == PieceType.King)
-        {
-            return ActionResult.Failure("Cannot swap Kings.");
-        }
-
-        // Perform swap by updating FEN
-        string fenAfterSwap = SwapPiecesOnFen(ChessState.Fen, sq1, p1, sq2, p2);
-        ChessState = ChessState with { Fen = fenAfterSwap };
-
-        CurrentTurn = CurrentTurn with { CanSwap = false };
-        EndTurnInternal();
-        return ActionResult.Success();
     }
 
     public IReadOnlyList<ChessMove> GetLegalMoves()
     {
+        if (_chessEngine.IsTerminalState(ChessState.Status))
+        {
+            return Array.Empty<ChessMove>();
+        }
         return _chessEngine.GetLegalMoves(ChessState, ActivePlayer);
     }
 
     public ActionResult Resign(PlayerColor player)
     {
+        if (_chessEngine.IsTerminalState(ChessState.Status))
+        {
+            return ActionResult.Failure($"Game is already in terminal state '{ChessState.Status}'.");
+        }
+
         ChessState = ChessState with
         {
             Status = GameStatus.Resigned,
@@ -286,12 +337,124 @@ public class TurnController
         {
             return ActionResult.Failure($"Not player '{player}' turn.");
         }
+
+        if (_chessEngine.IsTerminalState(ChessState.Status))
+        {
+            return ActionResult.Failure($"Cannot end turn in terminal game state '{ChessState.Status}'.");
+        }
+
         if (CurrentTurn.Phase != TurnPhase.ActionPhase)
         {
             return ActionResult.Failure("Cannot end turn outside ActionPhase.");
         }
+
+        // King Safety check: if player's King is in check, they cannot legally end turn! That triggers Checkmate / Defeat.
+        var game = new ChessGame(ChessState.Fen);
+        var cdnPlayer = player == PlayerColor.White ? ChessDotNet.Player.White : ChessDotNet.Player.Black;
+        if (game.IsInCheck(cdnPlayer))
+        {
+            ChessState = ChessState with
+            {
+                Status = GameStatus.Checkmate,
+                Winner = player.Opponent()
+            };
+            CurrentTurn = CurrentTurn with { Phase = TurnPhase.TurnEnded };
+            return ActionResult.Success();
+        }
+
+        // If a pending sequence step remains, advance to the next step
+        if (CurrentTurn.PendingSequence != null && CurrentTurn.PendingSequence.Count > 0)
+        {
+            OnActionStepCompleted();
+            return ActionResult.Success();
+        }
+
         EndTurnInternal();
         return ActionResult.Success();
+    }
+
+    private void ApplyExecutionResult(EffectExecutionResult execution, CardInstance? card)
+    {
+        if (execution.SkipOpponent)
+        {
+            CurrentTurn = TurnState.StartDrawPhase(ActivePlayer);
+            EmitEvent(new TurnChangedEvent(Guid.NewGuid(), _sequenceNumber++, DateTimeOffset.UtcNow, ActivePlayer, ChessState.FullMoveNumber));
+            return;
+        }
+
+        if (execution.AwaitingChoice)
+        {
+            CurrentTurn = CurrentTurn with
+            {
+                Phase = TurnPhase.AwaitingChoice,
+                ActiveCard = card,
+                AvailableChoices = execution.AvailableChoices
+            };
+            return;
+        }
+
+        if (execution.PendingSequence != null && execution.PendingSequence.Count > 0)
+        {
+            string firstKey = execution.PendingSequence[0];
+            var remaining = execution.PendingSequence.Skip(1).ToList();
+            var stepExec = _effectExecutor.ExecuteEffectKey(ChessState, ActivePlayer, firstKey, _sequenceNumber++);
+            foreach (var evt in stepExec.EmittedEvents)
+            {
+                _eventLog.Add(evt);
+            }
+
+            CurrentTurn = CurrentTurn with
+            {
+                Phase = TurnPhase.ActionPhase,
+                ActiveCard = card,
+                RemainingMoves = stepExec.RemainingMoves,
+                RemainingRevivals = stepExec.RemainingRevivals,
+                CanSwap = stepExec.CanSwap,
+                PendingSequence = remaining
+            };
+            return;
+        }
+
+        CurrentTurn = CurrentTurn with
+        {
+            Phase = TurnPhase.ActionPhase,
+            ActiveCard = card,
+            RemainingMoves = execution.RemainingMoves,
+            RemainingRevivals = execution.RemainingRevivals,
+            CanSwap = execution.CanSwap,
+            PendingSequence = execution.PendingSequence
+        };
+
+        if (CurrentTurn.RemainingMoves == 0 && !CurrentTurn.CanSwap && CurrentTurn.RemainingRevivals == 0)
+        {
+            EndTurnInternal();
+        }
+    }
+
+    private void OnActionStepCompleted()
+    {
+        if (CurrentTurn.PendingSequence != null && CurrentTurn.PendingSequence.Count > 0)
+        {
+            string nextKey = CurrentTurn.PendingSequence[0];
+            var remaining = CurrentTurn.PendingSequence.Skip(1).ToList();
+            var nextExec = _effectExecutor.ExecuteEffectKey(ChessState, ActivePlayer, nextKey, _sequenceNumber++);
+            foreach (var evt in nextExec.EmittedEvents)
+            {
+                _eventLog.Add(evt);
+            }
+
+            CurrentTurn = CurrentTurn with
+            {
+                Phase = TurnPhase.ActionPhase,
+                RemainingMoves = nextExec.RemainingMoves,
+                RemainingRevivals = nextExec.RemainingRevivals,
+                CanSwap = nextExec.CanSwap,
+                PendingSequence = remaining
+            };
+            return;
+        }
+
+        EndTurnInternal();
     }
 
     private void EndTurnInternal()
@@ -305,61 +468,4 @@ public class TurnController
     {
         _eventLog.Add(evt);
     }
-
-    private static string SwapPiecesOnFen(string fen, Square sq1, Domain.Pieces.Piece p1, Square sq2, Domain.Pieces.Piece p2)
-    {
-        // First place p2 on sq1
-        var intermediate = PlacePiece(fen, sq1, p2);
-        // Then place p1 on sq2
-        return PlacePiece(intermediate, sq2, p1);
-    }
-
-    private static string PlacePiece(string fen, Square square, Domain.Pieces.Piece piece)
-    {
-        var parts = fen.Split(' ');
-        var ranks = parts[0].Split('/');
-
-        int rankIndex = 8 - square.Rank;
-        string rankStr = ranks[rankIndex];
-
-        var expanded = new System.Text.StringBuilder();
-        foreach (char c in rankStr)
-        {
-            if (char.IsDigit(c))
-                expanded.Append(new string('.', c - '0'));
-            else
-                expanded.Append(c);
-        }
-
-        int fileIndex = square.File - 'a';
-        expanded[fileIndex] = piece.ToChar();
-
-        var compressed = new System.Text.StringBuilder();
-        int emptyCount = 0;
-        foreach (char c in expanded.ToString())
-        {
-            if (c == '.')
-            {
-                emptyCount++;
-            }
-            else
-            {
-                if (emptyCount > 0)
-                {
-                    compressed.Append(emptyCount);
-                    emptyCount = 0;
-                }
-                compressed.Append(c);
-            }
-        }
-        if (emptyCount > 0)
-        {
-            compressed.Append(emptyCount);
-        }
-
-        ranks[rankIndex] = compressed.ToString();
-        parts[0] = string.Join("/", ranks);
-        return string.Join(" ", parts);
-    }
 }
-

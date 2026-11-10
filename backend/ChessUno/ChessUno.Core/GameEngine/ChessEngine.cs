@@ -16,6 +16,15 @@ public class ChessEngine : IChessEngine
 {
     public const string InitialFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+    public bool IsTerminalState(GameStatus status) =>
+        status is GameStatus.Checkmate
+               or GameStatus.Stalemate
+               or GameStatus.Resigned
+               or GameStatus.Timeout
+               or GameStatus.DrawByFiftyMoveRule
+               or GameStatus.DrawByThreefoldRepetition
+               or GameStatus.DrawByInsufficientMaterial;
+
     public GameState CreateInitialGame(string configVersion = "1.0.0")
     {
         return CreateFromFen(InitialFen, configVersion);
@@ -28,6 +37,10 @@ public class ChessEngine : IChessEngine
         var inCheck = game.IsInCheck(game.WhoseTurn);
         var status = GameStatus.Active;
 
+        var fenParts = fen.Split(' ');
+        int halfMoveClock = fenParts.Length > 4 && int.TryParse(fenParts[4], out int hmc) ? hmc : 0;
+        int fullMoveNumber = fenParts.Length > 5 && int.TryParse(fenParts[5], out int fmn) ? fmn : 1;
+
         if (game.IsCheckmated(game.WhoseTurn))
         {
             status = GameStatus.Checkmate;
@@ -35,6 +48,14 @@ public class ChessEngine : IChessEngine
         else if (game.IsStalemated(game.WhoseTurn))
         {
             status = GameStatus.Stalemate;
+        }
+        else if (IsInsufficientMaterial(game))
+        {
+            status = GameStatus.DrawByInsufficientMaterial;
+        }
+        else if (halfMoveClock >= 100)
+        {
+            status = GameStatus.DrawByFiftyMoveRule;
         }
         else if (inCheck)
         {
@@ -46,10 +67,6 @@ public class ChessEngine : IChessEngine
             [PlayerColor.White] = new List<ReservePiece>(),
             [PlayerColor.Black] = new List<ReservePiece>()
         };
-
-        var fenParts = fen.Split(' ');
-        int halfMoveClock = fenParts.Length > 4 && int.TryParse(fenParts[4], out int hmc) ? hmc : 0;
-        int fullMoveNumber = fenParts.Length > 5 && int.TryParse(fenParts[5], out int fmn) ? fmn : 1;
 
         return new GameState(
             GameId: Guid.NewGuid(),
@@ -63,12 +80,18 @@ public class ChessEngine : IChessEngine
             HalfMoveClock: halfMoveClock,
             FullMoveNumber: fullMoveNumber,
             Reserves: reserves,
-            MoveHistory: new List<ChessActionRecord>()
+            MoveHistory: new List<ChessActionRecord>(),
+            InitialFen: game.GetFen()
         );
     }
 
     public IReadOnlyList<ChessMove> GetLegalMoves(GameState state, PlayerColor player)
     {
+        if (IsTerminalState(state.Status))
+        {
+            return Array.Empty<ChessMove>();
+        }
+
         var game = new ChessGame(state.Fen);
         var cdnPlayer = player == PlayerColor.White ? ChessDotNet.Player.White : ChessDotNet.Player.Black;
         var validMoves = game.GetValidMoves(cdnPlayer);
@@ -82,6 +105,7 @@ public class ChessEngine : IChessEngine
 
     public bool IsLegalMove(GameState state, PlayerColor player, ChessMove move)
     {
+        if (IsTerminalState(state.Status)) return false;
         var game = new ChessGame(state.Fen);
         var cdnPlayer = player == PlayerColor.White ? ChessDotNet.Player.White : ChessDotNet.Player.Black;
         var cdnMove = ToChessDotNetMove(move, cdnPlayer);
@@ -93,7 +117,7 @@ public class ChessEngine : IChessEngine
 
     public GameState ApplyMove(GameState state, ChessMove move, bool toggleTurn)
     {
-        if (state.Status == GameStatus.Checkmate || state.Status == GameStatus.Stalemate)
+        if (IsTerminalState(state.Status))
         {
             throw new InvalidOperationException($"Cannot make a move in terminal game state '{state.Status}'.");
         }
@@ -117,16 +141,14 @@ public class ChessEngine : IChessEngine
             capturedType = PieceType.Pawn; // En passant
         }
 
-        // Apply move
+        // Apply move in ChessDotNet (this moves the piece and advances whoseTurn to opponent)
         var moveType = game.MakeMove(cdnMove, alreadyValidated: true);
         var newFen = game.GetFen();
 
-        if (!toggleTurn)
-        {
-            // Keep the active player for sequential multi-moves
-            newFen = SetFenActivePlayer(newFen, state.ActivePlayer);
-            game = new ChessGame(newFen);
-        }
+        // Right after MakeMove, game.WhoseTurn is the OPPONENT!
+        bool opponentCheckmated = game.IsCheckmated(game.WhoseTurn);
+        bool opponentStalemated = game.IsStalemated(game.WhoseTurn);
+        bool opponentInCheck = game.IsInCheck(game.WhoseTurn);
 
         // Update reserves (Graveyard style: captured piece goes to original owner's reserve pool)
         var newReserves = CloneReserves(state.Reserves);
@@ -140,32 +162,93 @@ public class ChessEngine : IChessEngine
             newReserves[capturedOwner] = reserveList;
         }
 
+        // If move delivered checkmate, game ends immediately with victory regardless of remaining moves!
+        if (opponentCheckmated)
+        {
+            var fenPartsImmediate = newFen.Split(' ');
+            int hmcImmediate = fenPartsImmediate.Length > 4 && int.TryParse(fenPartsImmediate[4], out int hmc1) ? hmc1 : 0;
+            int fmnImmediate = fenPartsImmediate.Length > 5 && int.TryParse(fenPartsImmediate[5], out int fmn1) ? fmn1 : state.FullMoveNumber;
+
+            var actionTypeImmediate = DetermineActionType(moveType, capturedType.HasValue, move.PromotionPiece.HasValue);
+            var recordImmediate = new ChessActionRecord(
+                ActionNumber: state.MoveHistory.Count + 1,
+                Player: state.ActivePlayer,
+                ActionType: actionTypeImmediate,
+                FromSquare: move.From,
+                ToSquare: move.To,
+                PieceType: pieceAtFrom?.Type ?? PieceType.Pawn,
+                CapturedPieceType: capturedType,
+                FenAfter: newFen,
+                UciNotation: move.ToString(),
+                Timestamp: DateTimeOffset.UtcNow
+            );
+
+            return new GameState(
+                GameId: state.GameId,
+                ConfigVersion: state.ConfigVersion,
+                EventSequenceNumber: state.EventSequenceNumber + 1,
+                Fen: newFen,
+                ActivePlayer: state.ActivePlayer.Opponent(),
+                Status: GameStatus.Checkmate,
+                Winner: state.ActivePlayer,
+                InCheck: true,
+                HalfMoveClock: hmcImmediate,
+                FullMoveNumber: fmnImmediate,
+                Reserves: newReserves,
+                MoveHistory: new List<ChessActionRecord>(state.MoveHistory) { recordImmediate },
+                InitialFen: state.InitialFen ?? state.Fen
+            );
+        }
+
+        if (!toggleTurn)
+        {
+            // Keep the active player for sequential multi-moves
+            newFen = SetFenActivePlayer(newFen, state.ActivePlayer);
+            game = new ChessGame(newFen);
+        }
+
         var nextPlayer = toggleTurn
             ? (game.WhoseTurn == ChessDotNet.Player.White ? PlayerColor.White : PlayerColor.Black)
             : state.ActivePlayer;
 
-        var inCheck = game.IsInCheck(game.WhoseTurn);
+        var inCheck = toggleTurn ? opponentInCheck : opponentInCheck;
         var newStatus = GameStatus.Active;
         PlayerColor? winner = null;
 
-        if (game.IsCheckmated(game.WhoseTurn))
-        {
-            newStatus = GameStatus.Checkmate;
-            winner = state.ActivePlayer;
-        }
-        else if (game.IsStalemated(game.WhoseTurn))
-        {
-            newStatus = GameStatus.Stalemate;
-        }
-        else if (inCheck)
-        {
-            newStatus = GameStatus.Check;
-        }
-
-        // Parse halfmove and fullmove from new FEN
         var fenParts = newFen.Split(' ');
         int halfMoveClock = fenParts.Length > 4 && int.TryParse(fenParts[4], out int hmc) ? hmc : 0;
         int fullMoveNumber = fenParts.Length > 5 && int.TryParse(fenParts[5], out int fmn) ? fmn : state.FullMoveNumber;
+
+        if (toggleTurn)
+        {
+            if (opponentStalemated)
+            {
+                newStatus = GameStatus.Stalemate;
+            }
+            else if (halfMoveClock >= 100)
+            {
+                newStatus = GameStatus.DrawByFiftyMoveRule;
+            }
+            else if (IsInsufficientMaterial(game))
+            {
+                newStatus = GameStatus.DrawByInsufficientMaterial;
+            }
+            else if (IsThreefoldRepetition(state.MoveHistory, newFen, state.InitialFen ?? state.Fen))
+            {
+                newStatus = GameStatus.DrawByThreefoldRepetition;
+            }
+            else if (inCheck)
+            {
+                newStatus = GameStatus.Check;
+            }
+        }
+        else
+        {
+            if (inCheck)
+            {
+                newStatus = GameStatus.Check;
+            }
+        }
 
         var actionType = DetermineActionType(moveType, capturedType.HasValue, move.PromotionPiece.HasValue);
         var record = new ChessActionRecord(
@@ -195,13 +278,14 @@ public class ChessEngine : IChessEngine
             HalfMoveClock: halfMoveClock,
             FullMoveNumber: fullMoveNumber,
             Reserves: newReserves,
-            MoveHistory: newHistory
+            MoveHistory: newHistory,
+            InitialFen: state.InitialFen ?? state.Fen
         );
     }
 
     public GameState ApplyRevival(GameState state, PlayerColor player, PieceType pieceType, Square targetSquare)
     {
-        if (state.Status == GameStatus.Checkmate || state.Status == GameStatus.Stalemate)
+        if (IsTerminalState(state.Status))
         {
             throw new InvalidOperationException($"Cannot revive pieces in terminal game state '{state.Status}'.");
         }
@@ -260,11 +344,15 @@ public class ChessEngine : IChessEngine
         updatedList.Remove(pieceToRevive);
         newReserves[player] = updatedList;
 
-        var inCheck = game.IsInCheck(game.WhoseTurn);
+        var cdnOpponent = player == PlayerColor.White ? ChessDotNet.Player.Black : ChessDotNet.Player.White;
+        var inCheck = game.IsInCheck(cdnOpponent);
         var status = GameStatus.Active;
-        if (game.IsCheckmated(game.WhoseTurn))
+        PlayerColor? winner = null;
+
+        if (game.IsCheckmated(cdnOpponent))
         {
             status = GameStatus.Checkmate;
+            winner = player;
         }
         else if (inCheck)
         {
@@ -293,12 +381,109 @@ public class ChessEngine : IChessEngine
             Fen: newFen,
             ActivePlayer: state.ActivePlayer,
             Status: status,
-            Winner: status == GameStatus.Checkmate ? player : null,
+            Winner: winner,
             InCheck: inCheck,
             HalfMoveClock: state.HalfMoveClock,
             FullMoveNumber: state.FullMoveNumber,
             Reserves: newReserves,
-            MoveHistory: newHistory
+            MoveHistory: newHistory,
+            InitialFen: state.InitialFen ?? state.Fen
+        );
+    }
+
+    public GameState ApplySwap(GameState state, PlayerColor player, Square sq1, Square sq2)
+    {
+        if (IsTerminalState(state.Status))
+        {
+            throw new InvalidOperationException($"Cannot swap pieces in terminal game state '{state.Status}'.");
+        }
+
+        if (player != state.ActivePlayer)
+        {
+            throw new InvalidOperationException($"Player '{player}' cannot swap out of turn (Active player: '{state.ActivePlayer}').");
+        }
+
+        if (sq1.Equals(sq2))
+        {
+            throw new InvalidOperationException("Cannot swap a square with itself.");
+        }
+
+        var p1 = state.GetPieceAt(sq1);
+        var p2 = state.GetPieceAt(sq2);
+
+        if (p1 == null || p2 == null)
+        {
+            throw new InvalidOperationException("Both squares must contain pieces to swap.");
+        }
+
+        if (p1.Color != player || p2.Color != player)
+        {
+            throw new InvalidOperationException("Can only swap friendly pieces.");
+        }
+
+        if (p1.Type == PieceType.King || p2.Type == PieceType.King)
+        {
+            throw new InvalidOperationException("King cannot be swapped.");
+        }
+
+        // Perform swap on FEN
+        string newFen = SwapPiecesOnFen(state.Fen, sq1, p1, sq2, p2);
+        newFen = UpdateCastlingRightsAfterSwap(newFen, sq1, sq2);
+        newFen = ClearEnPassant(newFen);
+
+        // Verify King Safety: Swapping must NOT leave own King in check
+        var game = new ChessGame(newFen);
+        var cdnPlayer = player == PlayerColor.White ? ChessDotNet.Player.White : ChessDotNet.Player.Black;
+        if (game.IsInCheck(cdnPlayer))
+        {
+            throw new InvalidOperationException("Swap leaves player's King in check.");
+        }
+
+        // Check if swap puts opponent in check or checkmate
+        var cdnOpponent = player == PlayerColor.White ? ChessDotNet.Player.Black : ChessDotNet.Player.White;
+        var inCheck = game.IsInCheck(cdnOpponent);
+        var status = GameStatus.Active;
+        PlayerColor? winner = null;
+
+        if (game.IsCheckmated(cdnOpponent))
+        {
+            status = GameStatus.Checkmate;
+            winner = player;
+        }
+        else if (inCheck)
+        {
+            status = GameStatus.Check;
+        }
+
+        var record = new ChessActionRecord(
+            ActionNumber: state.MoveHistory.Count + 1,
+            Player: player,
+            ActionType: ChessActionType.Swap,
+            FromSquare: sq1,
+            ToSquare: sq2,
+            PieceType: p1.Type,
+            CapturedPieceType: null,
+            FenAfter: newFen,
+            UciNotation: $"{sq1}<->{sq2}",
+            Timestamp: DateTimeOffset.UtcNow
+        );
+
+        var newHistory = new List<ChessActionRecord>(state.MoveHistory) { record };
+
+        return new GameState(
+            GameId: state.GameId,
+            ConfigVersion: state.ConfigVersion,
+            EventSequenceNumber: state.EventSequenceNumber + 1,
+            Fen: newFen,
+            ActivePlayer: state.ActivePlayer,
+            Status: status,
+            Winner: winner,
+            InCheck: inCheck,
+            HalfMoveClock: state.HalfMoveClock + 1,
+            FullMoveNumber: state.FullMoveNumber,
+            Reserves: CloneReserves(state.Reserves),
+            MoveHistory: newHistory,
+            InitialFen: state.InitialFen ?? state.Fen
         );
     }
 
@@ -320,12 +505,130 @@ public class ChessEngine : IChessEngine
         {
             parts[1] = player == PlayerColor.White ? "w" : "b";
         }
-        // When active player does not change, previous en passant rights expire
         if (parts.Length > 3)
         {
             parts[3] = "-";
         }
         return string.Join(" ", parts);
+    }
+
+    private static string ClearEnPassant(string fen)
+    {
+        var parts = fen.Split(' ');
+        if (parts.Length > 3)
+        {
+            parts[3] = "-";
+        }
+        return string.Join(" ", parts);
+    }
+
+    private static string UpdateCastlingRightsAfterSwap(string fen, Square sq1, Square sq2)
+    {
+        var parts = fen.Split(' ');
+        if (parts.Length <= 2 || parts[2] == "-") return fen;
+
+        var castling = parts[2];
+        if (sq1.ToString() == "a1" || sq2.ToString() == "a1") castling = castling.Replace("Q", "");
+        if (sq1.ToString() == "h1" || sq2.ToString() == "h1") castling = castling.Replace("K", "");
+        if (sq1.ToString() == "a8" || sq2.ToString() == "a8") castling = castling.Replace("q", "");
+        if (sq1.ToString() == "h8" || sq2.ToString() == "h8") castling = castling.Replace("k", "");
+
+        if (string.IsNullOrEmpty(castling)) castling = "-";
+        parts[2] = castling;
+        return string.Join(" ", parts);
+    }
+
+    private static string SwapPiecesOnFen(string fen, Square sq1, DomainPiece p1, Square sq2, DomainPiece p2)
+    {
+        var intermediate = PlacePieceOnFen(fen, sq1, p2);
+        return PlacePieceOnFen(intermediate, sq2, p1);
+    }
+
+    private static bool IsThreefoldRepetition(IReadOnlyList<ChessActionRecord> history, string currentFen, string? initialFen)
+    {
+        if (history == null || history.Count < 4) return false;
+
+        string GetPositionKey(string fen)
+        {
+            var p = fen.Split(' ');
+            return p.Length >= 4 ? $"{p[0]} {p[1]} {p[2]} {p[3]}" : fen;
+        }
+
+        var targetKey = GetPositionKey(currentFen);
+        int occurrences = 1; // currentFen counts as 1
+
+        if (!string.IsNullOrEmpty(initialFen) && GetPositionKey(initialFen) == targetKey)
+        {
+            occurrences++;
+        }
+
+        foreach (var record in history)
+        {
+            if (GetPositionKey(record.FenAfter) == targetKey)
+            {
+                occurrences++;
+                if (occurrences >= 3) return true;
+            }
+        }
+
+        return occurrences >= 3;
+    }
+
+    private static bool IsInsufficientMaterial(ChessGame game)
+    {
+        // Insufficient material check:
+        // Bare Kings, King + Knight vs King, King + Bishop vs King, King + Bishop vs King + Bishop (same color squares)
+        var board = game.GetBoard();
+        var whitePieces = new List<(ChessDotNet.Piece Piece, int Rank, int File)>();
+        var blackPieces = new List<(ChessDotNet.Piece Piece, int Rank, int File)>();
+
+        for (int rank = 0; rank < 8; rank++)
+        {
+            for (int file = 0; file < 8; file++)
+            {
+                var piece = board[rank][file];
+                if (piece != null)
+                {
+                    if (piece.Owner == ChessDotNet.Player.White)
+                        whitePieces.Add((piece, rank, file));
+                    else
+                        blackPieces.Add((piece, rank, file));
+                }
+            }
+        }
+
+        var whiteNonKing = whitePieces.Where(p => !(p.Piece is ChessDotNet.Pieces.King)).ToList();
+        var blackNonKing = blackPieces.Where(p => !(p.Piece is ChessDotNet.Pieces.King)).ToList();
+
+        // 1. King vs King
+        if (whiteNonKing.Count == 0 && blackNonKing.Count == 0) return true;
+
+        // 2. King + minor piece (Bishop or Knight) vs King
+        if (whiteNonKing.Count == 1 && blackNonKing.Count == 0)
+        {
+            var p = whiteNonKing[0].Piece;
+            if (p is ChessDotNet.Pieces.Bishop || p is ChessDotNet.Pieces.Knight) return true;
+        }
+        if (blackNonKing.Count == 1 && whiteNonKing.Count == 0)
+        {
+            var p = blackNonKing[0].Piece;
+            if (p is ChessDotNet.Pieces.Bishop || p is ChessDotNet.Pieces.Knight) return true;
+        }
+
+        // 3. King + Bishop vs King + Bishop on same color squares
+        if (whiteNonKing.Count == 1 && blackNonKing.Count == 1)
+        {
+            var wp = whiteNonKing[0];
+            var bp = blackNonKing[0];
+            if (wp.Piece is ChessDotNet.Pieces.Bishop && bp.Piece is ChessDotNet.Pieces.Bishop)
+            {
+                bool whiteSquareColor = (wp.Rank + wp.File) % 2 == 0;
+                bool blackSquareColor = (bp.Rank + bp.File) % 2 == 0;
+                if (whiteSquareColor == blackSquareColor) return true;
+            }
+        }
+
+        return false;
     }
 
     private static ChessDotNet.Move ToChessDotNetMove(ChessMove move, ChessDotNet.Player player)

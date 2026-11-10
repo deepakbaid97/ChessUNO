@@ -17,7 +17,11 @@ builder.Services.AddCors(options =>
     {
         policy.AllowAnyHeader()
               .AllowAnyMethod()
-              .SetIsOriginAllowed(_ => true)
+              .SetIsOriginAllowed(origin =>
+              {
+                  if (builder.Environment.IsDevelopment()) return true;
+                  return origin.StartsWith("http://localhost") || origin.StartsWith("https://localhost");
+              })
               .AllowCredentials();
     });
 });

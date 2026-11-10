@@ -1,3 +1,6 @@
+> [!NOTE]
+> For the comprehensive test strategy covering all current suites and execution instructions, see [testing-strategy.md](file:///c:/ProdProjects/TrackLord/UnoChess/docs/testing-strategy.md).
+
 # Chess UNO — Test-Driven Development (TDD) Strategy (Phase 0)
 
 ## 1. TDD Philosophy and Principles

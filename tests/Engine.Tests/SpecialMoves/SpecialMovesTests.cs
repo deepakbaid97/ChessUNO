@@ -86,4 +86,49 @@ public class SpecialMovesTests
         Assert.Equal(PieceType.Queen, queen.Type);
         Assert.Equal(PlayerColor.White, queen.Color);
     }
+
+    [Fact]
+    public void Swap_ValidFriendlyPieces_SwapsPositionsAndRecordsAction()
+    {
+        // White Knight on b1 and Bishop on c1
+        var game = _engine.CreateInitialGame();
+        var afterSwap = _engine.ApplySwap(game, PlayerColor.White, Square.Parse("b1"), Square.Parse("c1"));
+
+        var pieceAtB1 = afterSwap.GetPieceAt(Square.Parse("b1"));
+        var pieceAtC1 = afterSwap.GetPieceAt(Square.Parse("c1"));
+
+        Assert.Equal(PieceType.Bishop, pieceAtB1!.Type);
+        Assert.Equal(PieceType.Knight, pieceAtC1!.Type);
+        Assert.Equal(ChessActionType.Swap, afterSwap.MoveHistory[^1].ActionType);
+    }
+
+    [Fact]
+    public void Swap_LeavingOwnKingInCheck_ThrowsInvalidOperationException()
+    {
+        // White King on e1 in check from Black Rook on e8. White Pawns on a2 and b2.
+        // Swapping Pawns on a2 and b2 leaves White King in check!
+        var fen = "4r3/8/8/8/8/8/PP6/4K3 w - - 0 1";
+        var game = _engine.CreateFromFen(fen);
+
+        Assert.Throws<InvalidOperationException>(() =>
+            _engine.ApplySwap(game, PlayerColor.White, Square.Parse("a2"), Square.Parse("b2")));
+    }
+
+    [Fact]
+    public void Swap_WithKing_ThrowsInvalidOperationException()
+    {
+        var game = _engine.CreateInitialGame();
+
+        Assert.Throws<InvalidOperationException>(() =>
+            _engine.ApplySwap(game, PlayerColor.White, Square.Parse("e1"), Square.Parse("d1")));
+    }
+
+    [Fact]
+    public void Swap_EnemyPiece_ThrowsInvalidOperationException()
+    {
+        var game = _engine.CreateInitialGame();
+
+        Assert.Throws<InvalidOperationException>(() =>
+            _engine.ApplySwap(game, PlayerColor.White, Square.Parse("e2"), Square.Parse("e7")));
+    }
 }

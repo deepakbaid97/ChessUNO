@@ -101,5 +101,24 @@ describe('gameStore', () => {
     expect(get(store).revision).toBe(2);
     expect(get(store).boardFen).toBe('fresh-fen');
   });
+
+  it('updates availableChoices on AwaitingChoice phase', () => {
+    store.applySnapshot(dummySnapshot);
+
+    const wildUpdate: GameStateUpdate = {
+      boardFen: dummySnapshot.boardFen,
+      activePlayer: 'White',
+      turnPhase: 'AwaitingChoice',
+      remainingMoves: 0,
+      gameStatus: 'Active',
+      revision: 2,
+      availableChoices: ['MOVE_1', 'REVIVE_UP_TO_TWO']
+    };
+
+    store.applyUpdate(wildUpdate);
+    const state = get(store);
+    expect(state.turnPhase).toBe('AwaitingChoice');
+    expect(state.availableChoices).toEqual(['MOVE_1', 'REVIVE_UP_TO_TWO']);
+  });
 });
 

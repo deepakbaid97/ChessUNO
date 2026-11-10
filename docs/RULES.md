@@ -1,3 +1,6 @@
+> [!NOTE]
+> This document contains historical Phase 0 rule drafts. For the authoritative and finalized specification, see [game-specification.md](file:///c:/ProdProjects/TrackLord/UnoChess/docs/game-specification.md) and [game-rules.md](file:///c:/ProdProjects/TrackLord/UnoChess/docs/game-rules.md).
+
 # Chess UNO — Game Rules Specification (Phase 0)
 
 ## 1. Executive Overview

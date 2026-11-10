@@ -64,6 +64,14 @@ public record CardEffectFailedEvent(
     string Reason
 ) : BaseGameEvent(EventId, SequenceNumber, Timestamp, nameof(CardEffectFailedEvent));
 
+public record EffectChosenEvent(
+    Guid EventId,
+    long SequenceNumber,
+    DateTimeOffset Timestamp,
+    PlayerColor Player,
+    string ChosenEffectKey
+) : BaseGameEvent(EventId, SequenceNumber, Timestamp, nameof(EffectChosenEvent));
+
 public record TurnChangedEvent(
     Guid EventId,
     long SequenceNumber,

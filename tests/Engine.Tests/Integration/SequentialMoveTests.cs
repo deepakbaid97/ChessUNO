@@ -1,4 +1,5 @@
 using ChessUno.Core.Domain.Common;
+using ChessUno.Core.Domain.Game;
 using ChessUno.Core.Domain.Moves;
 using ChessUno.Core.Domain.Pieces;
 using ChessUno.Core.GameEngine;
@@ -54,6 +55,22 @@ public class SequentialMoveTests
         Assert.Equal(PlayerColor.Black, state2.ActivePlayer);
         Assert.NotNull(state2.GetPieceAt(Square.Parse("e4")));
         Assert.NotNull(state2.GetPieceAt(Square.Parse("f3")));
+    }
+
+    [Fact]
+    public void SequentialMoves_CheckmateOnFirstMove_ImmediatelyEndsGameWithWin()
+    {
+        // Setup position just before Scholar's Mate: White Queen on h5, Bishop on c4, ready to play Qxf7#
+        var fen = "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 4 4";
+        var game = _engine.CreateFromFen(fen);
+
+        // White plays Qxf7# on move 1 of a multi-move turn (toggleTurn: false)
+        var mateMove = new ChessMove(Square.Parse("h5"), Square.Parse("f7"));
+        var state = _engine.ApplyMove(game, mateMove, toggleTurn: false);
+
+        Assert.Equal(GameStatus.Checkmate, state.Status);
+        Assert.Equal(PlayerColor.White, state.Winner);
+        Assert.True(state.InCheck);
     }
 }
 

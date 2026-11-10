@@ -2,6 +2,15 @@ export interface RtcConfig {
   iceServers: RTCIceServer[];
 }
 
+export type P2PMessageType = 'ping' | 'pong' | 'cursor' | 'chat';
+
+export interface P2PMessage<T = any> {
+  type: P2PMessageType;
+  sender: string;
+  payload?: T;
+  timestamp: number;
+}
+
 export class WebRtcService {
   private peerConnection: RTCPeerConnection | null = null;
   private dataChannel: RTCDataChannel | null = null;
@@ -20,12 +29,19 @@ export class WebRtcService {
   }
 
   initializePeerConnection(config?: RtcConfig): void {
-    const iceConfig: RTCConfiguration = config || {
-      iceServers: [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:global.stun.twilio.com:3478' }
-      ]
-    };
+    let iceServers: RTCIceServer[] = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:global.stun.twilio.com:3478' }
+    ];
+
+    try {
+      const envServers = (import.meta as any).env?.VITE_ICE_SERVERS;
+      if (envServers) {
+        iceServers = JSON.parse(envServers);
+      }
+    } catch {}
+
+    const iceConfig: RTCConfiguration = config || { iceServers };
 
     this.peerConnection = new RTCPeerConnection(iceConfig);
 
@@ -80,6 +96,15 @@ export class WebRtcService {
 
   private setDataChannel(channel: RTCDataChannel): void {
     this.dataChannel = channel;
+    this.dataChannel.onopen = () => {
+      console.log('[WebRTC] DataChannel open and ready');
+    };
+    this.dataChannel.onerror = (err) => {
+      console.warn('[WebRTC] DataChannel error:', err);
+    };
+    this.dataChannel.onclose = () => {
+      console.log('[WebRTC] DataChannel closed');
+    };
     this.dataChannel.onmessage = (event) => {
       this.onDataMessage(event.data);
     };
@@ -93,6 +118,28 @@ export class WebRtcService {
     return false; // Fallback to server needed
   }
 
+  sendTypedMessage<T = any>(type: P2PMessageType, sender: string, payload?: T): boolean {
+    const msg: P2PMessage<T> = {
+      type,
+      sender,
+      payload,
+      timestamp: Date.now()
+    };
+    return this.sendData(JSON.stringify(msg));
+  }
+
+  sendPing(sender: string): boolean {
+    return this.sendTypedMessage('ping', sender);
+  }
+
+  sendCursor(sender: string, x: number, y: number): boolean {
+    return this.sendTypedMessage('cursor', sender, { x, y });
+  }
+
+  sendChat(sender: string, text: string): boolean {
+    return this.sendTypedMessage('chat', sender, { text });
+  }
+
   close(): void {
     this.dataChannel?.close();
     this.peerConnection?.close();
@@ -100,4 +147,3 @@ export class WebRtcService {
     this.peerConnection = null;
   }
 }
-

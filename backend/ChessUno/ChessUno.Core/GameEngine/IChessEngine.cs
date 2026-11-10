@@ -15,6 +15,8 @@ public interface IChessEngine
     GameState ApplyMove(GameState state, ChessMove move);
     GameState ApplyMove(GameState state, ChessMove move, bool toggleTurn);
     GameState ApplyRevival(GameState state, PlayerColor player, PieceType pieceType, Square targetSquare);
+    GameState ApplySwap(GameState state, PlayerColor player, Square sq1, Square sq2);
+    bool IsTerminalState(GameStatus status);
     string Serialize(GameState state);
     GameState Deserialize(string json);
 }

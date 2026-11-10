@@ -84,5 +84,34 @@ describe('Card and CardHand Components', () => {
     expect(queryByTestId('draw-card-slot')).toBeNull();
     expect(getByTestId('card-card-reverse')).toBeTruthy();
   });
+
+  it('CardHand displays choice buttons and emits submitChoice when AwaitingChoice', async () => {
+    const { getByTestId, component } = render(CardHand, {
+      props: {
+        turnPhase: 'AwaitingChoice',
+        isMyTurn: true,
+        activeCard: {
+          id: 'card-wild',
+          name: 'Wild',
+          category: 'WILD',
+          description: 'Choose ability.',
+          effectKey: 'WILD_CHOICE'
+        },
+        availableChoices: ['MOVE_1', 'REVIVE_UP_TO_TWO', 'SWAP_OWN_PIECES']
+      }
+    });
+
+    expect(getByTestId('choices-container')).toBeTruthy();
+    const moveBtn = getByTestId('btn-choice-move_1');
+    expect(moveBtn).toBeTruthy();
+
+    let chosen: any = null;
+    component.$on('submitChoice', (e) => {
+      chosen = e.detail;
+    });
+
+    await fireEvent.click(moveBtn);
+    expect(chosen).toEqual({ choice: 'MOVE_1' });
+  });
 });
 

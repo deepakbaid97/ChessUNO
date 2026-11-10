@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ChessUno.Core.Cards;
 using ChessUno.Core.Config;
 using ChessUno.Core.Decks;
 using ChessUno.Core.Domain.Common;
+using ChessUno.Core.Domain.Game;
 using ChessUno.Core.Effects;
 using ChessUno.Core.GameEngine;
 using ChessUno.Core.Turn;
@@ -21,6 +24,10 @@ public interface IGameSessionRepository
     Task<GameSession?> GetByInvitationTokenAsync(string token);
     Task<(GameSession Session, PlayerSession Player)?> JoinSessionAsync(string invitationToken, string playerName);
     Task<bool> UpdateSessionAsync(GameSession session);
+    Task<bool> CancelSessionAsync(Guid gameId, string playerToken);
+    Task<int> CleanupExpiredSessionsAsync();
+    Task<string> ExportSessionSnapshotJsonAsync(Guid gameId);
+    Task<GameSession?> RestoreSessionSnapshotJsonAsync(string snapshotJson);
 }
 
 public class InMemoryGameSessionRepository : IGameSessionRepository
@@ -138,5 +145,141 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
         _sessionsById[session.GameId] = session;
         return Task.FromResult(true);
     }
-}
 
+    public Task<bool> CancelSessionAsync(Guid gameId, string playerToken)
+    {
+        if (!_sessionsById.TryGetValue(gameId, out var session)) return Task.FromResult(false);
+
+        lock (session)
+        {
+            bool isAuthorized = (session.PlayerWhite?.SecretToken == playerToken) ||
+                                (session.PlayerBlack?.SecretToken == playerToken);
+
+            if (!isAuthorized) return Task.FromResult(false);
+
+            if (session.Status == SessionStatus.Completed || session.Status == SessionStatus.Expired)
+            {
+                return Task.FromResult(false);
+            }
+
+            session.Status = SessionStatus.Cancelled;
+            session.GameRevision++;
+            return Task.FromResult(true);
+        }
+    }
+
+    public Task<int> CleanupExpiredSessionsAsync()
+    {
+        int count = 0;
+        var now = DateTimeOffset.UtcNow;
+        foreach (var session in _sessionsById.Values)
+        {
+            if (session.ExpiresAt.HasValue && session.ExpiresAt.Value <= now)
+            {
+                if (session.Status != SessionStatus.Completed && session.Status != SessionStatus.Cancelled)
+                {
+                    session.Status = SessionStatus.Expired;
+                    count++;
+                }
+            }
+        }
+        return Task.FromResult(count);
+    }
+
+    public Task<string> ExportSessionSnapshotJsonAsync(Guid gameId)
+    {
+        if (!_sessionsById.TryGetValue(gameId, out var session))
+        {
+            throw new InvalidOperationException($"Game session '{gameId}' not found.");
+        }
+
+        lock (session)
+        {
+            var controller = session.EngineController;
+            var chess = controller.ChessState;
+
+            var snapshot = new GameSessionSnapshot(
+                GameId: session.GameId,
+                InvitationToken: session.InvitationToken,
+                Status: session.Status,
+                PlayerWhite: session.PlayerWhite,
+                PlayerBlack: session.PlayerBlack,
+                CreatedAt: session.CreatedAt,
+                ExpiresAt: session.ExpiresAt,
+                GameRevision: session.GameRevision,
+                BoardFen: chess.Fen,
+                ConfigVersion: chess.ConfigVersion,
+                EventSequenceNumber: chess.EventSequenceNumber,
+                GameStatus: chess.Status,
+                Winner: chess.Winner,
+                InCheck: chess.InCheck,
+                HalfMoveClock: chess.HalfMoveClock,
+                FullMoveNumber: chess.FullMoveNumber,
+                Reserves: chess.Reserves,
+                MoveHistory: chess.MoveHistory,
+                TurnState: controller.CurrentTurn,
+                DrawDeck: controller.DeckManager.PeekAll(),
+                DiscardPile: controller.DeckManager.PeekDiscard()
+            );
+
+            var json = JsonSerializer.Serialize(snapshot, new JsonSerializerOptions { WriteIndented = true });
+            return Task.FromResult(json);
+        }
+    }
+
+    public Task<GameSession?> RestoreSessionSnapshotJsonAsync(string snapshotJson)
+    {
+        var snapshot = JsonSerializer.Deserialize<GameSessionSnapshot>(snapshotJson);
+        if (snapshot == null) return Task.FromResult<GameSession?>(null);
+
+        var gameState = new GameState(
+            GameId: snapshot.GameId,
+            ConfigVersion: snapshot.ConfigVersion,
+            EventSequenceNumber: snapshot.EventSequenceNumber,
+            Fen: snapshot.BoardFen,
+            ActivePlayer: snapshot.TurnState.ActivePlayer,
+            Status: snapshot.GameStatus,
+            Winner: snapshot.Winner,
+            InCheck: snapshot.InCheck,
+            HalfMoveClock: snapshot.HalfMoveClock,
+            FullMoveNumber: snapshot.FullMoveNumber,
+            Reserves: snapshot.Reserves,
+            MoveHistory: snapshot.MoveHistory
+        );
+
+        var deckManager = new DeckManager(snapshot.DrawDeck, snapshot.DiscardPile);
+        var effectRegistry = new CardEffectRegistry();
+        var effectExecutor = new CardEffectExecutor(_config, effectRegistry, _chessEngine);
+        var validator = new CardValidator();
+
+        var controller = new TurnController(
+            _config,
+            _chessEngine,
+            deckManager,
+            effectExecutor,
+            validator,
+            gameState,
+            snapshot.TurnState,
+            snapshot.EventSequenceNumber + 1
+        );
+
+        var session = new GameSession(
+            snapshot.GameId,
+            snapshot.InvitationToken,
+            snapshot.PlayerWhite!,
+            controller
+        )
+        {
+            PlayerBlack = snapshot.PlayerBlack,
+            Status = snapshot.Status,
+            CreatedAt = snapshot.CreatedAt,
+            ExpiresAt = snapshot.ExpiresAt,
+            GameRevision = snapshot.GameRevision
+        };
+
+        _sessionsById[session.GameId] = session;
+        _sessionIdsByToken[session.InvitationToken] = session.GameId;
+
+        return Task.FromResult<GameSession?>(session);
+    }
+}
