@@ -1,0 +1,36 @@
+[Unit]
+Description=Chess UNO ASP.NET Core Backend & SignalR Hub
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+
+# Path where your published backend files reside
+WorkingDirectory=/var/www/chessuno
+
+# Executable command:
+# For self-contained binary:
+ExecStart=/var/www/chessuno/ChessUno.Web
+# For framework-dependent deployment (if using 'dotnet' runtime):
+# ExecStart=/usr/bin/dotnet /var/www/chessuno/ChessUno.Web.dll
+
+# Auto-restart policy
+Restart=always
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=chessuno-backend
+
+# Environment variables file containing sensitive credentials (chmod 600)
+EnvironmentFile=/etc/chessuno/chessuno.env
+
+# Basic systemd sandboxing
+ProtectSystem=full
+ProtectHome=true
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
