@@ -98,6 +98,35 @@ describe('Chessboard Component', () => {
     expect(proposedMove).toEqual({ from: 'e2', to: 'e4' });
   });
 
+  it('emits squareSelected instead of moveProposed when mode is swap', async () => {
+    const { component, getByTestId } = render(Chessboard, {
+      props: {
+        fen: initialFen,
+        perspective: 'White',
+        activePlayer: 'White',
+        isMyTurn: true,
+        mode: 'swap',
+        selectedSquare: 'e2',
+        validDestinations: ['d2']
+      }
+    });
+
+    let proposedMove: any = null;
+    let selectedSquare: any = null;
+    component.$on('moveProposed', (e) => {
+      proposedMove = e.detail;
+    });
+    component.$on('squareSelected', (e) => {
+      selectedSquare = e.detail;
+    });
+
+    const destSquare = getByTestId('square-d2');
+    await fireEvent.click(destSquare);
+
+    expect(proposedMove).toBeNull();
+    expect(selectedSquare).toEqual({ square: 'd2' });
+  });
+
   it('displays loading indicator when isSubmitting is true', () => {
     const { getByTestId } = render(Chessboard, {
       props: {

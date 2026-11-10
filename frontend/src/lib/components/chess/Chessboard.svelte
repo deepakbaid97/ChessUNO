@@ -21,6 +21,7 @@
   export let lastMove: { from: string; to: string } | null = null;
   export let inCheck: boolean = false;
   export let isSubmitting: boolean = false;
+  export let mode: 'normal' | 'swap' | 'revival' = 'normal';
 
   const dispatch = createEventDispatcher<{
     squareSelected: { square: string };
@@ -39,8 +40,8 @@
     // If already waiting for backend confirmation, ignore input
     if (isSubmitting) return;
 
-    // If destination clicked when piece selected and it's our turn:
-    if (isMyTurn && selectedSquare && validDestinations.includes(clickedSquare)) {
+    // If destination clicked when piece selected and it's our turn (standard chess move only):
+    if (mode === 'normal' && isMyTurn && selectedSquare && validDestinations.includes(clickedSquare)) {
       // Check if it is a promotion move
       const { row: fromRow, col: fromCol } = getSquareIndex(selectedSquare);
       const piece = boardMatrix[fromRow]?.[fromCol];

@@ -48,6 +48,25 @@
 
   $: isGameOver = ['Checkmate', 'Stalemate', 'Resigned', 'DrawByInsufficientMaterial', 'DrawByFiftyMoveRule', 'DrawByThreefoldRepetition'].includes(storeState.gameStatus);
 
+  // Auto-activate ability mode when drawing swap or revival cards
+  $: if (isMyTurn && storeState.canSwap && activeAbilityMode === 'none') {
+    activeAbilityMode = 'swap';
+    firstSwapSquare = null;
+    secondSwapSquare = null;
+  }
+  $: if (!storeState.canSwap && activeAbilityMode === 'swap') {
+    activeAbilityMode = 'none';
+    firstSwapSquare = null;
+    secondSwapSquare = null;
+  }
+  $: if (isMyTurn && storeState.remainingRevivals > 0 && myReserves.length > 0 && activeAbilityMode === 'none') {
+    activeAbilityMode = 'revival';
+  }
+  $: if (storeState.remainingRevivals === 0 && activeAbilityMode === 'revival') {
+    activeAbilityMode = 'none';
+    selectedRevivalPiece = null;
+  }
+
   $: swapEligibleSquares = activeAbilityMode === 'swap'
     ? getEligibleSwapSquares(storeState.boardFen, storeState.assignedColor)
     : [];
@@ -127,6 +146,16 @@
   }
 
   function handleMoveProposed(event: CustomEvent<{ from: string; to: string; promotion?: PieceType }>) {
+    if (activeAbilityMode === 'swap') {
+      dispatch('submitSwap', {
+        sq1: event.detail.from,
+        sq2: event.detail.to
+      });
+      activeAbilityMode = 'none';
+      firstSwapSquare = null;
+      secondSwapSquare = null;
+      return;
+    }
     dispatch('proposeMove', event.detail);
   }
 
@@ -195,6 +224,7 @@
         lastMove={storeState.lastMove}
         inCheck={storeState.inCheck}
         {isSubmitting}
+        mode={activeAbilityMode === 'none' ? 'normal' : activeAbilityMode}
         on:squareSelected={handleSquareSelected}
         on:moveProposed={handleMoveProposed}
       />
