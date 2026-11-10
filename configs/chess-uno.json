@@ -1,0 +1,271 @@
+{
+  "$schema": "./chess-uno.schema.json",
+  "schemaVersion": "1.0.0",
+  "metadata": {
+    "id": "chess-uno-standard",
+    "name": "Standard Chess UNO",
+    "version": "1.0.0",
+    "description": "Standard 108-card Chess UNO game rules combining classic chess with UNO card effects.",
+    "author": "TrackLord Team"
+  },
+  "boardSettings": {
+    "rows": 8,
+    "columns": 8,
+    "initialFen": "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+    "allowCastling": true,
+    "allowEnPassant": true,
+    "promotionRankWhite": 8,
+    "promotionRankBlack": 1,
+    "eligiblePromotionPieces": ["QUEEN", "ROOK", "BISHOP", "KNIGHT"]
+  },
+  "turnRules": {
+    "turnOrder": "WHITE_FIRST",
+    "turnTimerSeconds": 90,
+    "drawPhaseMandatory": true,
+    "reshuffleDiscardWhenDeckEmpty": true,
+    "mustResolveCheckBeforeOtherActions": true,
+    "allowConsecutiveMovesWithSamePiece": true,
+    "mustMoveIfLegalMoveAvailable": false
+  },
+  "pieceRules": {
+    "pawnDoubleStepAllowed": true,
+    "kingCannotMoveIntoCheck": true,
+    "revivalAllowedPieces": ["PAWN", "KNIGHT", "BISHOP", "ROOK", "QUEEN"],
+    "revivalPlacementSquares": "OWN_HALF_EMPTY_ONLY"
+  },
+  "effects": {
+    "PASS_TURN_EFFECT": {
+      "type": "PASS_TURN",
+      "description": "Grants 0 moves; player turn ends immediately without chess actions."
+    },
+    "MOVE_1": {
+      "type": "MOVE_PIECES",
+      "description": "Grants up to 1 legal chess move.",
+      "moveCount": 1
+    },
+    "MOVE_2": {
+      "type": "MOVE_PIECES",
+      "description": "Grants up to 2 legal chess moves.",
+      "moveCount": 2
+    },
+    "MOVE_3": {
+      "type": "MOVE_PIECES",
+      "description": "Grants up to 3 legal chess moves.",
+      "moveCount": 3
+    },
+    "MOVE_4": {
+      "type": "MOVE_PIECES",
+      "description": "Grants up to 4 legal chess moves.",
+      "moveCount": 4
+    },
+    "MOVE_5": {
+      "type": "MOVE_PIECES",
+      "description": "Grants up to 5 legal chess moves.",
+      "moveCount": 5
+    },
+    "MOVE_6": {
+      "type": "MOVE_PIECES",
+      "description": "Grants up to 6 legal chess moves.",
+      "moveCount": 6
+    },
+    "MOVE_7": {
+      "type": "MOVE_PIECES",
+      "description": "Grants up to 7 legal chess moves.",
+      "moveCount": 7
+    },
+    "MOVE_8": {
+      "type": "MOVE_PIECES",
+      "description": "Grants up to 8 legal chess moves.",
+      "moveCount": 8
+    },
+    "MOVE_9": {
+      "type": "MOVE_PIECES",
+      "description": "Grants up to 9 legal chess moves.",
+      "moveCount": 9
+    },
+    "SKIP_OPPONENT": {
+      "type": "SKIP_TURN",
+      "description": "Skips the opponent's next turn. Player retains initiative.",
+      "skipTarget": "NEXT_OPPONENT"
+    },
+    "SWAP_OWN_PIECES": {
+      "type": "SWAP_PIECES",
+      "description": "Swaps positions of two eligible friendly non-king pieces on the board.",
+      "swapScope": "OWN_PIECES",
+      "eligiblePieces": ["PAWN", "KNIGHT", "BISHOP", "ROOK", "QUEEN"]
+    },
+    "REVIVE_UP_TO_TWO": {
+      "type": "REVIVE_PIECES",
+      "description": "Revives up to 2 captured friendly pieces onto eligible unoccupied squares in player's half.",
+      "maxRevivals": 2,
+      "eligiblePieces": ["PAWN", "KNIGHT", "BISHOP", "ROOK", "QUEEN"]
+    },
+    "REVIVE_UP_TO_FOUR": {
+      "type": "REVIVE_PIECES",
+      "description": "Revives up to 4 captured friendly pieces onto eligible unoccupied squares.",
+      "maxRevivals": 4,
+      "eligiblePieces": ["PAWN", "KNIGHT", "BISHOP", "ROOK", "QUEEN"]
+    },
+    "REVIVE_TWO_AND_MOVE_TWO": {
+      "type": "SEQUENCE",
+      "description": "Revives up to 2 friendly pieces, followed by up to 2 chess moves.",
+      "sequence": ["REVIVE_UP_TO_TWO", "MOVE_2"]
+    },
+    "WILD_CHOICE": {
+      "type": "CHOOSE_EFFECT",
+      "description": "Player chooses one ability from: Move 1 piece, Revive up to 2 pieces, or Swap 2 friendly pieces.",
+      "choices": ["MOVE_1", "REVIVE_UP_TO_TWO", "SWAP_OWN_PIECES"]
+    },
+    "WILD_DRAW_FOUR": {
+      "type": "CHOOSE_EFFECT",
+      "description": "Player chooses between reviving up to 4 pieces or reviving 2 pieces + making 2 moves.",
+      "choices": ["REVIVE_UP_TO_FOUR", "REVIVE_TWO_AND_MOVE_TWO"]
+    }
+  },
+  "cards": [
+    {
+      "id": "card-0",
+      "name": "0 Card",
+      "category": "NUMBER",
+      "value": 0,
+      "quantity": 4,
+      "effectKey": "PASS_TURN_EFFECT",
+      "description": "Pass turn without making any chess moves."
+    },
+    {
+      "id": "card-1",
+      "name": "1 Card",
+      "category": "NUMBER",
+      "value": 1,
+      "quantity": 8,
+      "effectKey": "MOVE_1",
+      "description": "Make up to 1 legal chess move."
+    },
+    {
+      "id": "card-2",
+      "name": "2 Card",
+      "category": "NUMBER",
+      "value": 2,
+      "quantity": 8,
+      "effectKey": "MOVE_2",
+      "description": "Make up to 2 legal chess moves."
+    },
+    {
+      "id": "card-3",
+      "name": "3 Card",
+      "category": "NUMBER",
+      "value": 3,
+      "quantity": 8,
+      "effectKey": "MOVE_3",
+      "description": "Make up to 3 legal chess moves."
+    },
+    {
+      "id": "card-4",
+      "name": "4 Card",
+      "category": "NUMBER",
+      "value": 4,
+      "quantity": 8,
+      "effectKey": "MOVE_4",
+      "description": "Make up to 4 legal chess moves."
+    },
+    {
+      "id": "card-5",
+      "name": "5 Card",
+      "category": "NUMBER",
+      "value": 5,
+      "quantity": 8,
+      "effectKey": "MOVE_5",
+      "description": "Make up to 5 legal chess moves."
+    },
+    {
+      "id": "card-6",
+      "name": "6 Card",
+      "category": "NUMBER",
+      "value": 6,
+      "quantity": 8,
+      "effectKey": "MOVE_6",
+      "description": "Make up to 6 legal chess moves."
+    },
+    {
+      "id": "card-7",
+      "name": "7 Card",
+      "category": "NUMBER",
+      "value": 7,
+      "quantity": 8,
+      "effectKey": "MOVE_7",
+      "description": "Make up to 7 legal chess moves."
+    },
+    {
+      "id": "card-8",
+      "name": "8 Card",
+      "category": "NUMBER",
+      "value": 8,
+      "quantity": 8,
+      "effectKey": "MOVE_8",
+      "description": "Make up to 8 legal chess moves."
+    },
+    {
+      "id": "card-9",
+      "name": "9 Card",
+      "category": "NUMBER",
+      "value": 9,
+      "quantity": 8,
+      "effectKey": "MOVE_9",
+      "description": "Make up to 9 legal chess moves."
+    },
+    {
+      "id": "card-reverse",
+      "name": "Reverse",
+      "category": "ACTION",
+      "quantity": 8,
+      "effectKey": "SWAP_OWN_PIECES",
+      "description": "Swap positions of two eligible friendly non-king pieces."
+    },
+    {
+      "id": "card-skip",
+      "name": "Skip",
+      "category": "ACTION",
+      "quantity": 8,
+      "effectKey": "SKIP_OPPONENT",
+      "description": "Skip the opponent's next turn."
+    },
+    {
+      "id": "card-draw-two",
+      "name": "Draw Two (+2)",
+      "category": "ACTION",
+      "quantity": 8,
+      "effectKey": "REVIVE_UP_TO_TWO",
+      "description": "Revive up to 2 captured friendly pieces."
+    },
+    {
+      "id": "card-wild",
+      "name": "Wild",
+      "category": "WILD",
+      "quantity": 4,
+      "effectKey": "WILD_CHOICE",
+      "description": "Choose between 1 move, 2 revivals, or swapping 2 friendly pieces."
+    },
+    {
+      "id": "card-wild-draw-four",
+      "name": "Wild Draw Four (+4)",
+      "category": "WILD",
+      "quantity": 4,
+      "effectKey": "WILD_DRAW_FOUR",
+      "description": "Choose between 4 revivals or 2 revivals + 2 moves."
+    }
+  ],
+  "winConditions": {
+    "checkmateWins": true,
+    "kingCaptureWins": false,
+    "opponentResignationWins": true,
+    "opponentTimeoutWins": true
+  },
+  "drawConditions": {
+    "stalemateDraws": true,
+    "threefoldRepetitionDraws": true,
+    "fiftyMoveRuleDraws": true,
+    "insufficientMaterialDraws": true,
+    "mutualAgreementDraws": true
+  }
+}
+

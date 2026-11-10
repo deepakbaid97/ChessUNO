@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/backend/" />
+  <Folder Name="/backend/ChessUno/">
+    <Project Path="backend/ChessUno/ChessUno.Core/ChessUno.Core.csproj" />
+    <Project Path="backend/ChessUno/ChessUno.Web/ChessUno.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Api.Tests/Api.Tests.csproj" />
+    <Project Path="tests/CardEngine.Tests/CardEngine.Tests.csproj" />
+    <Project Path="tests/Config.Tests/Config.Tests.csproj" />
+    <Project Path="tests/Engine.Tests/Engine.Tests.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,6 @@
+@ChessUno.Web_HostAddress = http://localhost:5162
+
+GET {{ChessUno.Web_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

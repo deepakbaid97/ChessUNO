@@ -1,0 +1,401 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://tracklord.dev/schemas/chess-uno.schema.json",
+  "title": "Chess UNO Game Configuration Schema",
+  "description": "JSON Schema (Draft 2020-12) for validating versioned Chess UNO game rule configurations.",
+  "type": "object",
+  "required": [
+    "schemaVersion",
+    "metadata",
+    "boardSettings",
+    "turnRules",
+    "pieceRules",
+    "effects",
+    "cards",
+    "winConditions",
+    "drawConditions"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "schemaVersion": {
+      "type": "string",
+      "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$",
+      "description": "Semantic version of the configuration schema format."
+    },
+    "metadata": {
+      "$ref": "#/$defs/metadata"
+    },
+    "boardSettings": {
+      "$ref": "#/$defs/boardSettings"
+    },
+    "turnRules": {
+      "$ref": "#/$defs/turnRules"
+    },
+    "pieceRules": {
+      "$ref": "#/$defs/pieceRules"
+    },
+    "effects": {
+      "type": "object",
+      "minProperties": 1,
+      "propertyNames": {
+        "pattern": "^[A-Z][A-Z0-9_]*$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/effectDefinition"
+      },
+      "description": "Named catalog of reusable, deterministic effect definitions."
+    },
+    "cards": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/cardDefinition"
+      },
+      "description": "Configurable deck card definitions and their quantities."
+    },
+    "winConditions": {
+      "$ref": "#/$defs/winConditions"
+    },
+    "drawConditions": {
+      "$ref": "#/$defs/drawConditions"
+    }
+  },
+  "$defs": {
+    "metadata": {
+      "type": "object",
+      "required": ["id", "name", "version", "description", "author"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)$"
+        },
+        "description": {
+          "type": "string"
+        },
+        "author": {
+          "type": "string"
+        }
+      }
+    },
+    "boardSettings": {
+      "type": "object",
+      "required": ["rows", "columns", "initialFen", "allowCastling", "allowEnPassant", "promotionRankWhite", "promotionRankBlack", "eligiblePromotionPieces"],
+      "additionalProperties": false,
+      "properties": {
+        "rows": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 16,
+          "default": 8
+        },
+        "columns": {
+          "type": "integer",
+          "minimum": 4,
+          "maximum": 16,
+          "default": 8
+        },
+        "initialFen": {
+          "type": "string",
+          "description": "Standard FEN representing the starting board position."
+        },
+        "allowCastling": {
+          "type": "boolean",
+          "default": true
+        },
+        "allowEnPassant": {
+          "type": "boolean",
+          "default": true
+        },
+        "promotionRankWhite": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16,
+          "default": 8
+        },
+        "promotionRankBlack": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 16,
+          "default": 1
+        },
+        "eligiblePromotionPieces": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/pieceType"
+          }
+        }
+      }
+    },
+    "pieceType": {
+      "type": "string",
+      "enum": ["PAWN", "KNIGHT", "BISHOP", "ROOK", "QUEEN", "KING"]
+    },
+    "turnRules": {
+      "type": "object",
+      "required": [
+        "turnOrder",
+        "turnTimerSeconds",
+        "drawPhaseMandatory",
+        "reshuffleDiscardWhenDeckEmpty",
+        "mustResolveCheckBeforeOtherActions",
+        "allowConsecutiveMovesWithSamePiece",
+        "mustMoveIfLegalMoveAvailable"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "turnOrder": {
+          "type": "string",
+          "enum": ["WHITE_FIRST", "BLACK_FIRST"],
+          "default": "WHITE_FIRST"
+        },
+        "turnTimerSeconds": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "0 indicates untimed turn."
+        },
+        "drawPhaseMandatory": {
+          "type": "boolean",
+          "default": true
+        },
+        "reshuffleDiscardWhenDeckEmpty": {
+          "type": "boolean",
+          "default": true
+        },
+        "mustResolveCheckBeforeOtherActions": {
+          "type": "boolean",
+          "default": true,
+          "description": "If in check at turn start, player must use actions to get out of check."
+        },
+        "allowConsecutiveMovesWithSamePiece": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether the same chess piece can move multiple times during a multi-move turn."
+        },
+        "mustMoveIfLegalMoveAvailable": {
+          "type": "boolean",
+          "default": false,
+          "description": "If false, player may end turn early after making at least one move, or pass if card specifies."
+        }
+      }
+    },
+    "pieceRules": {
+      "type": "object",
+      "required": ["pawnDoubleStepAllowed", "kingCannotMoveIntoCheck", "revivalAllowedPieces", "revivalPlacementSquares"],
+      "additionalProperties": false,
+      "properties": {
+        "pawnDoubleStepAllowed": {
+          "type": "boolean",
+          "default": true
+        },
+        "kingCannotMoveIntoCheck": {
+          "type": "boolean",
+          "default": true
+        },
+        "revivalAllowedPieces": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/pieceType"
+          },
+          "description": "List of piece types that can be revived from reserve."
+        },
+        "revivalPlacementSquares": {
+          "type": "string",
+          "enum": [
+            "OWN_BACK_RANK_EMPTY_ONLY",
+            "OWN_HALF_EMPTY_ONLY",
+            "ANY_UNOCCUPIED_SQUARE",
+            "OWN_STARTING_SQUARES_EMPTY_ONLY"
+          ],
+          "description": "Placement constraint for revived pieces."
+        }
+      }
+    },
+    "effectType": {
+      "type": "string",
+      "enum": [
+        "MOVE_PIECES",
+        "REVIVE_PIECES",
+        "SWAP_PIECES",
+        "SKIP_TURN",
+        "PASS_TURN",
+        "CHOOSE_EFFECT",
+        "SEQUENCE"
+      ]
+    },
+    "effectDefinition": {
+      "type": "object",
+      "required": ["type", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "$ref": "#/$defs/effectType"
+        },
+        "description": {
+          "type": "string"
+        },
+        "moveCount": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9,
+          "description": "Maximum number of moves granted (for MOVE_PIECES)."
+        },
+        "maxRevivals": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 8,
+          "description": "Maximum number of pieces player may revive (for REVIVE_PIECES)."
+        },
+        "eligiblePieces": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/pieceType"
+          },
+          "description": "Restricts revival/swap to specific piece types."
+        },
+        "swapScope": {
+          "type": "string",
+          "enum": ["OWN_PIECES", "ANY_PIECES", "ADJACENT_PIECES"],
+          "description": "Rules for SWAP_PIECES targeting."
+        },
+        "skipTarget": {
+          "type": "string",
+          "enum": ["NEXT_OPPONENT", "CURRENT_PLAYER"],
+          "description": "Target of SKIP_TURN effect."
+        },
+        "choices": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*$"
+          },
+          "description": "Catalog keys of effects available to choose (for CHOOSE_EFFECT)."
+        },
+        "sequence": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Z0-9_]*$"
+          },
+          "description": "Ordered list of effect keys executed in series (for SEQUENCE)."
+        }
+      }
+    },
+    "cardCategory": {
+      "type": "string",
+      "enum": ["NUMBER", "ACTION", "WILD"]
+    },
+    "cardDefinition": {
+      "type": "object",
+      "required": ["id", "name", "category", "quantity", "effectKey"],
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9_-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "category": {
+          "$ref": "#/$defs/cardCategory"
+        },
+        "value": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9,
+          "description": "Numeric face value if category is NUMBER."
+        },
+        "quantity": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Number of this card in the deck."
+        },
+        "effectKey": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "description": "Reference to a key in the top-level effects registry."
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    },
+    "winConditions": {
+      "type": "object",
+      "required": ["checkmateWins", "kingCaptureWins", "opponentResignationWins", "opponentTimeoutWins"],
+      "additionalProperties": false,
+      "properties": {
+        "checkmateWins": {
+          "type": "boolean",
+          "default": true
+        },
+        "kingCaptureWins": {
+          "type": "boolean",
+          "default": false,
+          "description": "If king capture variant is enabled instead of strict checkmate."
+        },
+        "opponentResignationWins": {
+          "type": "boolean",
+          "default": true
+        },
+        "opponentTimeoutWins": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "drawConditions": {
+      "type": "object",
+      "required": [
+        "stalemateDraws",
+        "threefoldRepetitionDraws",
+        "fiftyMoveRuleDraws",
+        "insufficientMaterialDraws",
+        "mutualAgreementDraws"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "stalemateDraws": {
+          "type": "boolean",
+          "default": true
+        },
+        "threefoldRepetitionDraws": {
+          "type": "boolean",
+          "default": true
+        },
+        "fiftyMoveRuleDraws": {
+          "type": "boolean",
+          "default": true
+        },
+        "insufficientMaterialDraws": {
+          "type": "boolean",
+          "default": true
+        },
+        "mutualAgreementDraws": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    }
+  }
+}
+
