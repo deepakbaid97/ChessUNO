@@ -39,13 +39,29 @@
 {#if isOpen}
   <div class="gameover-backdrop" data-testid="game-over-modal">
     <div class="gameover-card panel" class:victory={isWinner} class:defeat={!isWinner && !isDraw} class:draw={isDraw}>
-      <div class="trophy-icon">
+      <div class="outcome-emblem" aria-hidden="true">
         {#if isDraw}
-          ⚖️
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v18" />
+            <path d="M5 7h14" />
+            <path d="M3 13l2-6 2 6a2 2 0 0 1-4 0z" />
+            <path d="M17 13l2-6 2 6a2 2 0 0 1-4 0z" />
+          </svg>
         {:else if isWinner}
-          🏆
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+            <path d="M4 22h16" />
+            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+            <path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+          </svg>
         {:else}
-          ⚔️
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+            <path d="M9 9l6 6" />
+            <path d="M15 9l-6 6" />
+          </svg>
         {/if}
       </div>
 
@@ -84,54 +100,71 @@
 <style>
   .gameover-backdrop {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background: rgba(11, 15, 23, 0.85);
-    backdrop-filter: blur(6px);
+    inset: 0;
+    background: rgba(10, 12, 16, 0.85);
+    backdrop-filter: blur(4px);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 1000;
-    animation: fadeIn 0.25s ease-out;
+    animation: fadeIn 0.2s ease-out;
   }
 
   .gameover-card {
-    background: var(--bg-surface);
-    border: 2px solid var(--border-color);
-    border-radius: 16px;
-    padding: 36px 32px;
+    background-color: var(--bg-surface);
+    border: 1.5px solid var(--border-strong);
+    border-radius: 12px;
+    padding: 32px 28px;
     text-align: center;
-    max-width: 440px;
-    width: 90%;
-    box-shadow: var(--shadow-card);
+    max-width: 420px;
+    width: 92%;
+    box-shadow: var(--shadow-lg);
   }
 
   .gameover-card.victory {
     border-color: var(--accent-gold);
-    box-shadow: 0 0 24px var(--accent-gold-glow), var(--shadow-card);
   }
 
   .gameover-card.defeat {
     border-color: var(--accent-red);
-    box-shadow: 0 0 24px var(--accent-red-glow), var(--shadow-card);
   }
 
   .gameover-card.draw {
     border-color: var(--accent-blue);
-    box-shadow: 0 0 24px rgba(56, 189, 248, 0.3), var(--shadow-card);
   }
 
-  .trophy-icon {
-    font-size: 3.5rem;
-    margin-bottom: 12px;
+  .outcome-emblem {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+  }
+
+  .victory .outcome-emblem {
+    color: var(--accent-gold);
+    border-color: rgba(245, 158, 11, 0.4);
+  }
+
+  .defeat .outcome-emblem {
+    color: var(--accent-red);
+    border-color: rgba(239, 68, 68, 0.4);
+  }
+
+  .draw .outcome-emblem {
+    color: var(--accent-blue);
+    border-color: rgba(59, 130, 246, 0.4);
   }
 
   h2 {
-    font-size: 1.8rem;
+    font-size: 1.65rem;
     font-weight: 800;
     margin-bottom: 6px;
+    letter-spacing: -0.02em;
   }
 
   .victory h2 {
@@ -147,27 +180,28 @@
   }
 
   .subtitle {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     color: var(--text-muted);
-    margin-bottom: 24px;
+    margin-bottom: 20px;
+    line-height: 1.4;
   }
 
   .summary-box {
-    background: var(--bg-card);
+    background-color: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 14px 18px;
+    padding: 12px 16px;
     display: flex;
     flex-direction: column;
     gap: 8px;
-    margin-bottom: 24px;
+    margin-bottom: 22px;
     text-align: left;
   }
 
   .summary-item {
     display: flex;
     justify-content: space-between;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
   }
 
   .summary-item span {
@@ -176,11 +210,12 @@
 
   .summary-item strong {
     color: var(--text-main);
+    font-family: var(--font-mono);
   }
 
   .actions {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     justify-content: center;
   }
 
@@ -189,4 +224,3 @@
     to { opacity: 1; }
   }
 </style>
-

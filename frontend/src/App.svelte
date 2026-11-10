@@ -487,10 +487,16 @@
   <!-- Global App Header -->
   <header class="app-header">
     <div class="brand">
-      <span class="brand-icon">♟️</span>
-      <div>
-        <div class="brand-title">Chess UNO</div>
-        <div class="brand-subtitle">Multiplayer Strategy</div>
+      <div class="brand-mark" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3L9 7h6l-3-4z" />
+          <path d="M7 11h10l-1.5 7h-7L7 11z" />
+          <path d="M5 21h14" />
+        </svg>
+      </div>
+      <div class="brand-text">
+        <span class="brand-title">Chess UNO</span>
+        <span class="brand-subtitle">Tactical Board &amp; Deck</span>
       </div>
     </div>
 

@@ -6,7 +6,7 @@
   export let invitationToken: string;
   export let assignedColor: PlayerColor = 'White';
   export let playerName: string = 'Host';
-  export let connectionProgress: string = 'Connected to room. Waiting for player 2...';
+  export let connectionProgress: string = 'Connected to room. Waiting for Player 2...';
 
   const dispatch = createEventDispatcher<{
     cancel: void;
@@ -22,7 +22,6 @@
         copied = false;
       }, 2500);
     } catch {
-      // Fallback
       copied = true;
       setTimeout(() => {
         copied = false;
@@ -37,8 +36,8 @@
       <div class="spinner"></div>
     </div>
 
-    <h2>Waiting for Opponent to Join</h2>
-    <p class="subtitle">Share this unique invitation link with Player 2 to begin the match:</p>
+    <h2>Waiting for Opponent</h2>
+    <p class="subtitle">Share this invitation link with Player 2 to start the match:</p>
 
     <div class="invite-container">
       <input
@@ -52,25 +51,25 @@
         on:click={handleCopy}
         data-testid="btn-copy-invite"
       >
-        {copied ? '✓ Copied!' : 'Copy Link'}
+        {copied ? 'Copied' : 'Copy Link'}
       </button>
     </div>
 
     <div class="match-info">
       <div class="info-row">
-        <span>Host:</span>
+        <span>Host</span>
         <strong>{playerName}</strong>
       </div>
       <div class="info-row">
-        <span>Your Assigned Color:</span>
-        <strong class="color-tag white">{assignedColor} (Initiative)</strong>
+        <span>Your Color</span>
+        <strong class="color-tag white">{assignedColor} (First Turn)</strong>
       </div>
       <div class="info-row">
-        <span>Opponent Color:</span>
+        <span>Opponent Color</span>
         <strong class="color-tag black">Black</strong>
       </div>
       <div class="info-row">
-        <span>Token:</span>
+        <span>Session Token</span>
         <code class="token-code">{invitationToken}</code>
       </div>
     </div>
@@ -80,12 +79,12 @@
         <span class="status-dot pulsing"></span>
         <span class="status-text">{connectionProgress}</span>
       </div>
-      <p class="auto-hint">The board will load automatically the moment Player 2 opens the link.</p>
+      <p class="auto-hint">The board will launch automatically as soon as your opponent joins.</p>
     </div>
 
     <div class="cancel-area">
       <button class="btn btn-secondary btn-sm" on:click={() => dispatch('cancel')}>
-        Cancel & Return to Lobby
+        Cancel &amp; Return to Lobby
       </button>
     </div>
   </div>
@@ -93,76 +92,76 @@
 
 <style>
   .waiting-room-screen {
-    max-width: 620px;
-    margin: 40px auto;
+    max-width: 560px;
+    margin: 24px auto;
     width: 100%;
   }
 
   .waiting-card {
     text-align: center;
-    padding: 36px 32px;
+    padding: 28px 24px;
   }
 
   .pulse-ring {
     display: flex;
     justify-content: center;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
   }
 
   .spinner {
-    width: 48px;
-    height: 48px;
-    border: 4px solid rgba(251, 191, 36, 0.2);
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(245, 158, 11, 0.2);
     border-top-color: var(--accent-gold);
     border-radius: 50%;
     animation: spin 1s linear infinite;
   }
 
   h2 {
-    font-size: 1.6rem;
+    font-size: 1.45rem;
     font-weight: 800;
-    color: #fff;
-    margin-bottom: 8px;
+    color: var(--text-main);
+    margin-bottom: 6px;
   }
 
   .subtitle {
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     color: var(--text-muted);
-    margin-bottom: 24px;
+    margin-bottom: 20px;
     line-height: 1.4;
   }
 
   .invite-container {
     display: flex;
-    gap: 10px;
-    margin-bottom: 24px;
+    gap: 8px;
+    margin-bottom: 20px;
   }
 
   .invite-container input {
     margin-bottom: 0;
     font-family: var(--font-mono);
-    font-size: 0.88rem;
-    background: #0f172a;
-    border-color: var(--border-color);
+    font-size: 0.82rem;
+    background-color: var(--bg-primary);
+    border-color: var(--border-strong);
   }
 
   .match-info {
-    background: var(--bg-card);
+    background-color: var(--bg-primary);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 16px 20px;
+    border-radius: 6px;
+    padding: 14px 16px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     text-align: left;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
   }
 
   .info-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.9rem;
+    font-size: 0.84rem;
   }
 
   .info-row span {
@@ -170,48 +169,49 @@
   }
 
   .color-tag {
-    padding: 2px 8px;
+    padding: 2px 7px;
     border-radius: 4px;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
   }
 
   .color-tag.white {
-    background: rgba(255, 255, 255, 0.15);
-    color: #fff;
+    background-color: rgba(243, 244, 246, 0.14);
+    color: #ffffff;
   }
 
   .color-tag.black {
-    background: rgba(168, 85, 247, 0.15);
-    color: var(--accent-purple);
+    background-color: rgba(156, 163, 175, 0.14);
+    color: #d1d5db;
   }
 
   .token-code {
     font-family: var(--font-mono);
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     color: var(--accent-blue);
   }
 
   .progress-bar-container {
-    margin-bottom: 20px;
+    margin-bottom: 18px;
   }
 
   .connection-status {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: rgba(251, 191, 36, 0.1);
-    border: 1px solid rgba(251, 191, 36, 0.3);
-    padding: 6px 14px;
-    border-radius: 9999px;
-    font-size: 0.85rem;
+    background-color: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 0.8rem;
     color: var(--accent-gold);
     font-weight: 600;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
 
   .status-dot {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
     background-color: var(--accent-gold);
   }
@@ -221,17 +221,17 @@
   }
 
   .auto-hint {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     color: var(--text-dim);
   }
 
   .cancel-area {
-    margin-top: 10px;
+    margin-top: 8px;
   }
 
   .btn-sm {
-    padding: 8px 16px;
-    font-size: 0.85rem;
+    padding: 7px 14px;
+    font-size: 0.8rem;
   }
 
   @keyframes spin {
@@ -239,8 +239,7 @@
   }
 
   @keyframes dotPulse {
-    from { opacity: 0.4; transform: scale(0.8); }
-    to { opacity: 1; transform: scale(1.2); }
+    from { opacity: 0.4; }
+    to { opacity: 1; }
   }
 </style>
-

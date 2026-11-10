@@ -1,6 +1,7 @@
 <script lang="ts">
   import { createEventDispatcher } from 'svelte';
-  import type { PlayerColor } from '../../types/game';
+  import type { PlayerColor, PieceType } from '../../types/game';
+  import ChessPiece from '../chess/ChessPiece.svelte';
 
   export let mode: 'swap' | 'revival' = 'swap';
   export let playerColor: PlayerColor = 'White';
@@ -14,184 +15,221 @@
     cancel: void;
   }>();
 
-  const pieceIcons: Record<string, string> = {
-    Pawn: '♟',
-    Knight: '♞',
-    Bishop: '♝',
-    Rook: '♜',
-    Queen: '♛'
-  };
+  function asPieceType(piece: string): PieceType {
+    return piece as PieceType;
+  }
 </script>
 
-<div class="target-selector panel" data-testid="target-selector">
+<div class="target-selector" data-testid="target-selector">
   {#if mode === 'revival'}
-    <div class="header">
-      <h4>Revival Ability Active</h4>
-      <p class="subtitle">Select a captured friendly piece from your reserve, then click an empty square on your half of the board:</p>
-    </div>
-
-    {#if reserves.length === 0}
-      <p class="empty-reserves">No captured pieces available in your reserve pool.</p>
-    {:else}
-      <div class="reserves-list">
-        {#each reserves as piece}
-          <button
-            class="reserve-btn"
-            class:selected={selectedPieceType === piece}
-            on:click={() => dispatch('selectReservePiece', { pieceType: piece })}
-            data-testid="reserve-{piece.toLowerCase()}"
-          >
-            <span class="piece-symbol">{pieceIcons[piece] || piece}</span>
-            <span class="piece-name">{piece}</span>
-          </button>
-        {/each}
+    <div class="selector-row">
+      <div class="selector-label">
+        <span class="step-tag">Reserve Pool</span>
+        <span class="step-hint">
+          {selectedPieceType
+            ? `Deploying ${selectedPieceType}: tap a highlighted square on your half`
+            : 'Tap a captured piece to place on the board:'}
+        </span>
       </div>
-    {/if}
+
+      {#if reserves.length === 0}
+        <span class="empty-reserves">No captured pieces in reserve.</span>
+      {:else}
+        <div class="reserves-list">
+          {#each reserves as piece}
+            <button
+              type="button"
+              class="reserve-btn"
+              class:selected={selectedPieceType === piece}
+              on:click={() => dispatch('selectReservePiece', { pieceType: piece })}
+              data-testid="reserve-{piece.toLowerCase()}"
+            >
+              <ChessPiece type={asPieceType(piece)} color={playerColor} size={22} />
+              <span class="piece-name">{piece}</span>
+            </button>
+          {/each}
+        </div>
+      {/if}
+    </div>
   {:else if mode === 'swap'}
-    <div class="header">
-      <h4>Reverse / Swap Ability Active</h4>
-      <p class="subtitle">Select two of your own friendly pieces on the board to swap their positions (Kings and opponent pieces cannot be swapped):</p>
-    </div>
+    <div class="selector-row">
+      <div class="swap-stepper">
+        <div class="swap-slot" class:filled={!!firstSwapSquare} class:active-slot={!firstSwapSquare}>
+          <span class="slot-label">1st Piece</span>
+          <strong class="slot-val">{firstSwapSquare ? firstSwapSquare.toUpperCase() : 'Tap board'}</strong>
+        </div>
 
-    <div class="swap-status">
-      <div class="swap-box" class:filled={firstSwapSquare}>
-        <span>Piece 1:</span>
-        <strong>{firstSwapSquare || 'Select on board'}</strong>
+        <span class="swap-connector" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4" />
+          </svg>
+        </span>
+
+        <div class="swap-slot" class:filled={!!secondSwapSquare} class:active-slot={!!firstSwapSquare && !secondSwapSquare}>
+          <span class="slot-label">2nd Piece</span>
+          <strong class="slot-val">{secondSwapSquare ? secondSwapSquare.toUpperCase() : 'Tap board'}</strong>
+        </div>
       </div>
-      <span class="swap-arrow">⇄</span>
-      <div class="swap-box" class:filled={secondSwapSquare}>
-        <span>Piece 2:</span>
-        <strong>{secondSwapSquare || 'Select on board'}</strong>
-      </div>
+
+      {#if firstSwapSquare}
+        <button
+          type="button"
+          class="btn btn-secondary btn-xs"
+          on:click={() => dispatch('cancel')}
+        >
+          Reset Selection
+        </button>
+      {/if}
     </div>
   {/if}
-
-  <div class="selector-actions">
-    <button class="btn btn-secondary btn-sm" on:click={() => dispatch('cancel')}>Cancel Ability</button>
-  </div>
 </div>
 
 <style>
   .target-selector {
-    background: var(--bg-card);
-    border: 1px solid var(--accent-gold);
-    box-shadow: var(--shadow-glow);
-    padding: 16px 20px;
-    margin-bottom: 16px;
-    border-radius: 10px;
-    animation: slideDown 0.2s ease-out;
+    background-color: var(--bg-elevated);
+    border: 1px solid var(--border-strong);
+    padding: 8px 12px;
+    border-radius: 8px;
   }
 
-  .header h4 {
-    color: var(--accent-gold);
-    font-size: 1rem;
-    margin-bottom: 4px;
+  .selector-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
   }
 
-  .subtitle {
-    font-size: 0.85rem;
+  .selector-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .step-tag {
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background-color: rgba(16, 185, 129, 0.16);
+    color: var(--accent-green);
+    border: 1px solid rgba(16, 185, 129, 0.35);
+  }
+
+  .step-hint {
+    font-size: 0.78rem;
     color: var(--text-muted);
-    margin-bottom: 14px;
   }
 
   .reserves-list {
     display: flex;
-    gap: 10px;
+    gap: 6px;
     flex-wrap: wrap;
-    margin-bottom: 14px;
   }
 
   .reserve-btn {
-    display: flex;
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
-    background: var(--bg-surface);
-    border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 8px 14px;
+    gap: 6px;
+    background-color: var(--bg-surface);
+    border: 1.5px solid var(--border-strong);
+    border-radius: 6px;
+    padding: 5px 10px;
     color: var(--text-main);
     cursor: pointer;
-    transition: all 0.15s ease;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
   }
 
   .reserve-btn:hover {
     border-color: var(--accent-gold);
-    background: var(--bg-card-hover);
+    background-color: var(--bg-card-hover);
   }
 
   .reserve-btn.selected {
     border-color: var(--accent-green);
-    background: rgba(34, 197, 94, 0.15);
-    box-shadow: 0 0 8px var(--accent-green-glow);
-  }
-
-  .piece-symbol {
-    font-size: 1.4rem;
+    background-color: rgba(16, 185, 129, 0.18);
+    box-shadow: 0 0 0 2px var(--accent-green-glow);
   }
 
   .piece-name {
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     font-weight: 600;
   }
 
   .empty-reserves {
-    font-size: 0.85rem;
+    font-size: 0.78rem;
     color: var(--text-muted);
-    font-style: italic;
-    margin-bottom: 14px;
   }
 
-  .swap-status {
+  .swap-stepper {
     display: flex;
     align-items: center;
-    gap: 16px;
-    margin-bottom: 14px;
+    gap: 8px;
+    flex: 1;
   }
 
-  .swap-box {
-    background: var(--bg-surface);
-    border: 1px dashed var(--border-color);
-    border-radius: 8px;
-    padding: 10px 16px;
+  .swap-slot {
+    flex: 1;
+    background-color: var(--bg-primary);
+    border: 1px dashed var(--border-strong);
+    border-radius: 6px;
+    padding: 6px 10px;
     display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 130px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
   }
 
-  .swap-box.filled {
+  .swap-slot.active-slot {
     border-style: solid;
     border-color: var(--accent-gold);
-    background: rgba(251, 191, 36, 0.1);
   }
 
-  .swap-box span {
-    font-size: 0.75rem;
+  .swap-slot.filled {
+    border-style: solid;
+    border-color: var(--accent-green);
+    background-color: rgba(16, 185, 129, 0.12);
+  }
+
+  .slot-label {
+    font-size: 0.7rem;
     color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
   }
 
-  .swap-box strong {
-    font-size: 0.95rem;
+  .slot-val {
+    font-size: 0.82rem;
+    font-family: var(--font-mono);
     color: var(--text-main);
   }
 
-  .swap-arrow {
-    font-size: 1.5rem;
+  .swap-connector {
     color: var(--accent-gold);
-  }
-
-  .btn-sm {
-    padding: 6px 14px;
-    font-size: 0.85rem;
-  }
-
-  .selector-actions {
     display: flex;
-    justify-content: flex-end;
+    align-items: center;
   }
 
-  @keyframes slideDown {
-    from { transform: translateY(-8px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+  .btn-xs {
+    padding: 4px 10px;
+    font-size: 0.74rem;
+  }
+
+  @media (max-width: 900px) {
+    .target-selector {
+      padding: 6px 8px;
+    }
+
+    .reserve-btn {
+      padding: 4px 8px;
+    }
+
+    .swap-slot {
+      padding: 4px 8px;
+    }
   }
 </style>

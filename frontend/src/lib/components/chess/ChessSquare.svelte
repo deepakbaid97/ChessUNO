@@ -38,6 +38,7 @@
   class:dark={isDark}
   class:light={!isDark}
   class:selected={isSelected}
+  class:destination-highlight={isDestination && !!piece && !isCapture}
   class:last-move={isLastMove}
   class:in-check={isInCheck}
   on:click={handleClick}
@@ -56,11 +57,13 @@
   {/if}
 
   {#if piece}
-    <ChessPiece type={piece.type} color={piece.color} />
+    <div class="piece-scale">
+      <ChessPiece type={piece.type} color={piece.color} />
+    </div>
   {/if}
 
   {#if isDestination && !isCapture}
-    <div class="dest-dot" data-testid="dest-dot-{square}"></div>
+    <div class="dest-dot" class:occupied-target={!!piece} data-testid="dest-dot-{square}"></div>
   {:else if isDestination && isCapture}
     <div class="capture-ring" data-testid="capture-ring-{square}"></div>
   {/if}
@@ -77,7 +80,8 @@
     aspect-ratio: 1 / 1;
     cursor: pointer;
     user-select: none;
-    transition: background-color 0.15s ease;
+    transition: background-color 0.12s ease;
+    overflow: hidden;
   }
 
   .square.light {
@@ -90,7 +94,11 @@
 
   .square.selected {
     background-color: var(--square-selected) !important;
-    box-shadow: inset 0 0 0 2px var(--accent-gold);
+    box-shadow: inset 0 0 0 3px var(--accent-gold);
+  }
+
+  .square.destination-highlight {
+    box-shadow: inset 0 0 0 3px var(--accent-green);
   }
 
   .square.last-move:not(.selected) {
@@ -101,50 +109,80 @@
     background: var(--square-check) !important;
   }
 
+  .piece-scale {
+    width: 82%;
+    height: 82%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .piece-scale :global(.piece-container) {
+    width: 100% !important;
+    height: 100% !important;
+  }
+
   .coordinate {
     position: absolute;
-    font-size: 0.7rem;
+    font-size: 0.65rem;
     font-weight: 700;
     pointer-events: none;
-    opacity: 0.75;
+    opacity: 0.82;
+    line-height: 1;
   }
 
   .square.light .coordinate {
-    color: var(--square-dark);
+    color: #5c4631;
   }
 
   .square.dark .coordinate {
-    color: var(--square-light);
+    color: #efe7d6;
   }
 
   .coord-rank {
     top: 2px;
-    left: 4px;
+    left: 3px;
   }
 
   .coord-file {
     bottom: 2px;
-    right: 4px;
+    right: 3px;
   }
 
   .dest-dot {
     position: absolute;
-    width: 28%;
-    height: 28%;
+    width: 30%;
+    height: 30%;
     border-radius: 50%;
-    background-color: var(--square-dest-highlight);
-    box-shadow: 0 0 6px var(--accent-green-glow);
+    background-color: #10b981;
+    border: 2px solid rgba(255, 255, 255, 0.85);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
     pointer-events: none;
+    z-index: 5;
+  }
+
+  .dest-dot.occupied-target {
+    width: 86%;
+    height: 86%;
+    background-color: rgba(16, 185, 129, 0.22);
+    border: 3px dashed #10b981;
+    box-shadow: none;
   }
 
   .capture-ring {
     position: absolute;
-    width: 82%;
-    height: 82%;
+    width: 86%;
+    height: 86%;
     border-radius: 50%;
     border: 4px solid var(--accent-red);
-    box-shadow: 0 0 8px var(--accent-red-glow);
+    box-shadow: 0 0 6px var(--accent-red-glow);
     pointer-events: none;
+    z-index: 5;
+  }
+
+  @media (max-width: 600px) {
+    .coordinate {
+      font-size: 0.55rem;
+    }
   }
 </style>
-

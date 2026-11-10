@@ -28,16 +28,16 @@
   $: isAction = category === 'ACTION';
   $: isWild = category === 'WILD';
 
-  function getCardIcon(card: CardModel): string {
+  function getCardSymbol(card: CardModel): string {
     if (card.value !== null && card.value !== undefined) {
       return card.value.toString();
     }
-    if (card.id.includes('reverse')) return '⇄';
-    if (card.id.includes('skip')) return '⊘';
+    if (card.id.includes('reverse')) return 'SWAP';
+    if (card.id.includes('skip')) return 'SKIP';
     if (card.id.includes('draw-two')) return '+2';
-    if (card.id.includes('wild-draw-four')) return '+4';
-    if (card.id.includes('wild')) return '★';
-    return '♠';
+    if (card.id.includes('wild-draw-four')) return 'W+4';
+    if (card.id.includes('wild')) return 'WILD';
+    return 'ACT';
   }
 </script>
 
@@ -59,11 +59,13 @@
   <div class="card-inner">
     <div class="card-header">
       <span class="category-pill">{category}</span>
-      <span class="value-badge">{getCardIcon(card)}</span>
+      <span class="corner-index">{getCardSymbol(card)}</span>
     </div>
 
     <div class="card-center">
-      <div class="center-symbol">{getCardIcon(card)}</div>
+      <div class="center-emblem" class:text-emblem={getCardSymbol(card).length > 2}>
+        {getCardSymbol(card)}
+      </div>
       <div class="card-title">{card.name}</div>
     </div>
 
@@ -76,80 +78,80 @@
 <style>
   .card-wrapper {
     position: relative;
-    border-radius: 12px;
-    padding: 2px;
+    border-radius: 8px;
     cursor: pointer;
     user-select: none;
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, filter 0.2s ease;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
     box-shadow: var(--shadow-md);
+    flex-shrink: 0;
   }
 
   .card-wrapper.elevate:hover {
-    transform: translateY(-8px) scale(1.02);
+    transform: translateY(-2px);
     box-shadow: var(--shadow-card);
   }
 
   .card-wrapper.selected {
-    transform: translateY(-12px) scale(1.04);
-    box-shadow: 0 0 0 3px var(--accent-gold), var(--shadow-card);
+    box-shadow: 0 0 0 2px var(--accent-gold), var(--shadow-card);
   }
 
   .card-wrapper:not(.playable) {
     opacity: 0.6;
-    filter: grayscale(0.4);
     cursor: not-allowed;
   }
 
   /* Category themes */
   .number-card {
-    background: var(--card-num-bg);
-    border: 1px solid var(--card-num-border);
+    background-color: var(--card-num-bg);
+    border: 1.5px solid var(--card-num-border);
   }
 
   .action-card {
-    background: var(--card-act-bg);
-    border: 1px solid var(--card-act-border);
+    background-color: var(--card-act-bg);
+    border: 1.5px solid var(--card-act-border);
   }
 
   .wild-card {
-    background: var(--card-wild-bg);
-    border: 1px solid var(--card-wild-border);
+    background-color: var(--card-wild-bg);
+    border: 1.5px solid var(--card-wild-border);
   }
 
   .card-inner {
-    border-radius: 10px;
-    padding: 12px 14px;
+    border-radius: 7px;
+    padding: 10px 12px;
     height: 100%;
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    background: radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.12) 0%, rgba(0, 0, 0, 0.3) 100%);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(0, 0, 0, 0.22) 100%);
   }
 
   /* Sizes */
   .sm {
-    width: 120px;
-    height: 168px;
+    width: 104px;
+    height: 144px;
   }
-  .sm .center-symbol { font-size: 2rem; }
-  .sm .card-title { font-size: 0.8rem; }
+  .sm .center-emblem { font-size: 1.5rem; }
+  .sm .card-title { font-size: 0.75rem; }
   .sm .description { display: none; }
 
   .md {
-    width: 154px;
-    height: 220px;
+    width: 136px;
+    height: 184px;
   }
-  .md .center-symbol { font-size: 2.8rem; }
-  .md .card-title { font-size: 0.95rem; }
-  .md .description { font-size: 0.72rem; }
+  .md .center-emblem { font-size: 2.1rem; }
+  .md .center-emblem.text-emblem { font-size: 1.35rem; letter-spacing: 0.04em; }
+  .md .card-title { font-size: 0.85rem; }
+  .md .description { font-size: 0.68rem; }
 
   .lg {
-    width: 220px;
-    height: 310px;
+    width: 190px;
+    height: 260px;
   }
-  .lg .center-symbol { font-size: 4rem; }
-  .lg .card-title { font-size: 1.2rem; }
-  .lg .description { font-size: 0.85rem; }
+  .lg .center-emblem { font-size: 3rem; }
+  .lg .center-emblem.text-emblem { font-size: 1.9rem; }
+  .lg .card-title { font-size: 1.05rem; }
+  .lg .description { font-size: 0.8rem; }
 
   .card-header {
     display: flex;
@@ -158,19 +160,21 @@
   }
 
   .category-pill {
-    font-size: 0.65rem;
-    font-weight: 800;
-    letter-spacing: 0.05em;
-    padding: 2px 6px;
-    border-radius: 4px;
-    background: rgba(0, 0, 0, 0.4);
-    color: #fff;
+    font-size: 0.58rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    padding: 2px 5px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.45);
+    color: rgba(255, 255, 255, 0.88);
+    font-family: var(--font-mono);
   }
 
-  .value-badge {
-    font-size: 0.85rem;
-    font-weight: 900;
-    color: #fff;
+  .corner-index {
+    font-size: 0.72rem;
+    font-weight: 800;
+    color: rgba(255, 255, 255, 0.9);
+    font-family: var(--font-mono);
   }
 
   .card-center {
@@ -179,34 +183,64 @@
     align-items: center;
     justify-content: center;
     text-align: center;
-    margin: 8px 0;
+    margin: 4px 0;
   }
 
-  .center-symbol {
-    font-weight: 900;
-    color: #fff;
-    line-height: 1;
-    filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+  .center-emblem {
+    font-weight: 800;
+    color: #ffffff;
+    line-height: 1.05;
+    font-family: var(--font-mono);
   }
 
   .card-title {
-    font-weight: 800;
-    color: #fff;
-    margin-top: 6px;
+    font-weight: 700;
+    color: #ffffff;
+    margin-top: 4px;
     letter-spacing: -0.01em;
   }
 
   .card-footer {
     background: rgba(0, 0, 0, 0.35);
-    border-radius: 6px;
-    padding: 6px 8px;
+    border-radius: 4px;
+    padding: 5px 6px;
     margin-top: auto;
   }
 
   .description {
-    color: #e2e8f0;
-    line-height: 1.25;
+    color: #e5e7eb;
+    line-height: 1.22;
     text-align: center;
   }
-</style>
 
+  @media (max-width: 900px) {
+    .md {
+      width: 112px;
+      height: 136px;
+    }
+    .md .card-inner {
+      padding: 7px 8px;
+    }
+    .md .center-emblem {
+      font-size: 1.55rem;
+    }
+    .md .center-emblem.text-emblem {
+      font-size: 1.05rem;
+    }
+    .md .card-title {
+      font-size: 0.74rem;
+      margin-top: 2px;
+    }
+    .md .card-footer {
+      padding: 4px 5px;
+    }
+    .md .description {
+      font-size: 0.6rem;
+      line-height: 1.15;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+  }
+</style>

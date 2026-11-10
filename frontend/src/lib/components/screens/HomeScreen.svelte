@@ -5,7 +5,7 @@
   export let errorMessage: string = '';
 
   const dispatch = createEventDispatcher<{
-    createGame: { playerName: string };
+    createGame: { playerName: string; seed?: number };
     joinGame: { invitationToken: string; playerName: string };
   }>();
 
@@ -26,7 +26,6 @@
   }
 
   function handleJoin() {
-    // If user pasted a full URL, extract token if needed
     let token = joinToken.trim();
     if (token.includes('/join/')) {
       token = token.split('/join/')[1].split('?')[0].split('/')[0];
@@ -46,29 +45,31 @@
 
 <div class="home-screen" data-testid="home-screen">
   <div class="hero-section">
-    <div class="hero-badge">Phase 4 Strategic Experience</div>
-    <h1>♟️ Chess UNO</h1>
-    <p class="tagline">Traditional Chess depth electrified with UNO cards and tactical abilities.</p>
+    <div class="hero-tag">Tactical Chess Variant</div>
+    <h1>Chess UNO</h1>
+    <p class="tagline">Classical chess governed by an authoritative action deck. Draw a card every turn to move, swap, or revive pieces.</p>
   </div>
 
   {#if errorMessage}
     <div class="error-banner" data-testid="error-banner">
-      <span>⚠️ {errorMessage}</span>
+      <span>{errorMessage}</span>
     </div>
   {/if}
 
   <div class="modes-grid">
     <div class="mode-card panel">
-      <div class="card-icon">👑</div>
-      <h3>Create Match</h3>
-      <p class="mode-desc">Host a match as White. Generate a shareable invitation link for your opponent.</p>
+      <div class="mode-header">
+        <span class="mode-tag white-tag">White • Host</span>
+        <h3>Create Match</h3>
+      </div>
+      <p class="mode-desc">Start a new game session as White and generate an invitation link for your opponent.</p>
 
       <div class="form-group">
-        <label for="create-name">Commander Name</label>
+        <label for="create-name">Player Name</label>
         <input
           id="create-name"
           bind:value={createPlayerName}
-          placeholder="e.g. Grandmaster"
+          placeholder="Enter your name"
           disabled={isCreating}
           data-testid="input-create-name"
         />
@@ -80,31 +81,33 @@
         disabled={isCreating || !createPlayerName.trim()}
         data-testid="btn-create-game"
       >
-        {isCreating ? 'Creating Match...' : 'Create Game & Invite'}
+        {isCreating ? 'Creating Match...' : 'Create Match & Get Link'}
       </button>
     </div>
 
     <div class="mode-card panel">
-      <div class="card-icon">⚔️</div>
-      <h3>Join Match</h3>
-      <p class="mode-desc">Enter an invitation token or URL to play as Black against a host.</p>
+      <div class="mode-header">
+        <span class="mode-tag black-tag">Black • Challenger</span>
+        <h3>Join Match</h3>
+      </div>
+      <p class="mode-desc">Paste an invitation link or token from a host to join their board as Black.</p>
 
       <div class="form-group">
-        <label for="join-name">Your Name</label>
+        <label for="join-name">Player Name</label>
         <input
           id="join-name"
           bind:value={joinPlayerName}
-          placeholder="e.g. Challenger"
+          placeholder="Enter your name"
           data-testid="input-join-name"
         />
       </div>
 
       <div class="form-group">
-        <label for="join-token">Invitation Token or URL</label>
+        <label for="join-token">Invitation Link or Token</label>
         <input
           id="join-token"
           bind:value={joinToken}
-          placeholder="Paste invitation token or link"
+          placeholder="Paste invitation URL or token"
           data-testid="input-join-token"
         />
       </div>
@@ -121,34 +124,36 @@
   </div>
 
   <div class="rules-highlight panel">
-    <h4>Core Rules Snapshot</h4>
+    <div class="rules-header">
+      <h4>How Each Turn Works</h4>
+    </div>
     <div class="rules-grid">
       <div class="rule-item">
-        <span class="rule-icon">🎴</span>
+        <span class="rule-step">01</span>
         <div>
-          <strong>Draw Mandatory</strong>
-          <p>Every turn starts by drawing 1 card from the authoritative deck.</p>
+          <strong>Draw 1 Card</strong>
+          <p>Every turn begins by drawing a card from the shared 108-card deck.</p>
         </div>
       </div>
       <div class="rule-item">
-        <span class="rule-icon">🔢</span>
+        <span class="rule-step">02</span>
         <div>
-          <strong>Number Cards (0-9)</strong>
-          <p>Grants up to N chess moves. Consecutive moves with the same piece are allowed.</p>
+          <strong>Number Cards (0–4)</strong>
+          <p>Make up to N legal chess moves. You may move the same piece multiple times.</p>
         </div>
       </div>
       <div class="rule-item">
-        <span class="rule-icon">✨</span>
+        <span class="rule-step">03</span>
         <div>
-          <strong>Special Actions</strong>
-          <p>Reverse swaps two friendly pieces; Draw Two revives captured pieces; Skip retains turn initiative.</p>
+          <strong>Reverse &amp; Draw Two</strong>
+          <p>Reverse swaps two of your non-King pieces. Draw Two revives up to 2 captured pieces onto your half.</p>
         </div>
       </div>
       <div class="rule-item">
-        <span class="rule-icon">🛡️</span>
+        <span class="rule-step">04</span>
         <div>
-          <strong>King Safety</strong>
-          <p>You cannot finish a turn with your King in check. Delivering checkmate wins the match.</p>
+          <strong>Checkmate or King Capture</strong>
+          <p>Win by delivering checkmate or capturing the enemy King during a multi-move turn.</p>
         </div>
       </div>
     </div>
@@ -159,61 +164,62 @@
   .home-screen {
     display: flex;
     flex-direction: column;
-    gap: 32px;
-    max-width: 880px;
+    gap: 24px;
+    max-width: 840px;
     margin: 0 auto;
     width: 100%;
+    padding: 8px 0 24px;
   }
 
   .hero-section {
     text-align: center;
-    padding: 20px 0 10px;
+    padding: 12px 0 4px;
   }
 
-  .hero-badge {
+  .hero-tag {
     display: inline-block;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--accent-gold);
-    background: rgba(251, 191, 36, 0.1);
-    border: 1px solid rgba(251, 191, 36, 0.3);
-    padding: 4px 12px;
-    border-radius: 9999px;
-    margin-bottom: 12px;
+    background-color: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    padding: 3px 10px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-family: var(--font-mono);
   }
 
   h1 {
-    font-size: 2.5rem;
-    font-weight: 900;
+    font-size: 2.1rem;
+    font-weight: 800;
     letter-spacing: -0.03em;
     margin-bottom: 8px;
-    background: linear-gradient(135deg, #fff 0%, var(--accent-gold) 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: var(--text-main);
   }
 
   .tagline {
-    font-size: 1.1rem;
+    font-size: 0.95rem;
     color: var(--text-muted);
-    max-width: 580px;
+    max-width: 540px;
     margin: 0 auto;
+    line-height: 1.45;
   }
 
   .error-banner {
-    background: rgba(239, 68, 68, 0.15);
+    background-color: rgba(239, 68, 68, 0.14);
     border: 1px solid var(--accent-red);
     color: #fca5a5;
-    padding: 12px 18px;
-    border-radius: 8px;
-    font-size: 0.9rem;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 0.85rem;
   }
 
   .modes-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 24px;
+    gap: 18px;
   }
 
   @media (max-width: 680px) {
@@ -227,46 +233,73 @@
     flex-direction: column;
   }
 
-  .card-icon {
-    font-size: 2.2rem;
-    margin-bottom: 12px;
-  }
-
-  h3 {
-    font-size: 1.3rem;
-    color: #fff;
+  .mode-header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
     margin-bottom: 6px;
   }
 
+  .mode-tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 2px 7px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+  }
+
+  .white-tag {
+    background-color: rgba(243, 244, 246, 0.12);
+    color: #f9fafb;
+    border: 1px solid rgba(243, 244, 246, 0.25);
+  }
+
+  .black-tag {
+    background-color: rgba(59, 130, 246, 0.14);
+    color: #93c5fd;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+
+  h3 {
+    font-size: 1.2rem;
+    color: var(--text-main);
+  }
+
   .mode-desc {
-    font-size: 0.88rem;
+    font-size: 0.84rem;
     color: var(--text-muted);
-    margin-bottom: 20px;
+    margin-bottom: 18px;
     line-height: 1.4;
   }
 
   .form-group {
-    margin-bottom: 16px;
+    margin-bottom: 14px;
   }
 
   .btn-block {
     width: 100%;
     margin-top: auto;
-    padding: 12px 20px;
+    padding: 11px 18px;
   }
 
   .rules-highlight {
-    background: var(--bg-surface);
+    background-color: var(--bg-surface);
+  }
+
+  .rules-header {
+    margin-bottom: 14px;
+    border-bottom: 1px solid var(--border-subtle);
+    padding-bottom: 8px;
   }
 
   .rules-highlight h4 {
-    font-size: 0.95rem;
+    font-size: 0.8rem;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--accent-gold);
-    margin-bottom: 16px;
-    border-bottom: 1px solid var(--border-subtle);
-    padding-bottom: 8px;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
   }
 
   .rules-grid {
@@ -287,21 +320,28 @@
     align-items: flex-start;
   }
 
-  .rule-icon {
-    font-size: 1.5rem;
+  .rule-step {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--accent-gold);
+    background-color: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 4px;
+    padding: 3px 6px;
+    flex-shrink: 0;
   }
 
   .rule-item strong {
     display: block;
-    font-size: 0.9rem;
+    font-size: 0.86rem;
     color: var(--text-main);
     margin-bottom: 2px;
   }
 
   .rule-item p {
-    font-size: 0.82rem;
+    font-size: 0.78rem;
     color: var(--text-muted);
-    line-height: 1.35;
+    line-height: 1.38;
   }
 </style>
-

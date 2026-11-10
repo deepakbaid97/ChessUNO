@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { PlayerColor } from '../../types/game';
+  import type { PlayerColor, PieceType } from '../../types/game';
+  import ChessPiece from '../chess/ChessPiece.svelte';
 
   export let name: string;
   export let color: PlayerColor;
@@ -10,6 +11,10 @@
 
   $: initials = name ? name.substring(0, 2).toUpperCase() : '??';
   $: isWhite = color === 'White';
+
+  function asPieceType(piece: string): PieceType {
+    return piece as PieceType;
+  }
 </script>
 
 <div
@@ -18,35 +23,49 @@
   class:active-turn={isCurrentTurn}
   data-testid={isOpponent ? 'opponent-info' : 'player-info'}
 >
-  <div class="avatar-badge" class:white-avatar={isWhite} class:black-avatar={!isWhite}>
-    <span>{initials}</span>
-    <span
-      class="connection-dot"
-      class:online={isConnected}
-      class:offline={!isConnected}
-      title={isConnected ? 'Connected' : 'Disconnected'}
-    ></span>
+  <div class="player-identity">
+    <div class="avatar-badge" class:white-avatar={isWhite} class:black-avatar={!isWhite}>
+      <span>{initials}</span>
+      <span
+        class="connection-dot"
+        class:online={isConnected}
+        class:offline={!isConnected}
+        title={isConnected ? 'Connected' : 'Disconnected'}
+      ></span>
+    </div>
+
+    <div class="name-group">
+      <div class="name-line">
+        <span class="player-name">{name || (isOpponent ? 'Opponent' : 'You')}</span>
+        <span class="color-badge {color.toLowerCase()}">{color}</span>
+      </div>
+      <div class="sub-line">
+        {#if isCurrentTurn}
+          <span class="turn-indicator">{isOpponent ? 'Opponent\'s Turn' : 'Your Turn'}</span>
+        {:else}
+          <span class="waiting-indicator">Standby</span>
+        {/if}
+      </div>
+    </div>
   </div>
 
-  <div class="player-meta">
-    <div class="name-row">
-      <span class="player-name">{name}</span>
-      <span class="color-badge {color.toLowerCase()}">{color}</span>
-    </div>
-
-    <div class="status-row">
-      {#if isCurrentTurn}
-        <span class="turn-indicator pulse">Turn to Move</span>
-      {:else}
-        <span class="waiting-indicator">Waiting</span>
-      {/if}
-
-      {#if reserves.length > 0}
-        <span class="reserves-count" title="Captured friendly pieces in reserve">
-          Reserves: <strong>{reserves.length}</strong>
-        </span>
-      {/if}
-    </div>
+  <div class="player-right">
+    {#if reserves.length > 0}
+      <div class="reserves-strip" title="Captured friendly pieces available for revival">
+        <span class="reserves-label">Reserve ({reserves.length}):</span>
+        <div class="reserves-icons">
+          {#each reserves.slice(0, 6) as piece}
+            <span class="reserve-mini">
+              <ChessPiece type={asPieceType(piece)} {color} size={18} />
+            </span>
+          {/each}
+          {#if reserves.length > 6}
+            <span class="reserve-more">+{reserves.length - 6}</span>
+          {/if}
+        </div>
+      </div>
+    {/if}
+    <slot name="actions" />
   </div>
 </div>
 
@@ -54,110 +73,117 @@
   .player-info {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 12px;
-    padding: 10px 16px;
-    background: var(--bg-surface);
+    padding: 8px 12px;
+    background-color: var(--bg-surface);
     border: 1px solid var(--border-color);
-    border-radius: 10px;
-    transition: all 0.2s ease;
+    border-radius: 8px;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
   }
 
   .player-info.active-turn {
     border-color: var(--accent-gold);
-    box-shadow: 0 0 12px var(--accent-gold-glow);
-    background: rgba(251, 191, 36, 0.05);
+    background-color: rgba(245, 158, 11, 0.06);
+  }
+
+  .player-identity {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
   }
 
   .avatar-badge {
     position: relative;
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
+    width: 34px;
+    height: 34px;
+    border-radius: 6px;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: 800;
-    font-size: 0.95rem;
-    box-shadow: var(--shadow-sm);
+    font-size: 0.8rem;
+    flex-shrink: 0;
   }
 
   .white-avatar {
-    background: #f8fafc;
-    color: #0f172a;
-    border: 2px solid #e2e8f0;
+    background-color: #f3f4f6;
+    color: #111827;
+    border: 1.5px solid #d1d5db;
   }
 
   .black-avatar {
-    background: #0f172a;
-    color: #f8fafc;
-    border: 2px solid #334155;
+    background-color: #181b20;
+    color: #f3f4f6;
+    border: 1.5px solid #4b5563;
   }
 
   .connection-dot {
     position: absolute;
-    bottom: -1px;
-    right: -1px;
-    width: 12px;
-    height: 12px;
+    bottom: -2px;
+    right: -2px;
+    width: 9px;
+    height: 9px;
     border-radius: 50%;
     border: 2px solid var(--bg-surface);
   }
 
   .connection-dot.online {
     background-color: var(--accent-green);
-    box-shadow: 0 0 4px var(--accent-green-glow);
   }
 
   .connection-dot.offline {
     background-color: var(--accent-red);
   }
 
-  .player-meta {
-    flex: 1;
+  .name-group {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 1px;
+    min-width: 0;
   }
 
-  .name-row {
+  .name-line {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    gap: 6px;
   }
 
   .player-name {
     font-weight: 700;
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     color: var(--text-main);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .color-badge {
-    font-size: 0.7rem;
-    font-weight: 800;
-    padding: 2px 8px;
-    border-radius: 4px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 3px;
     text-transform: uppercase;
     letter-spacing: 0.05em;
+    font-family: var(--font-mono);
   }
 
   .color-badge.white {
-    background: rgba(255, 255, 255, 0.15);
-    color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    background-color: rgba(243, 244, 246, 0.14);
+    color: #f9fafb;
+    border: 1px solid rgba(243, 244, 246, 0.28);
   }
 
   .color-badge.black {
-    background: rgba(168, 85, 247, 0.15);
-    color: var(--accent-purple);
-    border: 1px solid rgba(168, 85, 247, 0.3);
+    background-color: rgba(156, 163, 175, 0.12);
+    color: #d1d5db;
+    border: 1px solid rgba(156, 163, 175, 0.28);
   }
 
-  .status-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    font-size: 0.78rem;
+  .sub-line {
+    font-size: 0.72rem;
+    line-height: 1.2;
   }
 
   .turn-indicator {
@@ -166,24 +192,70 @@
   }
 
   .waiting-indicator {
+    color: var(--text-dim);
+  }
+
+  .player-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .reserves-strip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background-color: var(--bg-primary);
+    border: 1px solid var(--border-subtle);
+    border-radius: 5px;
+    padding: 3px 8px;
+  }
+
+  .reserves-label {
+    font-size: 0.68rem;
     color: var(--text-muted);
+    font-weight: 600;
   }
 
-  .reserves-count {
+  .reserves-icons {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .reserve-mini {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .reserve-more {
+    font-size: 0.68rem;
     color: var(--text-muted);
+    font-family: var(--font-mono);
   }
 
-  .reserves-count strong {
-    color: var(--accent-blue);
-  }
+  @media (max-width: 900px) {
+    .player-info {
+      padding: 5px 10px;
+    }
 
-  .pulse {
-    animation: textPulse 1.5s infinite alternate;
-  }
+    .avatar-badge {
+      width: 28px;
+      height: 28px;
+      font-size: 0.72rem;
+    }
 
-  @keyframes textPulse {
-    from { opacity: 0.8; }
-    to { opacity: 1; text-shadow: 0 0 6px var(--accent-gold-glow); }
+    .player-name {
+      font-size: 0.8rem;
+    }
+
+    .sub-line {
+      font-size: 0.66rem;
+    }
+
+    .reserves-label {
+      display: none;
+    }
   }
 </style>
-

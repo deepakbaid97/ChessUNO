@@ -85,14 +85,20 @@
   }
 </script>
 
-<div class="chessboard-wrapper" class:disabled={!isMyTurn || isSubmitting}>
+<div
+  class="chessboard-wrapper"
+  class:active-turn={isMyTurn}
+  class:swap-mode={mode === 'swap'}
+  class:revival-mode={mode === 'revival'}
+  class:disabled={!isMyTurn || isSubmitting}
+>
   <div class="chessboard" data-testid="chessboard">
-    {#each orientedSquares as square, i}
+    {#each orientedSquares as square}
       {@const { row, col } = getSquareIndex(square)}
       {@const piece = boardMatrix[row] ? boardMatrix[row][col] : null}
       {@const isSelected = selectedSquare === square}
       {@const isDest = validDestinations.includes(square)}
-      {@const isCapt = isDest && selectedSquare ? isCaptureMove(selectedSquare, square, boardMatrix) : false}
+      {@const isCapt = mode === 'normal' && isDest && selectedSquare ? isCaptureMove(selectedSquare, square, boardMatrix) : false}
       {@const isLast = (lastMove?.from === square || lastMove?.to === square)}
       {@const isCheck = isCheckSquare(square, inCheck, activePlayer, boardMatrix)}
       {@const isDark = getSquareColor(square) === 'dark'}
@@ -134,12 +140,26 @@
   .chessboard-wrapper {
     position: relative;
     width: 100%;
-    max-width: 520px;
+    max-width: 500px;
     margin: 0 auto;
-    border-radius: 8px;
+    border-radius: 6px;
     overflow: hidden;
-    box-shadow: var(--shadow-card), 0 0 0 8px #2b1f14, 0 0 0 10px #1a120b;
-    border: 2px solid #3d2b1f;
+    box-shadow: var(--shadow-lg);
+    border: 3px solid #2b303c;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .chessboard-wrapper.active-turn {
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 1px var(--accent-gold-glow), var(--shadow-lg);
+  }
+
+  .chessboard-wrapper.swap-mode {
+    border-color: var(--accent-gold);
+  }
+
+  .chessboard-wrapper.revival-mode {
+    border-color: var(--accent-green);
   }
 
   .chessboard {
@@ -154,7 +174,7 @@
   .submitting-overlay {
     position: absolute;
     inset: 0;
-    background: rgba(15, 23, 42, 0.65);
+    background: rgba(15, 17, 21, 0.72);
     backdrop-filter: blur(2px);
     display: flex;
     flex-direction: column;
@@ -163,14 +183,14 @@
     gap: 10px;
     color: var(--accent-gold);
     font-weight: 600;
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     z-index: 50;
   }
 
   .spinner {
-    width: 32px;
-    height: 32px;
-    border: 3px solid rgba(251, 191, 36, 0.2);
+    width: 28px;
+    height: 28px;
+    border: 3px solid rgba(245, 158, 11, 0.2);
     border-top-color: var(--accent-gold);
     border-radius: 50%;
     animation: spin 0.8s linear infinite;
@@ -179,5 +199,11 @@
   @keyframes spin {
     to { transform: rotate(360deg); }
   }
-</style>
 
+  @media (max-width: 900px) {
+    .chessboard-wrapper {
+      max-width: min(94vw, 44dvh);
+      border-width: 2px;
+    }
+  }
+</style>

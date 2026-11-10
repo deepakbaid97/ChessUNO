@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, createEventDispatcher } from 'svelte';
+  import { createEventDispatcher } from 'svelte';
   import { GameApiService } from '../../services/gameApiService';
   import type { InvitationInfo } from '../../types/game';
 
@@ -65,38 +65,37 @@
       </div>
     {:else if !isValid}
       <div class="error-state">
-        <div class="icon">⚠️</div>
         <h3>Unable to Join Game</h3>
         <p class="error-text">{errorMsg}</p>
-        <button class="btn btn-secondary" on:click={() => dispatch('cancel')}>Return to Home</button>
+        <button class="btn btn-secondary" on:click={() => dispatch('cancel')}>Return to Lobby</button>
       </div>
     {:else}
       <div class="valid-state">
-        <div class="icon">⚔️</div>
-        <h2>Match Invitation</h2>
-        <p class="subtitle">You have been invited to challenge <strong>{invitationInfo?.creatorName}</strong>!</p>
+        <span class="invite-tag">Match Invitation</span>
+        <h2>Join Match</h2>
+        <p class="subtitle">You have been invited to challenge <strong>{invitationInfo?.creatorName}</strong>. Enter your name below to join as Black.</p>
 
         <div class="details-box">
           <div class="detail-row">
-            <span>Host:</span>
+            <span>Host</span>
             <strong>{invitationInfo?.creatorName} (White)</strong>
           </div>
           <div class="detail-row">
-            <span>Your Assigned Color:</span>
-            <strong class="color-tag black">Black (Response)</strong>
+            <span>Your Assigned Color</span>
+            <strong class="color-tag black">Black</strong>
           </div>
           <div class="detail-row">
-            <span>Match Status:</span>
-            <span class="status-badge">Waiting For You</span>
+            <span>Match Status</span>
+            <span class="status-badge">Ready to Start</span>
           </div>
         </div>
 
         <div class="form-group">
-          <label for="player-name">Your Challenger Name</label>
+          <label for="player-name">Your Player Name</label>
           <input
             id="player-name"
             bind:value={playerName}
-            placeholder="e.g. Challenger"
+            placeholder="Enter your name"
             disabled={isSubmitting}
             data-testid="input-join-player-name"
           />
@@ -122,13 +121,13 @@
 
 <style>
   .join-screen {
-    max-width: 560px;
-    margin: 40px auto;
+    max-width: 520px;
+    margin: 24px auto;
     width: 100%;
   }
 
   .join-card {
-    padding: 36px 32px;
+    padding: 28px 24px;
     text-align: center;
   }
 
@@ -136,72 +135,88 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 16px;
-    padding: 30px 0;
+    gap: 14px;
+    padding: 24px 0;
   }
 
   .spinner {
-    width: 44px;
-    height: 44px;
-    border: 3px solid rgba(251, 191, 36, 0.2);
+    width: 36px;
+    height: 36px;
+    border: 3px solid rgba(245, 158, 11, 0.2);
     border-top-color: var(--accent-gold);
     border-radius: 50%;
     animation: spin 1s linear infinite;
   }
 
-  .icon {
-    font-size: 2.8rem;
-    margin-bottom: 12px;
+  .invite-tag {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--accent-gold);
+    background-color: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin-bottom: 10px;
+    font-family: var(--font-mono);
   }
 
   h2 {
-    font-size: 1.6rem;
-    color: #fff;
+    font-size: 1.45rem;
+    color: var(--text-main);
     margin-bottom: 6px;
   }
 
   h3 {
-    font-size: 1.4rem;
+    font-size: 1.3rem;
     color: var(--accent-red);
     margin-bottom: 8px;
   }
 
   .subtitle {
-    font-size: 0.95rem;
+    font-size: 0.88rem;
     color: var(--text-muted);
-    margin-bottom: 24px;
+    margin-bottom: 20px;
   }
 
   .error-text {
     color: #fca5a5;
-    font-size: 0.95rem;
-    margin-bottom: 24px;
+    font-size: 0.9rem;
+    margin-bottom: 20px;
   }
 
   .details-box {
-    background: var(--bg-card);
+    background-color: var(--bg-primary);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
-    padding: 16px 20px;
+    border-radius: 6px;
+    padding: 14px 16px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
     text-align: left;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
   }
 
   .detail-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+  }
+
+  .detail-row span:first-child {
+    color: var(--text-muted);
   }
 
   .color-tag.black {
-    background: rgba(168, 85, 247, 0.15);
-    color: var(--accent-purple);
+    background-color: rgba(156, 163, 175, 0.14);
+    color: #d1d5db;
     padding: 2px 8px;
     border-radius: 4px;
+    font-size: 0.76rem;
+    font-family: var(--font-mono);
   }
 
   .status-badge {
@@ -211,12 +226,12 @@
 
   .form-group {
     text-align: left;
-    margin-bottom: 24px;
+    margin-bottom: 20px;
   }
 
   .actions {
     display: flex;
-    gap: 12px;
+    gap: 10px;
     justify-content: flex-end;
   }
 
