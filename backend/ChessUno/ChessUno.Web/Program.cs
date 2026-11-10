@@ -29,6 +29,7 @@ app.UseRouting();
 
 app.MapControllers();
 app.MapHub<ChessUno.Web.Hubs.GameHub>("/hubs/game");
+app.MapGet("/health", () => Results.Ok("healthy"));
 
 app.Run();
 

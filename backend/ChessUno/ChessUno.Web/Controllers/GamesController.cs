@@ -19,7 +19,7 @@ public class GamesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateGame([FromBody] CreateGameRequest request)
     {
-        var session = await _sessionRepository.CreateSessionAsync(request.PlayerName);
+        var session = await _sessionRepository.CreateSessionAsync(request.PlayerName, request.Seed);
 
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
         var invitationUrl = $"{baseUrl}/join/{session.InvitationToken}";
@@ -116,7 +116,7 @@ public record InvitationInfoDto(
     string AssignedColor
 );
 
-public record CreateGameRequest(string PlayerName);
+public record CreateGameRequest(string PlayerName, int? Seed = null);
 public record JoinGameRequest(string InvitationToken, string PlayerName);
 
 public record CreateGameResponseDto(

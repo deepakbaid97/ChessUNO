@@ -16,7 +16,7 @@ namespace ChessUno.Core.Sessions;
 
 public interface IGameSessionRepository
 {
-    Task<GameSession> CreateSessionAsync(string creatorName);
+    Task<GameSession> CreateSessionAsync(string creatorName, int? seed = null);
     Task<GameSession?> GetByIdAsync(Guid gameId);
     Task<GameSession?> GetByInvitationTokenAsync(string token);
     Task<(GameSession Session, PlayerSession Player)?> JoinSessionAsync(string invitationToken, string playerName);
@@ -58,7 +58,7 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
         throw new FileNotFoundException("Cannot locate configs/chess-uno.json.");
     }
 
-    public Task<GameSession> CreateSessionAsync(string creatorName)
+    public Task<GameSession> CreateSessionAsync(string creatorName, int? seed = null)
     {
         var gameId = Guid.NewGuid();
         var invitationToken = GameSession.GenerateSecureToken(16);
@@ -72,7 +72,7 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
         );
 
         var cardDefs = _cardRepository.LoadFromPath(FindDefaultConfigPath());
-        var deckManager = new DeckManager(cardDefs);
+        var deckManager = new DeckManager(cardDefs, seed);
         var effectRegistry = new CardEffectRegistry();
         var effectExecutor = new CardEffectExecutor(_config, effectRegistry, _chessEngine);
         var validator = new CardValidator();

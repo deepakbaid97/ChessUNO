@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { get } from 'svelte/store';
   import { GameApiService } from './lib/services/gameApiService';
   import { SignalRService } from './lib/services/signalrService';
   import { WebRtcService } from './lib/services/webrtcService';
@@ -44,12 +45,41 @@
   $: storeState = $gameStore;
   $: connState = $connectionStore;
 
+  $: if (currentView === 'WAITING' && ($gameStore.status === 'Ready' || $gameStore.status === 'InProgress' || !!$gameStore.playerBlackName)) {
+    currentView = 'GAME';
+  }
+
+  let waitingPollTimer: any = null;
+  $: if (currentView === 'WAITING') {
+    if (!waitingPollTimer && storeState.gameId) {
+      waitingPollTimer = setInterval(async () => {
+        try {
+          if (storeState.gameId) {
+            const session = await apiService.getGameSession(storeState.gameId);
+            if (session.playerBlackName || session.status === 'Ready' || session.status === 'InProgress' || session.status === 'Active') {
+              if (storeState.gameId && storeState.playerToken) {
+                await signalRService.joinGameRoom(storeState.gameId, storeState.playerToken);
+              }
+              currentView = 'GAME';
+            }
+          }
+        } catch {}
+      }, 1000);
+    }
+  } else {
+    if (waitingPollTimer) {
+      clearInterval(waitingPollTimer);
+      waitingPollTimer = null;
+    }
+  }
+
   onMount(() => {
     // Setup WebRTC Service
     webrtcService = new WebRtcService(
       (signalType, payload) => {
-        if (storeState.gameId && storeState.playerToken) {
-          signalRService.sendSignal(storeState.gameId, storeState.playerToken, signalType, payload);
+        const session = get(gameStore);
+        if (session.gameId && session.playerToken) {
+          signalRService.sendSignal(session.gameId, session.playerToken, signalType, payload);
         }
       },
       (p2pData) => {
@@ -69,6 +99,9 @@
 
     signalRService.onGameStateUpdated((update) => {
       gameStore.applyUpdate(update);
+      if (currentView === 'WAITING') {
+        currentView = 'GAME';
+      }
     });
 
     signalRService.onMoveAccepted((data) => {
@@ -82,19 +115,19 @@
     });
 
     signalRService.onPlayerConnected((data) => {
+      console.log('[SignalR Event] onPlayerConnected received:', data);
       gameStore.onPlayerConnected(data);
       showToast(`${data.playerName} joined as ${data.color}!`, 'success');
 
-      if (currentView === 'WAITING') {
-        currentView = 'GAME';
-        // Initiate WebRTC from White host
-        if (storeState.assignedColor === 'White') {
-          webrtcService.initializePeerConnection();
-          webrtcService.createOffer();
+      currentView = 'GAME';
+      try {
+        if ($gameStore.assignedColor === 'White') {
+          webrtcService?.initializePeerConnection();
+          webrtcService?.createOffer()?.catch(() => {});
         } else {
-          webrtcService.initializePeerConnection();
+          webrtcService?.initializePeerConnection();
         }
-      }
+      } catch {}
     });
 
     signalRService.onPieceRevived((data) => {
@@ -131,12 +164,35 @@
       connectionStore.setSignalR('Disconnected');
     });
 
-    // Check URL parameters for direct join: ?join=TOKEN or /join/TOKEN
+    // Check saved session in sessionStorage first (e.g., page refresh during match)
+    let savedSession: any = null;
+    try {
+      const saved = sessionStorage.getItem('chess_uno_session');
+      if (saved) savedSession = JSON.parse(saved);
+    } catch {}
+
     const params = new URLSearchParams(window.location.search);
     const tokenQuery = params.get('join');
     const path = window.location.pathname;
 
-    if (tokenQuery) {
+    if (savedSession && savedSession.gameId && savedSession.playerToken) {
+      gameStore.setPlayerSession(savedSession);
+      signalRService.connect().then(async () => {
+        connectionStore.setSignalR('Connected');
+        const joined = await signalRService.joinGameRoom(savedSession.gameId, savedSession.playerToken);
+        if (joined) {
+          currentView = 'GAME';
+          try {
+            webrtcService?.initializePeerConnection();
+          } catch {}
+          showToast('Reconnected to active match.', 'success');
+        } else {
+          sessionStorage.removeItem('chess_uno_session');
+        }
+      }).catch(() => {
+        sessionStorage.removeItem('chess_uno_session');
+      });
+    } else if (tokenQuery) {
       directJoinToken = tokenQuery;
       currentView = 'JOIN';
     } else if (path.includes('/join/')) {
@@ -145,30 +201,6 @@
         directJoinToken = parts[1].split('/')[0].split('?')[0];
         currentView = 'JOIN';
       }
-    } else {
-      // Restore session on browser refresh if available
-      try {
-        const saved = sessionStorage.getItem('chess_uno_session');
-        if (saved) {
-          const session = JSON.parse(saved);
-          if (session.gameId && session.playerToken) {
-            gameStore.setPlayerSession(session);
-            signalRService.connect().then(async () => {
-              connectionStore.setSignalR('Connected');
-              const joined = await signalRService.joinGameRoom(session.gameId, session.playerToken);
-              if (joined) {
-                currentView = 'GAME';
-                webrtcService.initializePeerConnection();
-                showToast('Reconnected to active match.', 'success');
-              } else {
-                sessionStorage.removeItem('chess_uno_session');
-              }
-            }).catch(() => {
-              sessionStorage.removeItem('chess_uno_session');
-            });
-          }
-        }
-      } catch {}
     }
   });
 
@@ -177,11 +209,11 @@
     await signalRService.disconnect();
   });
 
-  async function handleCreateGame(event: CustomEvent<{ playerName: string }>) {
+  async function handleCreateGame(event: CustomEvent<{ playerName: string; seed?: number }>) {
     isCreating = true;
     errorMessage = '';
     try {
-      const res = await apiService.createGame(event.detail.playerName);
+      const res = await apiService.createGame(event.detail.playerName, event.detail.seed);
       gameStore.setPlayerSession({
         gameId: res.gameId,
         playerToken: res.playerToken,
@@ -190,6 +222,15 @@
         invitationUrl: res.invitationUrl,
         invitationToken: res.invitationToken
       });
+
+      sessionStorage.setItem('chess_uno_session', JSON.stringify({
+        gameId: res.gameId,
+        playerToken: res.playerToken,
+        assignedColor: res.assignedColor,
+        playerName: event.detail.playerName,
+        invitationUrl: res.invitationUrl,
+        invitationToken: res.invitationToken
+      }));
 
       await signalRService.connect();
       connectionStore.setSignalR('Connected');
@@ -209,6 +250,7 @@
     errorMessage = '';
     try {
       const res = await apiService.joinGame(event.detail.invitationToken, event.detail.playerName);
+      console.log('[handleJoinGame] API returned:', res);
       gameStore.setPlayerSession({
         gameId: res.gameId,
         playerToken: res.playerToken,
@@ -217,11 +259,23 @@
         invitationToken: event.detail.invitationToken
       });
 
+      sessionStorage.setItem('chess_uno_session', JSON.stringify({
+        gameId: res.gameId,
+        playerToken: res.playerToken,
+        assignedColor: res.assignedColor,
+        playerName: event.detail.playerName,
+        invitationUrl: res.invitationUrl,
+        invitationToken: res.invitationToken
+      }));
+
       await signalRService.connect();
       connectionStore.setSignalR('Connected');
       await signalRService.joinGameRoom(res.gameId, res.playerToken);
 
       webrtcService.initializePeerConnection();
+      try {
+        window.history.replaceState({}, '', '/');
+      } catch {}
       currentView = 'GAME';
       showToast(`Joined match as ${res.assignedColor}!`, 'success');
     } catch (err: any) {
@@ -231,6 +285,7 @@
   }
 
   async function handleProposeMove(event: CustomEvent<{ from: string; to: string; promotion?: PieceType }>) {
+    console.log('[handleProposeMove] Proposing move:', event.detail);
     if (isSubmitting) return;
     isSubmitting = true;
 
@@ -242,6 +297,7 @@
         event.detail.to,
         event.detail.promotion
       );
+      console.log('[handleProposeMove] submitMove result:', success);
 
       if (!success) {
         isSubmitting = false;
@@ -249,6 +305,7 @@
         showToast('Move rejected by authoritative referee.', 'error');
       }
     } catch (err: any) {
+      console.error('[handleProposeMove] Error:', err);
       isSubmitting = false;
       gameStore.clearSelection();
       showToast(`Move failed: ${err.message}`, 'error');
@@ -256,13 +313,27 @@
   }
 
   async function handleDrawCard() {
+    console.log('[handleDrawCard] Invoking DrawCard on hub with:', storeState.gameId, storeState.playerToken);
     try {
       const success = await signalRService.drawCard(storeState.gameId, storeState.playerToken);
+      console.log('[handleDrawCard] Result:', success);
       if (!success) {
         showToast('Unable to draw card on server.', 'error');
       }
     } catch (err: any) {
+      console.error('[handleDrawCard] Threw:', err);
       showToast(`Draw failed: ${err.message}`, 'error');
+    }
+  }
+
+  async function handleEndTurn() {
+    try {
+      const success = await signalRService.endTurn(storeState.gameId, storeState.playerToken);
+      if (!success) {
+        showToast('Cannot end turn at this time.', 'error');
+      }
+    } catch (err: any) {
+      showToast(`End turn failed: ${err.message}`, 'error');
     }
   }
 
@@ -308,6 +379,7 @@
   }
 
   async function handleReturnHome() {
+    sessionStorage.removeItem('chess_uno_session');
     webrtcService?.close();
     await signalRService.disconnect();
     gameStore.reset();
@@ -357,6 +429,7 @@
   <main class="main-content">
     {#if currentView === 'LOBBY'}
       <HomeScreen
+        defaultSeed={42}
         {isCreating}
         {errorMessage}
         on:createGame={handleCreateGame}
@@ -382,6 +455,7 @@
         {isSubmitting}
         on:proposeMove={handleProposeMove}
         on:drawCard={handleDrawCard}
+        on:endTurn={handleEndTurn}
         on:submitSwap={handleSubmitSwap}
         on:submitRevival={handleSubmitRevival}
         on:resign={handleResign}

@@ -17,6 +17,7 @@
     drawCard: void;
     activateSwap: void;
     activateRevival: void;
+    endTurn: void;
   }>();
 
   let selectedCard: CardModel | null = null;
@@ -82,6 +83,11 @@
           on:select={handleCardClick}
         />
         <div class="card-hint">Click card to view details or activate</div>
+        {#if isMyTurn && turnPhase === 'ActionPhase'}
+          <button class="btn btn-secondary btn-sm end-turn-btn" on:click={() => dispatch('endTurn')} data-testid="btn-end-turn">
+            End Turn ⏭️
+          </button>
+        {/if}
       </div>
     {:else}
       <div class="empty-hand">
@@ -187,6 +193,13 @@
   .card-hint {
     font-size: 0.75rem;
     color: var(--text-muted);
+  }
+
+  .end-turn-btn {
+    margin-top: 8px;
+    width: 100%;
+    font-size: 0.8rem;
+    padding: 6px 12px;
   }
 
   .draw-card-slot {

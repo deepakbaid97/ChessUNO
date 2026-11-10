@@ -12,11 +12,11 @@ export class GameApiService {
     this.baseUrl = baseUrl;
   }
 
-  async createGame(playerName: string): Promise<CreateGameResponse> {
+  async createGame(playerName: string, seed?: number): Promise<CreateGameResponse> {
     const res = await fetch(`${this.baseUrl}/api/games`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ playerName })
+      body: JSON.stringify({ playerName, seed })
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));

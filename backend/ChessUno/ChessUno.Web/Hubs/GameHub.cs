@@ -141,12 +141,18 @@ public class GameHub : Hub
 
     public async Task<bool> SubmitMove(Guid gameId, string playerToken, string from, string to, string? promotion)
     {
+        Console.WriteLine($"[GameHub SubmitMove] from: {from}, to: {to}, promo: {promotion}");
         var session = await _sessionRepository.GetByIdAsync(gameId);
-        if (session == null) return false;
+        if (session == null)
+        {
+            Console.WriteLine("[GameHub SubmitMove] session is null");
+            return false;
+        }
 
         var player = GetAuthenticatedPlayer(session, playerToken);
         if (player == null || player.Color != session.EngineController.ActivePlayer)
         {
+            Console.WriteLine($"[GameHub SubmitMove] player null or not active. player: {player?.Color}, active: {session.EngineController.ActivePlayer}");
             return false;
         }
 
@@ -156,7 +162,11 @@ public class GameHub : Hub
             var move = new ChessMove(Square.Parse(from), Square.Parse(to), promoPiece);
 
             var result = session.EngineController.SubmitChessMove(player.Color, move);
-            if (!result.IsSuccess) return false;
+            if (!result.IsSuccess)
+            {
+                Console.WriteLine($"[GameHub SubmitMove] engine rejected: {result.Error}");
+                return false;
+            }
 
             var groupName = GetGroupName(gameId);
             await Clients.Group(groupName).SendAsync("MoveAccepted", new
@@ -168,10 +178,12 @@ public class GameHub : Hub
             });
 
             await BroadcastStateUpdate(session);
+            Console.WriteLine("[GameHub SubmitMove] Successfully broadcast MoveAccepted and GameStateUpdated");
             return true;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Console.WriteLine($"[GameHub SubmitMove] Exception: {ex}");
             return false;
         }
     }
@@ -196,6 +208,21 @@ public class GameHub : Hub
         if (player == null) return false;
 
         var result = session.EngineController.Resign(player.Color);
+        if (!result.IsSuccess) return false;
+
+        await BroadcastStateUpdate(session);
+        return true;
+    }
+
+    public async Task<bool> EndTurn(Guid gameId, string playerToken)
+    {
+        var session = await _sessionRepository.GetByIdAsync(gameId);
+        if (session == null) return false;
+
+        var player = GetAuthenticatedPlayer(session, playerToken);
+        if (player == null || player.Color != session.EngineController.ActivePlayer) return false;
+
+        var result = session.EngineController.EndTurn(player.Color);
         if (!result.IsSuccess) return false;
 
         await BroadcastStateUpdate(session);

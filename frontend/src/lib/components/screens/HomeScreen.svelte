@@ -13,9 +13,15 @@
   let joinPlayerName = 'Bob';
   let joinToken = '';
 
+  export let defaultSeed: number | undefined = undefined;
+
   function handleCreate() {
     if (createPlayerName.trim()) {
-      dispatch('createGame', { playerName: createPlayerName.trim() });
+      const payload: { playerName: string; seed?: number } = { playerName: createPlayerName.trim() };
+      if (defaultSeed !== undefined) {
+        payload.seed = defaultSeed;
+      }
+      dispatch('createGame', payload);
     }
   }
 

@@ -15,6 +15,7 @@
   const dispatch = createEventDispatcher<{
     proposeMove: { from: string; to: string; promotion?: PieceType };
     drawCard: void;
+    endTurn: void;
     submitSwap: { sq1: string; sq2: string };
     submitRevival: { pieceType: string; targetSquare: string };
     resign: void;
@@ -163,6 +164,7 @@
         canSwap={storeState.canSwap}
         remainingDeckCount={storeState.remainingDeckCount}
         on:drawCard={() => dispatch('drawCard')}
+        on:endTurn={() => dispatch('endTurn')}
         on:activateSwap={handleActivateSwap}
         on:activateRevival={handleActivateRevival}
       />

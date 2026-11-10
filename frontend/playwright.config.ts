@@ -15,14 +15,14 @@ export default defineConfig({
   webServer: [
     {
       command: 'dotnet run --project ../backend/ChessUno/ChessUno.Web --urls "http://localhost:5000"',
-      url: 'http://localhost:5000/api/games/00000000-0000-0000-0000-000000000000',
-      reuseExistingServer: true,
+      url: 'http://localhost:5000/health',
+      reuseExistingServer: false,
       timeout: 30000
     },
     {
       command: 'npm run dev -- --port 5173',
       url: 'http://localhost:5173',
-      reuseExistingServer: true,
+      reuseExistingServer: false,
       timeout: 20000
     }
   ],
@@ -33,3 +33,4 @@ export default defineConfig({
     }
   ]
 });
+

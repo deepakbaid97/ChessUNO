@@ -280,6 +280,20 @@ public class TurnController
         return ActionResult.Success();
     }
 
+    public ActionResult EndTurn(PlayerColor player)
+    {
+        if (player != ActivePlayer)
+        {
+            return ActionResult.Failure($"Not player '{player}' turn.");
+        }
+        if (CurrentTurn.Phase != TurnPhase.ActionPhase)
+        {
+            return ActionResult.Failure("Cannot end turn outside ActionPhase.");
+        }
+        EndTurnInternal();
+        return ActionResult.Success();
+    }
+
     private void EndTurnInternal()
     {
         var nextPlayer = ActivePlayer.Opponent();
