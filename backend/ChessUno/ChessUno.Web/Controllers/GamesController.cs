@@ -26,10 +26,10 @@ public class GamesController : ControllerBase
 
         var response = new CreateGameResponseDto(
             GameId: session.GameId,
-            InvitationToken: session.InvitationToken,
+            InvitationToken: session.InvitationToken ?? string.Empty,
             InvitationUrl: invitationUrl,
             PlayerId: session.PlayerWhite!.PlayerId.ToString(),
-            PlayerToken: session.PlayerWhite.SecretToken,
+            PlayerToken: session.PlayerWhite.SecretToken ?? string.Empty,
             AssignedColor: session.PlayerWhite.Color.ToString(),
             Status: session.Status.ToString()
         );
@@ -62,7 +62,7 @@ public class GamesController : ControllerBase
         var response = new JoinGameResponseDto(
             GameId: session.GameId,
             PlayerId: player.PlayerId.ToString(),
-            PlayerToken: player.SecretToken,
+            PlayerToken: player.SecretToken ?? string.Empty,
             AssignedColor: player.Color.ToString(),
             Status: session.Status.ToString()
         );

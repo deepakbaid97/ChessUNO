@@ -1,0 +1,53 @@
+name: Chess UNO CI & Security Audit
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  security-and-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres_ci_password
+          POSTGRES_DB: chessuno_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+
+    - name: Secret Scanning Audit
+      run: dotnet test tests/Api.Tests/Api.Tests.csproj --filter FullyQualifiedName~SecretScanningTests
+
+    - name: Run Backend Tests
+      env:
+        CHESSUNO_TEST_CONNECTION_STRING: "Host=localhost;Port=5432;Database=chessuno_test;Username=postgres;Password=postgres_ci_password;Include Error Detail=true;"
+      run: dotnet test ChessUno.slnx
+
+    - name: Install Frontend Dependencies
+      run: npm --prefix frontend ci
+
+    - name: Run Frontend Tests
+      run: npm --prefix frontend test -- --run

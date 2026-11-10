@@ -14,10 +14,6 @@ public class GameSessionEntity
 
     [Required]
     [MaxLength(64)]
-    [Column("invitation_token")]
-    public string InvitationToken { get; set; } = string.Empty;
-
-    [MaxLength(64)]
     [Column("invitation_token_hash")]
     public string InvitationTokenHash { get; set; } = string.Empty;
 

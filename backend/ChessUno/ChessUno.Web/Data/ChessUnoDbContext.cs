@@ -19,8 +19,7 @@ public class ChessUnoDbContext : DbContext
         modelBuilder.Entity<GameSessionEntity>(entity =>
         {
             entity.HasKey(e => e.GameId);
-            entity.HasIndex(e => e.InvitationToken).IsUnique();
-            entity.HasIndex(e => e.InvitationTokenHash);
+            entity.HasIndex(e => e.InvitationTokenHash).IsUnique();
             entity.HasIndex(e => e.Status);
             entity.Property(e => e.SnapshotJson).HasColumnType("text");
         });

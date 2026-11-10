@@ -187,8 +187,9 @@ public class GameSessionTests
 
         Assert.NotNull(restored);
         Assert.Equal(session.GameId, restored.GameId);
-        Assert.Equal(session.InvitationToken, restored.InvitationToken);
-        Assert.Equal(session.PlayerWhite!.SecretToken, restored.PlayerWhite!.SecretToken);
+        Assert.Equal(session.InvitationTokenHash, restored.InvitationTokenHash);
+        Assert.Equal(session.PlayerWhite!.TokenHash, restored.PlayerWhite!.TokenHash);
+        Assert.True(restored.AuthenticatePlayer(session.PlayerWhite!.SecretToken!, PlayerColor.White));
         Assert.Equal(session.EngineController.ChessState.Fen, restored.EngineController.ChessState.Fen);
         Assert.Equal(session.EngineController.DeckManager.RemainingCount, restored.EngineController.DeckManager.RemainingCount);
         Assert.Equal(session.EngineController.DeckManager.DiscardCount, restored.EngineController.DeckManager.DiscardCount);

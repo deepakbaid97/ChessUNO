@@ -12,10 +12,23 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddSignalR();
 
-// Database Context & Session Repository
+// Persistence Configuration
+var isProduction = builder.Environment.IsProduction();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-if (!string.IsNullOrEmpty(connectionString))
+var useInMemory = builder.Configuration.GetValue<bool>("UseInMemoryRepository", false);
+
+if (isProduction)
 {
+    if (string.IsNullOrWhiteSpace(connectionString) || connectionString.Contains("YOUR_POSTGRES_PASSWORD_HERE") || useInMemory)
+    {
+        throw new InvalidOperationException(
+            "FATAL CONFIGURATION ERROR: PostgreSQL connection string 'DefaultConnection' is mandatory in Production. Fallback to in-memory repository is strictly prohibited in production environments.");
+    }
+}
+
+if (!string.IsNullOrWhiteSpace(connectionString) && !useInMemory && !connectionString.Contains("YOUR_POSTGRES_PASSWORD_HERE"))
+{
+    Console.WriteLine("[ChessUNO Startup] Initializing persistent PostgreSQL Game Session Repository.");
     builder.Services.AddDbContextFactory<ChessUnoDbContext>(options =>
         options.UseNpgsql(connectionString));
 
@@ -29,6 +42,11 @@ if (!string.IsNullOrEmpty(connectionString))
 }
 else
 {
+    if (isProduction)
+    {
+        throw new InvalidOperationException("In-memory game session repository cannot be registered in Production.");
+    }
+    Console.WriteLine("[ChessUNO Startup] Initializing volatile InMemory Game Session Repository (Development/Testing only).");
     builder.Services.AddSingleton<IGameSessionRepository, InMemoryGameSessionRepository>();
 }
 

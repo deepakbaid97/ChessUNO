@@ -31,13 +31,22 @@ public interface IGameSessionRepository
     Task<bool> TryRecordActionAsync(Guid gameId, string actionId, string actionType, string playerToken, int expectedRevision, string payloadJson, string resultJson);
     Task<string?> GetActionResultAsync(Guid gameId, string actionId);
     Task<bool> UpdatePlayerConnectionStatusAsync(Guid gameId, PlayerColor color, bool isConnected);
+    Task<(bool Success, string? ErrorCode, int NewRevision, bool IsIdempotentReplay)> ExecuteActionAtomicallyAsync(
+        Guid gameId,
+        string? actionId,
+        string actionType,
+        PlayerColor playerColor,
+        int? expectedRevision,
+        Func<GameSession, (bool Success, string? ErrorCode)> mutateState
+    );
 }
 
 public class InMemoryGameSessionRepository : IGameSessionRepository
 {
     private readonly ConcurrentDictionary<Guid, GameSession> _sessionsById = new();
-    private readonly ConcurrentDictionary<string, Guid> _sessionIdsByToken = new();
+    private readonly ConcurrentDictionary<string, Guid> _sessionIdsByTokenHash = new();
     private readonly ConcurrentDictionary<string, string> _actionResultsById = new();
+    private readonly ConcurrentDictionary<string, (string ActionType, string PlayerColor)> _actionMetadataById = new();
     private readonly GameConfig _config;
     private readonly ICardRepository _cardRepository;
     private readonly IChessEngine _chessEngine;
@@ -75,11 +84,11 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
         var invitationToken = GameSession.GenerateSecureToken(16);
         var creatorToken = GameSession.GenerateSecureToken(24);
 
-        var creator = new PlayerSession(
-            PlayerId: Guid.NewGuid(),
-            PlayerName: string.IsNullOrWhiteSpace(creatorName) ? "Player 1" : creatorName,
-            Color: PlayerColor.White,
-            SecretToken: creatorToken
+        var creator = PlayerSession.Create(
+            playerId: Guid.NewGuid(),
+            playerName: string.IsNullOrWhiteSpace(creatorName) ? "Player 1" : creatorName,
+            color: PlayerColor.White,
+            secretToken: creatorToken
         );
 
         var cardDefs = _cardRepository.LoadFromPath(FindDefaultConfigPath());
@@ -91,10 +100,10 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
 
         var engineController = new TurnController(_config, _chessEngine, deckManager, effectExecutor, validator, initialGame);
 
-        var session = new GameSession(gameId, invitationToken, creator, engineController);
+        var session = new GameSession(gameId, TokenHasher.HashToken(invitationToken), creator, engineController, rawInvitationToken: invitationToken);
 
         _sessionsById[gameId] = session;
-        _sessionIdsByToken[invitationToken] = gameId;
+        _sessionIdsByTokenHash[session.InvitationTokenHash] = gameId;
 
         return Task.FromResult(session);
     }
@@ -107,7 +116,8 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
 
     public Task<GameSession?> GetByInvitationTokenAsync(string token)
     {
-        if (_sessionIdsByToken.TryGetValue(token, out var gameId) && _sessionsById.TryGetValue(gameId, out var session))
+        var hash = TokenHasher.HashToken(token);
+        if (_sessionIdsByTokenHash.TryGetValue(hash, out var gameId) && _sessionsById.TryGetValue(gameId, out var session))
         {
             return Task.FromResult<GameSession?>(session);
         }
@@ -116,7 +126,8 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
 
     public Task<(GameSession Session, PlayerSession Player)?> JoinSessionAsync(string invitationToken, string playerName)
     {
-        if (!_sessionIdsByToken.TryGetValue(invitationToken, out var gameId) || !_sessionsById.TryGetValue(gameId, out var session))
+        var hash = TokenHasher.HashToken(invitationToken);
+        if (!_sessionIdsByTokenHash.TryGetValue(hash, out var gameId) || !_sessionsById.TryGetValue(gameId, out var session))
         {
             return Task.FromResult<(GameSession, PlayerSession)?>(null);
         }
@@ -129,11 +140,11 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
             }
 
             var blackToken = GameSession.GenerateSecureToken(24);
-            var opponent = new PlayerSession(
-                PlayerId: Guid.NewGuid(),
-                PlayerName: string.IsNullOrWhiteSpace(playerName) ? "Player 2" : playerName,
-                Color: PlayerColor.Black,
-                SecretToken: blackToken
+            var opponent = PlayerSession.Create(
+                playerId: Guid.NewGuid(),
+                playerName: string.IsNullOrWhiteSpace(playerName) ? "Player 2" : playerName,
+                color: PlayerColor.Black,
+                secretToken: blackToken
             );
 
             session.PlayerBlack = opponent;
@@ -156,8 +167,8 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
 
         lock (session)
         {
-            bool isAuthorized = (session.PlayerWhite?.SecretToken == playerToken) ||
-                                (session.PlayerBlack?.SecretToken == playerToken);
+            bool isAuthorized = session.AuthenticatePlayer(playerToken, PlayerColor.White) ||
+                                session.AuthenticatePlayer(playerToken, PlayerColor.Black);
 
             if (!isAuthorized) return Task.FromResult(false);
 
@@ -204,7 +215,7 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
 
             var snapshot = new GameSessionSnapshot(
                 GameId: session.GameId,
-                InvitationToken: session.InvitationToken,
+                InvitationTokenHash: session.InvitationTokenHash,
                 Status: session.Status,
                 PlayerWhite: session.PlayerWhite,
                 PlayerBlack: session.PlayerBlack,
@@ -269,7 +280,7 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
 
         var session = new GameSession(
             snapshot.GameId,
-            snapshot.InvitationToken,
+            snapshot.InvitationTokenHash,
             snapshot.PlayerWhite!,
             controller
         )
@@ -282,9 +293,76 @@ public class InMemoryGameSessionRepository : IGameSessionRepository
         };
 
         _sessionsById[session.GameId] = session;
-        _sessionIdsByToken[session.InvitationToken] = session.GameId;
+        _sessionIdsByTokenHash[session.InvitationTokenHash] = session.GameId;
 
         return Task.FromResult<GameSession?>(session);
+    }
+
+    public async Task<(bool Success, string? ErrorCode, int NewRevision, bool IsIdempotentReplay)> ExecuteActionAtomicallyAsync(
+        Guid gameId,
+        string? actionId,
+        string actionType,
+        PlayerColor playerColor,
+        int? expectedRevision,
+        Func<GameSession, (bool Success, string? ErrorCode)> mutateState)
+    {
+        if (!_sessionsById.TryGetValue(gameId, out var session))
+        {
+            return (false, "NOT_FOUND", 0, false);
+        }
+
+        await session.SessionLock.WaitAsync();
+        try
+        {
+            if (expectedRevision.HasValue && expectedRevision.Value != session.GameRevision)
+            {
+                return (false, "REVISION_MISMATCH", session.GameRevision, false);
+            }
+
+            if (!string.IsNullOrEmpty(actionId))
+            {
+                var actionKey = $"{gameId}_{actionId}";
+                if (_actionResultsById.TryGetValue(actionKey, out var existingResult))
+                {
+                    if (_actionMetadataById.TryGetValue(actionKey, out var meta))
+                    {
+                        if (meta.ActionType != actionType || meta.PlayerColor != playerColor.ToString())
+                        {
+                            return (false, "IDEMPOTENCY_MISMATCH", session.GameRevision, false);
+                        }
+                    }
+                    return (true, null, session.GameRevision, true);
+                }
+            }
+
+            var previousSnapshotJson = await ExportSessionSnapshotJsonAsync(gameId);
+
+            var result = mutateState(session);
+            if (!result.Success)
+            {
+                return (false, result.ErrorCode, session.GameRevision, false);
+            }
+
+            var newRevision = session.GameRevision + 1;
+            session.GameRevision = newRevision;
+
+            if (!string.IsNullOrEmpty(actionId))
+            {
+                var actionKey = $"{gameId}_{actionId}";
+                _actionResultsById[actionKey] = "{\"success\":true}";
+                _actionMetadataById[actionKey] = (actionType, playerColor.ToString());
+            }
+
+            return (true, null, newRevision, false);
+        }
+        catch
+        {
+            return (false, "EXECUTION_ERROR", session.GameRevision, false);
+        }
+        finally
+        {
+            session.SessionLock.Release();
+        }
     }
 
     public Task<bool> TryRecordActionAsync(Guid gameId, string actionId, string actionType, string playerToken, int expectedRevision, string payloadJson, string resultJson)

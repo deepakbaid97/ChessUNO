@@ -49,11 +49,11 @@ public class GameHub : Hub
         }
 
         PlayerSession? authenticatedPlayer = null;
-        if (session.PlayerWhite?.SecretToken == playerToken)
+        if (session.AuthenticatePlayer(playerToken, PlayerColor.White))
         {
             authenticatedPlayer = session.PlayerWhite;
         }
-        else if (session.PlayerBlack?.SecretToken == playerToken)
+        else if (session.AuthenticatePlayer(playerToken, PlayerColor.Black))
         {
             authenticatedPlayer = session.PlayerBlack;
         }
@@ -122,8 +122,8 @@ public class GameHub : Hub
         var session = await _sessionRepository.GetByIdAsync(gameId);
         if (session == null) return false;
 
-        bool isAuthorized = (session.PlayerWhite?.SecretToken == playerToken) ||
-                            (session.PlayerBlack?.SecretToken == playerToken);
+        bool isAuthorized = session.AuthenticatePlayer(playerToken, PlayerColor.White) ||
+                            session.AuthenticatePlayer(playerToken, PlayerColor.Black);
 
         if (!isAuthorized) return false;
 
@@ -143,68 +143,63 @@ public class GameHub : Hub
         var session = await _sessionRepository.GetByIdAsync(gameId);
         if (session == null) return false;
 
-        if (!string.IsNullOrEmpty(actionId))
+        var player = GetAuthenticatedPlayer(session, playerToken);
+        if (player == null)
         {
-            var cached = await _sessionRepository.GetActionResultAsync(gameId, actionId);
-            if (cached != null) return true;
+            await RejectActionAsync("UNAUTHORIZED", session.GameRevision);
+            return false;
         }
 
-        await session.SessionLock.WaitAsync();
-        try
+        string cardName = "";
+        var result = await _sessionRepository.ExecuteActionAtomicallyAsync(
+            gameId,
+            actionId,
+            "DrawCard",
+            player.Color,
+            expectedRevision,
+            s =>
+            {
+                if (IsSessionTerminal(s)) return (false, "SESSION_TERMINAL");
+                if (player.Color != s.EngineController.ActivePlayer) return (false, "NOT_YOUR_TURN");
+
+                try
+                {
+                    var drawn = s.EngineController.DrawCard(player.Color);
+                    cardName = drawn.Name;
+                    s.Status = SessionStatus.InProgress;
+                    if (_chessEngine.IsTerminalState(s.EngineController.ChessState.Status))
+                    {
+                        s.Status = SessionStatus.Completed;
+                    }
+                    return (true, null);
+                }
+                catch
+                {
+                    return (false, "INVALID_ACTION");
+                }
+            }
+        );
+
+        if (!result.Success)
         {
-            if (IsSessionTerminal(session))
-            {
-                await RejectActionAsync("SESSION_TERMINAL", session.GameRevision);
-                return false;
-            }
+            await RejectActionAsync(result.ErrorCode ?? "INVALID_ACTION", session.GameRevision, expectedRevision);
+            return false;
+        }
 
-            if (expectedRevision.HasValue && expectedRevision.Value != session.GameRevision)
-            {
-                await RejectActionAsync("REVISION_MISMATCH", session.GameRevision, expectedRevision.Value);
-                return false;
-            }
-
-            var player = GetAuthenticatedPlayer(session, playerToken);
-            if (player == null || player.Color != session.EngineController.ActivePlayer)
-            {
-                await RejectActionAsync("NOT_YOUR_TURN", session.GameRevision);
-                return false;
-            }
-
-            var drawnCard = session.EngineController.DrawCard(player.Color);
-            session.Status = SessionStatus.InProgress;
-
-            if (_chessEngine.IsTerminalState(session.EngineController.ChessState.Status))
-            {
-                session.Status = SessionStatus.Completed;
-            }
-
-            if (!string.IsNullOrEmpty(actionId))
-            {
-                await _sessionRepository.TryRecordActionAsync(
-                    gameId, actionId, "DrawCard", player.Color.ToString(), session.GameRevision + 1, "{}", "{\"success\":true}");
-            }
-
+        if (!result.IsIdempotentReplay)
+        {
             var groupName = GetGroupName(gameId);
             await Clients.Group(groupName).SendAsync("CardDrawn", new
             {
                 Player = player.Color.ToString(),
-                CardName = drawnCard.Name,
+                CardName = cardName,
                 RemainingDeckCount = session.EngineController.DeckManager.RemainingCount
             });
 
-            await BroadcastStateUpdate(session);
-            return true;
+            await BroadcastCommittedStateUpdate(session);
         }
-        catch (Exception)
-        {
-            await RejectActionAsync("INVALID_ACTION", session.GameRevision);
-            return false;
-        }
-        finally
-        {
-            session.SessionLock.Release();
-        }
+
+        return true;
     }
 
     public Task<bool> SubmitChoice(Guid gameId, string playerToken, string choiceEffectKey) =>
@@ -218,53 +213,44 @@ public class GameHub : Hub
         var session = await _sessionRepository.GetByIdAsync(gameId);
         if (session == null) return false;
 
-        if (!string.IsNullOrEmpty(actionId))
+        var player = GetAuthenticatedPlayer(session, playerToken);
+        if (player == null)
         {
-            var cached = await _sessionRepository.GetActionResultAsync(gameId, actionId);
-            if (cached != null) return true;
+            await RejectActionAsync("UNAUTHORIZED", session.GameRevision);
+            return false;
         }
 
-        await session.SessionLock.WaitAsync();
-        try
+        var result = await _sessionRepository.ExecuteActionAtomicallyAsync(
+            gameId,
+            actionId,
+            "SubmitChoice",
+            player.Color,
+            expectedRevision,
+            s =>
+            {
+                if (IsSessionTerminal(s)) return (false, "SESSION_TERMINAL");
+                if (player.Color != s.EngineController.ActivePlayer) return (false, "NOT_YOUR_TURN");
+
+                var choiceRes = s.EngineController.SubmitChoice(player.Color, choiceEffectKey);
+                if (!choiceRes.IsSuccess) return (false, "INVALID_CHOICE");
+
+                s.Status = SessionStatus.InProgress;
+                if (_chessEngine.IsTerminalState(s.EngineController.ChessState.Status))
+                {
+                    s.Status = SessionStatus.Completed;
+                }
+                return (true, null);
+            }
+        );
+
+        if (!result.Success)
         {
-            if (IsSessionTerminal(session))
-            {
-                await RejectActionAsync("SESSION_TERMINAL", session.GameRevision);
-                return false;
-            }
+            await RejectActionAsync(result.ErrorCode ?? "INVALID_ACTION", session.GameRevision, expectedRevision);
+            return false;
+        }
 
-            if (expectedRevision.HasValue && expectedRevision.Value != session.GameRevision)
-            {
-                await RejectActionAsync("REVISION_MISMATCH", session.GameRevision, expectedRevision.Value);
-                return false;
-            }
-
-            var player = GetAuthenticatedPlayer(session, playerToken);
-            if (player == null || player.Color != session.EngineController.ActivePlayer)
-            {
-                await RejectActionAsync("NOT_YOUR_TURN", session.GameRevision);
-                return false;
-            }
-
-            var result = session.EngineController.SubmitChoice(player.Color, choiceEffectKey);
-            if (!result.IsSuccess)
-            {
-                await RejectActionAsync("INVALID_CHOICE", session.GameRevision);
-                return false;
-            }
-
-            session.Status = SessionStatus.InProgress;
-            if (_chessEngine.IsTerminalState(session.EngineController.ChessState.Status))
-            {
-                session.Status = SessionStatus.Completed;
-            }
-
-            if (!string.IsNullOrEmpty(actionId))
-            {
-                await _sessionRepository.TryRecordActionAsync(
-                    gameId, actionId, "SubmitChoice", player.Color.ToString(), session.GameRevision + 1, choiceEffectKey, "{\"success\":true}");
-            }
-
+        if (!result.IsIdempotentReplay)
+        {
             var groupName = GetGroupName(gameId);
             await Clients.Group(groupName).SendAsync("EffectChosen", new
             {
@@ -272,18 +258,10 @@ public class GameHub : Hub
                 Choice = choiceEffectKey
             });
 
-            await BroadcastStateUpdate(session);
-            return true;
+            await BroadcastCommittedStateUpdate(session);
         }
-        catch (Exception)
-        {
-            await RejectActionAsync("INVALID_ACTION", session.GameRevision);
-            return false;
-        }
-        finally
-        {
-            session.SessionLock.Release();
-        }
+
+        return true;
     }
 
     public Task<bool> SubmitMove(Guid gameId, string playerToken, string from, string to, string? promotion) =>
@@ -297,56 +275,47 @@ public class GameHub : Hub
         var session = await _sessionRepository.GetByIdAsync(gameId);
         if (session == null) return false;
 
-        if (!string.IsNullOrEmpty(actionId))
+        var player = GetAuthenticatedPlayer(session, playerToken);
+        if (player == null)
         {
-            var cached = await _sessionRepository.GetActionResultAsync(gameId, actionId);
-            if (cached != null) return true;
+            await RejectActionAsync("UNAUTHORIZED", session.GameRevision);
+            return false;
         }
 
-        await session.SessionLock.WaitAsync();
-        try
+        var promoPiece = !string.IsNullOrEmpty(promotion) && Enum.TryParse<PieceType>(promotion, true, out var p) ? p : (PieceType?)null;
+        var move = new ChessMove(Square.Parse(from), Square.Parse(to), promoPiece);
+
+        var result = await _sessionRepository.ExecuteActionAtomicallyAsync(
+            gameId,
+            actionId,
+            "SubmitMove",
+            player.Color,
+            expectedRevision,
+            s =>
+            {
+                if (IsSessionTerminal(s)) return (false, "SESSION_TERMINAL");
+                if (player.Color != s.EngineController.ActivePlayer) return (false, "NOT_YOUR_TURN");
+
+                var moveResult = s.EngineController.SubmitChessMove(player.Color, move);
+                if (!moveResult.IsSuccess) return (false, "ILLEGAL_MOVE");
+
+                s.Status = SessionStatus.InProgress;
+                if (_chessEngine.IsTerminalState(s.EngineController.ChessState.Status))
+                {
+                    s.Status = SessionStatus.Completed;
+                }
+                return (true, null);
+            }
+        );
+
+        if (!result.Success)
         {
-            if (IsSessionTerminal(session))
-            {
-                await RejectActionAsync("SESSION_TERMINAL", session.GameRevision);
-                return false;
-            }
+            await RejectActionAsync(result.ErrorCode ?? "INVALID_ACTION", session.GameRevision, expectedRevision);
+            return false;
+        }
 
-            if (expectedRevision.HasValue && expectedRevision.Value != session.GameRevision)
-            {
-                await RejectActionAsync("REVISION_MISMATCH", session.GameRevision, expectedRevision.Value);
-                return false;
-            }
-
-            var player = GetAuthenticatedPlayer(session, playerToken);
-            if (player == null || player.Color != session.EngineController.ActivePlayer)
-            {
-                await RejectActionAsync("NOT_YOUR_TURN", session.GameRevision);
-                return false;
-            }
-
-            var promoPiece = !string.IsNullOrEmpty(promotion) && Enum.TryParse<PieceType>(promotion, true, out var p) ? p : (PieceType?)null;
-            var move = new ChessMove(Square.Parse(from), Square.Parse(to), promoPiece);
-
-            var result = session.EngineController.SubmitChessMove(player.Color, move);
-            if (!result.IsSuccess)
-            {
-                await RejectActionAsync("ILLEGAL_MOVE", session.GameRevision);
-                return false;
-            }
-
-            session.Status = SessionStatus.InProgress;
-            if (_chessEngine.IsTerminalState(session.EngineController.ChessState.Status))
-            {
-                session.Status = SessionStatus.Completed;
-            }
-
-            if (!string.IsNullOrEmpty(actionId))
-            {
-                await _sessionRepository.TryRecordActionAsync(
-                    gameId, actionId, "SubmitMove", player.Color.ToString(), session.GameRevision + 1, $"{from}-{to}", "{\"success\":true}");
-            }
-
+        if (!result.IsIdempotentReplay)
+        {
             var groupName = GetGroupName(gameId);
             await Clients.Group(groupName).SendAsync("MoveAccepted", new
             {
@@ -356,18 +325,10 @@ public class GameHub : Hub
                 BoardFen = session.EngineController.ChessState.Fen
             });
 
-            await BroadcastStateUpdate(session);
-            return true;
+            await BroadcastCommittedStateUpdate(session);
         }
-        catch (Exception)
-        {
-            await RejectActionAsync("INVALID_ACTION", session.GameRevision);
-            return false;
-        }
-        finally
-        {
-            session.SessionLock.Release();
-        }
+
+        return true;
     }
 
     public async Task<List<string>> GetLegalMoves(Guid gameId, string playerToken)
@@ -386,42 +347,37 @@ public class GameHub : Hub
         var session = await _sessionRepository.GetByIdAsync(gameId);
         if (session == null) return false;
 
-        await session.SessionLock.WaitAsync();
-        try
+        var player = GetAuthenticatedPlayer(session, playerToken);
+        if (player == null)
         {
-            if (IsSessionTerminal(session))
-            {
-                await RejectActionAsync("SESSION_TERMINAL", session.GameRevision);
-                return false;
-            }
-
-            var player = GetAuthenticatedPlayer(session, playerToken);
-            if (player == null)
-            {
-                await RejectActionAsync("UNAUTHORIZED", session.GameRevision);
-                return false;
-            }
-
-            var result = session.EngineController.Resign(player.Color);
-            if (!result.IsSuccess)
-            {
-                await RejectActionAsync("INVALID_ACTION", session.GameRevision);
-                return false;
-            }
-
-            session.Status = SessionStatus.Completed;
-            await BroadcastStateUpdate(session);
-            return true;
-        }
-        catch (Exception)
-        {
-            await RejectActionAsync("INVALID_ACTION", session.GameRevision);
+            await RejectActionAsync("UNAUTHORIZED", session.GameRevision);
             return false;
         }
-        finally
+
+        var result = await _sessionRepository.ExecuteActionAtomicallyAsync(
+            gameId,
+            null,
+            "Resign",
+            player.Color,
+            null,
+            s =>
+            {
+                if (IsSessionTerminal(s)) return (false, "SESSION_TERMINAL");
+                var resignRes = s.EngineController.Resign(player.Color);
+                if (!resignRes.IsSuccess) return (false, "INVALID_ACTION");
+                s.Status = SessionStatus.Completed;
+                return (true, null);
+            }
+        );
+
+        if (!result.Success)
         {
-            session.SessionLock.Release();
+            await RejectActionAsync(result.ErrorCode ?? "INVALID_ACTION", session.GameRevision);
+            return false;
         }
+
+        await BroadcastCommittedStateUpdate(session);
+        return true;
     }
 
     public Task<bool> EndTurn(Guid gameId, string playerToken) =>
@@ -435,64 +391,47 @@ public class GameHub : Hub
         var session = await _sessionRepository.GetByIdAsync(gameId);
         if (session == null) return false;
 
-        if (!string.IsNullOrEmpty(actionId))
+        var player = GetAuthenticatedPlayer(session, playerToken);
+        if (player == null)
         {
-            var cached = await _sessionRepository.GetActionResultAsync(gameId, actionId);
-            if (cached != null) return true;
-        }
-
-        await session.SessionLock.WaitAsync();
-        try
-        {
-            if (IsSessionTerminal(session))
-            {
-                await RejectActionAsync("SESSION_TERMINAL", session.GameRevision);
-                return false;
-            }
-
-            if (expectedRevision.HasValue && expectedRevision.Value != session.GameRevision)
-            {
-                await RejectActionAsync("REVISION_MISMATCH", session.GameRevision, expectedRevision.Value);
-                return false;
-            }
-
-            var player = GetAuthenticatedPlayer(session, playerToken);
-            if (player == null || player.Color != session.EngineController.ActivePlayer)
-            {
-                await RejectActionAsync("NOT_YOUR_TURN", session.GameRevision);
-                return false;
-            }
-
-            var result = session.EngineController.EndTurn(player.Color);
-            if (!result.IsSuccess)
-            {
-                await RejectActionAsync("INVALID_ACTION", session.GameRevision);
-                return false;
-            }
-
-            if (_chessEngine.IsTerminalState(session.EngineController.ChessState.Status))
-            {
-                session.Status = SessionStatus.Completed;
-            }
-
-            if (!string.IsNullOrEmpty(actionId))
-            {
-                await _sessionRepository.TryRecordActionAsync(
-                    gameId, actionId, "EndTurn", player.Color.ToString(), session.GameRevision + 1, "{}", "{\"success\":true}");
-            }
-
-            await BroadcastStateUpdate(session);
-            return true;
-        }
-        catch (Exception)
-        {
-            await RejectActionAsync("INVALID_ACTION", session.GameRevision);
+            await RejectActionAsync("UNAUTHORIZED", session.GameRevision);
             return false;
         }
-        finally
+
+        var result = await _sessionRepository.ExecuteActionAtomicallyAsync(
+            gameId,
+            actionId,
+            "EndTurn",
+            player.Color,
+            expectedRevision,
+            s =>
+            {
+                if (IsSessionTerminal(s)) return (false, "SESSION_TERMINAL");
+                if (player.Color != s.EngineController.ActivePlayer) return (false, "NOT_YOUR_TURN");
+
+                var turnRes = s.EngineController.EndTurn(player.Color);
+                if (!turnRes.IsSuccess) return (false, "INVALID_ACTION");
+
+                if (_chessEngine.IsTerminalState(s.EngineController.ChessState.Status))
+                {
+                    s.Status = SessionStatus.Completed;
+                }
+                return (true, null);
+            }
+        );
+
+        if (!result.Success)
         {
-            session.SessionLock.Release();
+            await RejectActionAsync(result.ErrorCode ?? "INVALID_ACTION", session.GameRevision, expectedRevision);
+            return false;
         }
+
+        if (!result.IsIdempotentReplay)
+        {
+            await BroadcastCommittedStateUpdate(session);
+        }
+
+        return true;
     }
 
     public Task<bool> SubmitRevival(Guid gameId, string playerToken, string pieceType, string targetSquare) =>
@@ -506,59 +445,50 @@ public class GameHub : Hub
         var session = await _sessionRepository.GetByIdAsync(gameId);
         if (session == null) return false;
 
-        if (!string.IsNullOrEmpty(actionId))
+        var player = GetAuthenticatedPlayer(session, playerToken);
+        if (player == null)
         {
-            var cached = await _sessionRepository.GetActionResultAsync(gameId, actionId);
-            if (cached != null) return true;
+            await RejectActionAsync("UNAUTHORIZED", session.GameRevision);
+            return false;
         }
 
-        await session.SessionLock.WaitAsync();
-        try
+        if (!Enum.TryParse<PieceType>(pieceType, true, out var piece))
         {
-            if (IsSessionTerminal(session))
-            {
-                await RejectActionAsync("SESSION_TERMINAL", session.GameRevision);
-                return false;
-            }
+            await RejectActionAsync("INVALID_PIECE", session.GameRevision);
+            return false;
+        }
 
-            if (expectedRevision.HasValue && expectedRevision.Value != session.GameRevision)
+        var result = await _sessionRepository.ExecuteActionAtomicallyAsync(
+            gameId,
+            actionId,
+            "SubmitRevival",
+            player.Color,
+            expectedRevision,
+            s =>
             {
-                await RejectActionAsync("REVISION_MISMATCH", session.GameRevision, expectedRevision.Value);
-                return false;
-            }
+                if (IsSessionTerminal(s)) return (false, "SESSION_TERMINAL");
+                if (player.Color != s.EngineController.ActivePlayer) return (false, "NOT_YOUR_TURN");
 
-            var player = GetAuthenticatedPlayer(session, playerToken);
-            if (player == null || player.Color != session.EngineController.ActivePlayer)
-            {
-                await RejectActionAsync("NOT_YOUR_TURN", session.GameRevision);
-                return false;
-            }
+                var revivalRes = s.EngineController.SubmitRevival(player.Color, piece, Square.Parse(targetSquare));
+                if (!revivalRes.IsSuccess) return (false, "INVALID_REVIVAL");
 
-            if (!Enum.TryParse<PieceType>(pieceType, true, out var piece))
-            {
-                await RejectActionAsync("INVALID_PIECE", session.GameRevision);
-                return false;
+                s.Status = SessionStatus.InProgress;
+                if (_chessEngine.IsTerminalState(s.EngineController.ChessState.Status))
+                {
+                    s.Status = SessionStatus.Completed;
+                }
+                return (true, null);
             }
+        );
 
-            var result = session.EngineController.SubmitRevival(player.Color, piece, Square.Parse(targetSquare));
-            if (!result.IsSuccess)
-            {
-                await RejectActionAsync("INVALID_REVIVAL", session.GameRevision);
-                return false;
-            }
+        if (!result.Success)
+        {
+            await RejectActionAsync(result.ErrorCode ?? "INVALID_ACTION", session.GameRevision, expectedRevision);
+            return false;
+        }
 
-            session.Status = SessionStatus.InProgress;
-            if (_chessEngine.IsTerminalState(session.EngineController.ChessState.Status))
-            {
-                session.Status = SessionStatus.Completed;
-            }
-
-            if (!string.IsNullOrEmpty(actionId))
-            {
-                await _sessionRepository.TryRecordActionAsync(
-                    gameId, actionId, "SubmitRevival", player.Color.ToString(), session.GameRevision + 1, $"{pieceType}-{targetSquare}", "{\"success\":true}");
-            }
-
+        if (!result.IsIdempotentReplay)
+        {
             var groupName = GetGroupName(gameId);
             await Clients.Group(groupName).SendAsync("PieceRevived", new
             {
@@ -568,18 +498,10 @@ public class GameHub : Hub
                 BoardFen = session.EngineController.ChessState.Fen
             });
 
-            await BroadcastStateUpdate(session);
-            return true;
+            await BroadcastCommittedStateUpdate(session);
         }
-        catch (Exception)
-        {
-            await RejectActionAsync("INVALID_ACTION", session.GameRevision);
-            return false;
-        }
-        finally
-        {
-            session.SessionLock.Release();
-        }
+
+        return true;
     }
 
     public Task<bool> SubmitSwap(Guid gameId, string playerToken, string sq1, string sq2) =>
@@ -593,53 +515,44 @@ public class GameHub : Hub
         var session = await _sessionRepository.GetByIdAsync(gameId);
         if (session == null) return false;
 
-        if (!string.IsNullOrEmpty(actionId))
+        var player = GetAuthenticatedPlayer(session, playerToken);
+        if (player == null)
         {
-            var cached = await _sessionRepository.GetActionResultAsync(gameId, actionId);
-            if (cached != null) return true;
+            await RejectActionAsync("UNAUTHORIZED", session.GameRevision);
+            return false;
         }
 
-        await session.SessionLock.WaitAsync();
-        try
+        var result = await _sessionRepository.ExecuteActionAtomicallyAsync(
+            gameId,
+            actionId,
+            "SubmitSwap",
+            player.Color,
+            expectedRevision,
+            s =>
+            {
+                if (IsSessionTerminal(s)) return (false, "SESSION_TERMINAL");
+                if (player.Color != s.EngineController.ActivePlayer) return (false, "NOT_YOUR_TURN");
+
+                var swapRes = s.EngineController.SubmitSwap(player.Color, Square.Parse(sq1), Square.Parse(sq2));
+                if (!swapRes.IsSuccess) return (false, "INVALID_SWAP");
+
+                s.Status = SessionStatus.InProgress;
+                if (_chessEngine.IsTerminalState(s.EngineController.ChessState.Status))
+                {
+                    s.Status = SessionStatus.Completed;
+                }
+                return (true, null);
+            }
+        );
+
+        if (!result.Success)
         {
-            if (IsSessionTerminal(session))
-            {
-                await RejectActionAsync("SESSION_TERMINAL", session.GameRevision);
-                return false;
-            }
+            await RejectActionAsync(result.ErrorCode ?? "INVALID_ACTION", session.GameRevision, expectedRevision);
+            return false;
+        }
 
-            if (expectedRevision.HasValue && expectedRevision.Value != session.GameRevision)
-            {
-                await RejectActionAsync("REVISION_MISMATCH", session.GameRevision, expectedRevision.Value);
-                return false;
-            }
-
-            var player = GetAuthenticatedPlayer(session, playerToken);
-            if (player == null || player.Color != session.EngineController.ActivePlayer)
-            {
-                await RejectActionAsync("NOT_YOUR_TURN", session.GameRevision);
-                return false;
-            }
-
-            var result = session.EngineController.SubmitSwap(player.Color, Square.Parse(sq1), Square.Parse(sq2));
-            if (!result.IsSuccess)
-            {
-                await RejectActionAsync("INVALID_SWAP", session.GameRevision);
-                return false;
-            }
-
-            session.Status = SessionStatus.InProgress;
-            if (_chessEngine.IsTerminalState(session.EngineController.ChessState.Status))
-            {
-                session.Status = SessionStatus.Completed;
-            }
-
-            if (!string.IsNullOrEmpty(actionId))
-            {
-                await _sessionRepository.TryRecordActionAsync(
-                    gameId, actionId, "SubmitSwap", player.Color.ToString(), session.GameRevision + 1, $"{sq1}-{sq2}", "{\"success\":true}");
-            }
-
+        if (!result.IsIdempotentReplay)
+        {
             var groupName = GetGroupName(gameId);
             await Clients.Group(groupName).SendAsync("PiecesSwapped", new
             {
@@ -649,18 +562,10 @@ public class GameHub : Hub
                 BoardFen = session.EngineController.ChessState.Fen
             });
 
-            await BroadcastStateUpdate(session);
-            return true;
+            await BroadcastCommittedStateUpdate(session);
         }
-        catch (Exception)
-        {
-            await RejectActionAsync("INVALID_ACTION", session.GameRevision);
-            return false;
-        }
-        finally
-        {
-            session.SessionLock.Release();
-        }
+
+        return true;
     }
 
     private async Task RejectActionAsync(string reason, int currentRevision, int? expectedRevision = null)
@@ -673,12 +578,10 @@ public class GameHub : Hub
         });
     }
 
-    private async Task BroadcastStateUpdate(GameSession session)
+    private async Task BroadcastCommittedStateUpdate(GameSession session)
     {
         var groupName = GetGroupName(session.GameId);
         var engine = session.EngineController;
-        session.GameRevision++;
-        await _sessionRepository.UpdateSessionAsync(session);
 
         var legalMoves = engine.GetLegalMoves().Select(m => m.ToString()).ToList();
 
@@ -712,6 +615,8 @@ public class GameHub : Hub
         });
     }
 
+    private Task BroadcastStateUpdate(GameSession session) => BroadcastCommittedStateUpdate(session);
+
     private static bool IsSessionTerminal(GameSession session) =>
         session.Status == SessionStatus.Completed ||
         session.Status == SessionStatus.Expired ||
@@ -719,8 +624,8 @@ public class GameHub : Hub
 
     private static PlayerSession? GetAuthenticatedPlayer(GameSession session, string token)
     {
-        if (session.PlayerWhite?.SecretToken == token) return session.PlayerWhite;
-        if (session.PlayerBlack?.SecretToken == token) return session.PlayerBlack;
+        if (session.AuthenticatePlayer(token, PlayerColor.White)) return session.PlayerWhite;
+        if (session.AuthenticatePlayer(token, PlayerColor.Black)) return session.PlayerBlack;
         return null;
     }
 

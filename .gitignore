@@ -16,3 +16,14 @@ build/
 Thumbs.db
 .DS_Store
 
+## Environment and Secret Files
+.env
+.env.*
+*.local
+secrets.json
+appsettings*.local.json
+*.pem
+*.key
+*.pfx
+*.crt
+
