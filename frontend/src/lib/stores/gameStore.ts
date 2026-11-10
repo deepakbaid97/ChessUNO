@@ -204,7 +204,8 @@ export function createGameStore() {
       update(s => ({
         ...s,
         opponentName: data.playerName,
-        gameStatus: 'Ready'
+        gameStatus: 'Ready',
+        revision: data.revision !== undefined ? data.revision : (s.revision > 0 ? s.revision + 1 : s.revision)
       }));
       log(`Opponent connected: ${data.playerName} (${data.color})`);
     },

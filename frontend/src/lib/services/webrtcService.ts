@@ -50,6 +50,10 @@ export class WebRtcService {
   }
 
   initializePeerConnection(config?: RtcConfig): void {
+    if (this.peerConnection) {
+      this.close();
+    }
+
     let iceServers: RTCIceServer[] = [
       { urls: 'stun:stun.l.google.com:19302' },
       { urls: 'stun:global.stun.twilio.com:3478' }
@@ -64,27 +68,29 @@ export class WebRtcService {
 
     const iceConfig: RTCConfiguration = config || { iceServers };
 
-    this.peerConnection = new RTCPeerConnection(iceConfig);
+    if (typeof RTCPeerConnection !== 'undefined') {
+      this.peerConnection = new RTCPeerConnection(iceConfig);
 
-    this.peerConnection.onicecandidate = (event) => {
-      if (event.candidate) {
-        this.onSignalNeeded('candidate', JSON.stringify(event.candidate));
-      }
-    };
-
-    this.peerConnection.oniceconnectionstatechange = () => {
-      if (this.peerConnection) {
-        const state = this.peerConnection.iceConnectionState;
-        if (state === 'connected' || state === 'completed') {
-          this.clearConnectionTimeout();
+      this.peerConnection.onicecandidate = (event) => {
+        if (event.candidate) {
+          this.onSignalNeeded('candidate', JSON.stringify(event.candidate));
         }
-        this.onConnectionStateChange(state);
-      }
-    };
+      };
 
-    this.peerConnection.ondatachannel = (event) => {
-      this.setDataChannel(event.channel);
-    };
+      this.peerConnection.oniceconnectionstatechange = () => {
+        if (this.peerConnection) {
+          const state = this.peerConnection.iceConnectionState;
+          if (state === 'connected' || state === 'completed') {
+            this.clearConnectionTimeout();
+          }
+          this.onConnectionStateChange(state);
+        }
+      };
+
+      this.peerConnection.ondatachannel = (event) => {
+        this.setDataChannel(event.channel);
+      };
+    }
 
     // 12-second negotiation timeout: if connection not established, notify fallback
     this.startConnectionTimeout();

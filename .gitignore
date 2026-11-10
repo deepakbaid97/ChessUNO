@@ -11,6 +11,8 @@ node_modules/
 dist/
 .svelte-kit/
 build/
+test-results/
+playwright-report/
 
 ## OS
 Thumbs.db

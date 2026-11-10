@@ -269,4 +269,81 @@ public class PostgreSqlPersistenceTests : IAsyncLifetime
         Assert.NotNull(reloadedB);
         Assert.Equal(3, reloadedB.GameRevision);
     }
+
+    [Fact]
+    public async Task PostgreSql_GameplaySurvivesRestart_AndAppliesSubsequentActionsWithIdempotency()
+    {
+        var repo1 = new PostgreSqlGameSessionRepository(_options);
+        var session = await repo1.CreateSessionAsync("Alice", seed: 42);
+        var joinResult = await repo1.JoinSessionAsync(session.InvitationToken!, "Bob");
+        Assert.NotNull(joinResult);
+
+        // Turn 1: White draws card
+        var (drawSuccess, _, rev3, _) = await repo1.ExecuteActionAtomicallyAsync(
+            session.GameId,
+            "white-draw-action",
+            "DrawCard",
+            PlayerColor.White,
+            expectedRevision: 2,
+            s =>
+            {
+                s.EngineController.DrawCard(PlayerColor.White);
+                return (true, null);
+            }
+        );
+        Assert.True(drawSuccess);
+        Assert.Equal(3, rev3);
+
+        // SIMULATE PROCESS RESTART: Discard repo1 completely, instantiate repo2 with empty memory
+        var repo2 = new PostgreSqlGameSessionRepository(_options);
+
+        // Recover session from PostgreSQL
+        var recovered = await repo2.GetByIdAsync(session.GameId);
+        Assert.NotNull(recovered);
+        Assert.Equal(3, recovered.GameRevision);
+        Assert.Equal(PlayerColor.White, recovered.EngineController.ActivePlayer);
+
+        // Turn 1 continue: Submit move e2-e4 using repo2 from recovered state
+        const string moveActionId = "white-move-e2e4";
+        var move = new ChessMove(Square.Parse("e2"), Square.Parse("e4"));
+        var (moveSuccess, _, rev4, isReplay1) = await repo2.ExecuteActionAtomicallyAsync(
+            recovered.GameId,
+            moveActionId,
+            "SubmitMove",
+            PlayerColor.White,
+            expectedRevision: 3,
+            s =>
+            {
+                var res = s.EngineController.SubmitChessMove(PlayerColor.White, move);
+                return (res.IsSuccess, res.IsSuccess ? null : "ILLEGAL_MOVE");
+            },
+            payloadJson: "{\"from\":\"e2\",\"to\":\"e4\"}"
+        );
+
+        Assert.True(moveSuccess);
+        Assert.False(isReplay1);
+        Assert.Equal(4, rev4);
+
+        // Duplicate retry on recovered repository with same actionId
+        var (retrySuccess, _, retryRev, isReplay2) = await repo2.ExecuteActionAtomicallyAsync(
+            recovered.GameId,
+            moveActionId,
+            "SubmitMove",
+            PlayerColor.White,
+            expectedRevision: 3,
+            s => (false, "SHOULD_NOT_EXECUTE"),
+            payloadJson: "{\"from\":\"e2\",\"to\":\"e4\"}"
+        );
+
+        Assert.True(retrySuccess);
+        Assert.True(isReplay2);
+        Assert.Equal(4, retryRev);
+
+        // Verify direct from database that move is recorded on the board
+        await using var db = new ChessUnoDbContext(_options);
+        var dbEntity = await db.Sessions.AsNoTracking().FirstOrDefaultAsync(s => s.GameId == session.GameId);
+        Assert.NotNull(dbEntity);
+        Assert.Equal(4, dbEntity.GameRevision);
+        Assert.Contains("/4P3/", dbEntity.BoardFen); // Pawn on e4!
+    }
 }

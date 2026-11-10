@@ -113,9 +113,29 @@
           </div>
         {/if}
         {#if isMyTurn && turnPhase === 'ActionPhase'}
-          <button class="btn btn-secondary btn-sm end-turn-btn" on:click={() => dispatch('endTurn')} data-testid="btn-end-turn">
-            End Turn ⏭️
-          </button>
+          <div class="action-buttons-group">
+            {#if canSwap}
+              <button
+                class="btn btn-gold btn-sm swap-action-btn"
+                on:click={() => dispatch('activateSwap')}
+                data-testid="btn-activate-swap"
+              >
+                🔄 Swap Friendly Pieces
+              </button>
+            {/if}
+            {#if remainingRevivals > 0}
+              <button
+                class="btn btn-green btn-sm revival-action-btn"
+                on:click={() => dispatch('activateRevival')}
+                data-testid="btn-activate-revival"
+              >
+                ✨ Revive Piece ({remainingRevivals} left)
+              </button>
+            {/if}
+            <button class="btn btn-secondary btn-sm end-turn-btn" on:click={() => dispatch('endTurn')} data-testid="btn-end-turn">
+              End Turn ⏭️
+            </button>
+          </div>
         {/if}
       </div>
     {:else}
@@ -253,8 +273,22 @@
     text-align: left;
   }
 
-  .end-turn-btn {
+  .action-buttons-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
     margin-top: 8px;
+  }
+
+  .swap-action-btn,
+  .revival-action-btn {
+    width: 100%;
+    font-size: 0.8rem;
+    padding: 6px 12px;
+  }
+
+  .end-turn-btn {
     width: 100%;
     font-size: 0.8rem;
     padding: 6px 12px;

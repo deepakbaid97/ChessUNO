@@ -93,6 +93,8 @@ export interface CardDrawnData {
 export interface PlayerConnectedData {
   playerName: string;
   color: string;
+  isReconnected?: boolean;
+  revision?: number;
 }
 
 export interface PieceRevivedData {

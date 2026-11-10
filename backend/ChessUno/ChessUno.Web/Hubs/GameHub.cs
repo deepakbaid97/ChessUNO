@@ -66,6 +66,7 @@ public class GameHub : Hub
         var groupName = GetGroupName(gameId);
         await Groups.AddToGroupAsync(Context.ConnectionId, groupName);
 
+        bool wasConnected = authenticatedPlayer.IsConnected;
         _connections[Context.ConnectionId] = (gameId, authenticatedPlayer.Color, authenticatedPlayer.PlayerName);
         await _sessionRepository.UpdatePlayerConnectionStatusAsync(gameId, authenticatedPlayer.Color, true);
 
@@ -106,13 +107,17 @@ public class GameHub : Hub
 
         await Clients.Caller.SendAsync("GameStateSnapshot", snapshot);
 
-        // Notify opponent that player connected or reconnected
-        await Clients.OthersInGroup(groupName).SendAsync("PlayerConnected", new
+        // Notify opponent when player connects or reconnects for the first time
+        if (!wasConnected)
         {
-            PlayerName = authenticatedPlayer.PlayerName,
-            Color = authenticatedPlayer.Color.ToString(),
-            IsReconnected = authenticatedPlayer.IsConnected
-        });
+            await Clients.OthersInGroup(groupName).SendAsync("PlayerConnected", new
+            {
+                PlayerName = authenticatedPlayer.PlayerName,
+                Color = authenticatedPlayer.Color.ToString(),
+                IsReconnected = false,
+                Revision = session.GameRevision
+            });
+        }
 
         return true;
     }

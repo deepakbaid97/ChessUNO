@@ -43,6 +43,12 @@
     }, 4000);
   }
 
+  function generateActionId(): string {
+    return typeof crypto !== 'undefined' && crypto.randomUUID
+      ? crypto.randomUUID()
+      : `act-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  }
+
   $: storeState = $gameStore;
   $: connState = $connectionStore;
 
@@ -96,6 +102,40 @@
     signalRService.onGameStateSnapshot((snapshot) => {
       gameStore.applySnapshot(snapshot);
       connectionStore.setSignalR('Connected');
+      // If reconnecting as White and opponent exists, initiate WebRTC negotiation
+      if (snapshot.assignedColor === 'White' && (snapshot.playerBlackName || snapshot.status !== 'WaitingForPlayer')) {
+        try {
+          webrtcService?.initializePeerConnection();
+          webrtcService?.createOffer()?.catch(() => {});
+        } catch {}
+      }
+    });
+
+    signalRService.onPlayerDisconnected((data) => {
+      console.log('[SignalR Event] onPlayerDisconnected received:', data);
+      showToast(`${data.playerName} (${data.color}) disconnected. Waiting for reconnection...`, 'error');
+      connectionStore.setWebRtc('Disconnected');
+    });
+
+    signalRService.onActionRejected(async (data) => {
+      console.warn('[SignalR Event] onActionRejected received:', data);
+      isSubmitting = false;
+      gameStore.clearSelection();
+
+      if (data.reason === 'REVISION_MISMATCH') {
+        showToast('Game state out of sync. Refreshing board...', 'error');
+        if (storeState.gameId && storeState.playerToken) {
+          await signalRService.joinGameRoom(storeState.gameId, storeState.playerToken);
+        }
+      } else if (data.reason === 'NOT_YOUR_TURN') {
+        showToast('It is not your turn!', 'error');
+      } else if (data.reason === 'ILLEGAL_MOVE') {
+        showToast('Illegal chess move rejected by authoritative referee.', 'error');
+      } else if (data.reason === 'SESSION_TERMINAL') {
+        showToast('Match has concluded.', 'info');
+      } else {
+        showToast(`Action rejected: ${data.reason}`, 'error');
+      }
     });
 
     signalRService.onGameStateUpdated((update) => {
@@ -301,12 +341,15 @@
     isSubmitting = true;
 
     try {
+      const actionId = generateActionId();
       const success = await signalRService.submitMove(
         storeState.gameId,
         storeState.playerToken,
         event.detail.from,
         event.detail.to,
-        event.detail.promotion
+        event.detail.promotion,
+        actionId,
+        storeState.revision
       );
       console.log('[handleProposeMove] submitMove result:', success);
 
@@ -326,7 +369,13 @@
   async function handleDrawCard() {
     console.log('[handleDrawCard] Invoking DrawCard on hub with gameId:', storeState.gameId);
     try {
-      const success = await signalRService.drawCard(storeState.gameId, storeState.playerToken);
+      const actionId = generateActionId();
+      const success = await signalRService.drawCard(
+        storeState.gameId,
+        storeState.playerToken,
+        actionId,
+        storeState.revision
+      );
       console.log('[handleDrawCard] Result:', success);
       if (!success) {
         showToast('Unable to draw card on server.', 'error');
@@ -339,10 +388,13 @@
 
   async function handleSubmitChoice(event: CustomEvent<{ choice: string }>) {
     try {
+      const actionId = generateActionId();
       const success = await signalRService.submitChoice(
         storeState.gameId,
         storeState.playerToken,
-        event.detail.choice
+        event.detail.choice,
+        actionId,
+        storeState.revision
       );
       if (!success) {
         showToast('Choice rejected by server.', 'error');
@@ -354,7 +406,13 @@
 
   async function handleEndTurn() {
     try {
-      const success = await signalRService.endTurn(storeState.gameId, storeState.playerToken);
+      const actionId = generateActionId();
+      const success = await signalRService.endTurn(
+        storeState.gameId,
+        storeState.playerToken,
+        actionId,
+        storeState.revision
+      );
       if (!success) {
         showToast('Cannot end turn at this time.', 'error');
       }
@@ -365,11 +423,14 @@
 
   async function handleSubmitSwap(event: CustomEvent<{ sq1: string; sq2: string }>) {
     try {
+      const actionId = generateActionId();
       const success = await signalRService.submitSwap(
         storeState.gameId,
         storeState.playerToken,
         event.detail.sq1,
-        event.detail.sq2
+        event.detail.sq2,
+        actionId,
+        storeState.revision
       );
       if (!success) {
         showToast('Swap rejected by server. Ensure friendly non-king pieces are selected.', 'error');
@@ -381,11 +442,14 @@
 
   async function handleSubmitRevival(event: CustomEvent<{ pieceType: string; targetSquare: string }>) {
     try {
+      const actionId = generateActionId();
       const success = await signalRService.submitRevival(
         storeState.gameId,
         storeState.playerToken,
         event.detail.pieceType,
-        event.detail.targetSquare
+        event.detail.targetSquare,
+        actionId,
+        storeState.revision
       );
       if (!success) {
         showToast('Revival rejected. Target square must be empty and on your half of the board.', 'error');

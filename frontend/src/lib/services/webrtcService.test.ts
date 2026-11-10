@@ -64,4 +64,34 @@ describe('WebRtcService', () => {
     service.close();
     expect(service.sendData('after close')).toBe(false);
   });
+
+  it('drains queued candidates upon answer signal', async () => {
+    const service = new WebRtcService(vi.fn(), vi.fn(), vi.fn());
+    let remoteDesc: any = null;
+    const addedCandidates: any[] = [];
+    const mockPc: any = {
+      get remoteDescription() { return remoteDesc; },
+      addIceCandidate: vi.fn(async (cand) => { addedCandidates.push(cand); }),
+      setRemoteDescription: vi.fn(async (desc) => { remoteDesc = desc; })
+    };
+    (service as any).peerConnection = mockPc;
+
+    await service.handleSignal('candidate', JSON.stringify({ candidate: 'cand-ans', sdpMid: '0', sdpMLineIndex: 0 }));
+    expect(service.getQueuedCandidatesCount()).toBe(1);
+
+    await service.handleSignal('answer', JSON.stringify({ type: 'answer', sdp: 'fake-sdp' }));
+    expect(addedCandidates.length).toBe(1);
+    expect(service.getQueuedCandidatesCount()).toBe(0);
+  });
+
+  it('initializePeerConnection closes previous connection before creating new', () => {
+    const service = new WebRtcService(vi.fn(), vi.fn(), vi.fn());
+    const closeSpy = vi.spyOn(service, 'close');
+
+    // Simulate existing connection
+    (service as any).peerConnection = { close: vi.fn() };
+    service.initializePeerConnection();
+
+    expect(closeSpy).toHaveBeenCalled();
+  });
 });

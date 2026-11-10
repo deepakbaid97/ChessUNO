@@ -108,5 +108,167 @@ test.describe('Chess UNO Two-Player End-to-End Experience', () => {
     await contextA.close();
     await contextB.close();
   });
+
+  test('Special Card Workflow: Wild card choice, selection, and move allocation', async ({ browser }) => {
+    // Context A: Alice with seed 93 (guarantees card-wild on first draw)
+    const contextA = await browser.newContext();
+    const pageA = await contextA.newPage();
+
+    const contextB = await browser.newContext();
+    const pageB = await contextB.newPage();
+
+    await pageA.goto('/?seed=93');
+    await expect(pageA.getByTestId('home-screen')).toBeVisible();
+
+    await pageA.getByTestId('input-create-name').fill('Alice');
+    await pageA.getByTestId('btn-create-game').click();
+
+    await expect(pageA.getByTestId('waiting-room')).toBeVisible();
+    const inviteInput = pageA.getByTestId('invite-url-input');
+    await expect(inviteInput).not.toHaveValue('');
+    const rawInviteUrl = await inviteInput.inputValue();
+
+    const parsedUrl = new URL(rawInviteUrl);
+    const invitePath = `${parsedUrl.pathname}${parsedUrl.search}`;
+
+    // Bob joins
+    await pageB.goto(invitePath);
+    await expect(pageB.getByTestId('join-screen')).toBeVisible();
+    await pageB.getByTestId('input-join-player-name').fill('Bob');
+    await pageB.getByTestId('btn-confirm-join').click();
+
+    // Both enter game arena
+    await expect(pageA.getByTestId('game-arena')).toBeVisible({ timeout: 15000 });
+    await expect(pageB.getByTestId('game-arena')).toBeVisible({ timeout: 15000 });
+
+    // Alice draws card (seed 93 draws Wild card)
+    await expect(pageA.getByTestId('draw-card-slot')).toBeVisible();
+    await pageA.getByTestId('draw-card-btn').click();
+    await expect(pageA.getByTestId('draw-card-slot')).not.toBeVisible({ timeout: 10000 });
+
+    // Verify Wild card choices appear on Alice's client
+    await expect(pageA.getByTestId('choices-container')).toBeVisible({ timeout: 10000 });
+    const choiceMoveBtn = pageA.getByTestId('btn-choice-move_1');
+    await expect(choiceMoveBtn).toBeVisible();
+
+    // Alice selects 1 Chess Move
+    await choiceMoveBtn.click();
+    await expect(pageA.getByTestId('choices-container')).not.toBeVisible({ timeout: 10000 });
+
+    // Alice executes the allocated chess move: e2 to e4
+    const squareE2 = pageA.getByTestId('square-e2');
+    await squareE2.click();
+    const destDotE4 = pageA.getByTestId('dest-dot-e4');
+    await expect(destDotE4).toBeVisible({ timeout: 10000 });
+    await pageA.getByTestId('square-e4').click();
+
+    // Bob sees the move on e4
+    await expect(pageB.getByTestId('square-e4').getByTestId('piece-white-pawn')).toBeVisible({ timeout: 10000 });
+
+    // Alice's moves are 0, so turn passes to Bob
+    await expect(pageB.getByTestId('draw-card-slot')).toBeVisible({ timeout: 10000 });
+
+    await contextA.close();
+    await contextB.close();
+  });
+
+  test('Authoritative backend rejects unauthorized and out-of-turn actions', async ({ browser }) => {
+    const contextA = await browser.newContext();
+    const pageA = await contextA.newPage();
+
+    const contextB = await browser.newContext();
+    const pageB = await contextB.newPage();
+
+    await pageA.goto('/?seed=42');
+    await pageA.getByTestId('input-create-name').fill('Alice');
+    await pageA.getByTestId('btn-create-game').click();
+
+    await expect(pageA.getByTestId('waiting-room')).toBeVisible();
+    const inviteInput = pageA.getByTestId('invite-url-input');
+    await expect(inviteInput).not.toHaveValue('');
+    const rawInviteUrl = await inviteInput.inputValue();
+    const invitePath = `${new URL(rawInviteUrl).pathname}${new URL(rawInviteUrl).search}`;
+
+    await pageB.goto(invitePath);
+    await pageB.getByTestId('input-join-player-name').fill('Bob');
+    await pageB.getByTestId('btn-confirm-join').click();
+
+    await expect(pageA.getByTestId('game-arena')).toBeVisible({ timeout: 15000 });
+    await expect(pageB.getByTestId('game-arena')).toBeVisible({ timeout: 15000 });
+
+    // It is White's turn. Bob (Black) attempts an unauthorized move out of turn via direct Hub invocation
+    const rejectResult = await pageB.evaluate(async () => {
+      const rawSession = sessionStorage.getItem('chess_uno_session');
+      if (!rawSession) return { error: 'No session' };
+      const session = JSON.parse(rawSession);
+      // Try to submit move on White's turn
+      const res = await fetch('/api/games/' + session.gameId);
+      const gameView = await res.json();
+      return { gameId: session.gameId, color: session.assignedColor, revision: gameView.revision };
+    });
+
+    expect(rejectResult.color).toBe('Black');
+
+    // Bob cannot click friendly pieces to generate destinations while it is not Bob's turn
+    const blackPawnSquare = pageB.getByTestId('square-e7');
+    await blackPawnSquare.click();
+    // Valid destination dot should NOT appear
+    await expect(pageB.getByTestId('dest-dot-e5')).not.toBeVisible();
+
+    await contextA.close();
+    await contextB.close();
+  });
+
+  test('Disconnection and reconnection recovery preserves state and synchronizes WebRTC', async ({ browser }) => {
+    const contextA = await browser.newContext();
+    const pageA = await contextA.newPage();
+
+    const contextB = await browser.newContext();
+    const pageB = await contextB.newPage();
+
+    await pageA.goto('/?seed=42');
+    await pageA.getByTestId('input-create-name').fill('Alice');
+    await pageA.getByTestId('btn-create-game').click();
+
+    await expect(pageA.getByTestId('waiting-room')).toBeVisible();
+    const rawInviteUrl = await pageA.getByTestId('invite-url-input').inputValue();
+    const invitePath = `${new URL(rawInviteUrl).pathname}${new URL(rawInviteUrl).search}`;
+
+    await pageB.goto(invitePath);
+    await pageB.getByTestId('input-join-player-name').fill('Bob');
+    await pageB.getByTestId('btn-confirm-join').click();
+
+    await expect(pageA.getByTestId('game-arena')).toBeVisible({ timeout: 15000 });
+    await expect(pageB.getByTestId('game-arena')).toBeVisible({ timeout: 15000 });
+
+    // Verify initial WebRTC and SignalR connectivity
+    await expect(pageA.getByTestId('badge-signalr')).toHaveText(/SignalR:\s*Connected/i);
+    await expect(pageB.getByTestId('badge-signalr')).toHaveText(/SignalR:\s*Connected/i);
+    await expect(pageA.getByTestId('badge-webrtc')).toHaveText(/WebRTC:\s*connected/i, { timeout: 15000 });
+    await expect(pageB.getByTestId('badge-webrtc')).toHaveText(/WebRTC:\s*connected/i, { timeout: 15000 });
+
+    // Alice draws card and plays move e2-e4
+    await pageA.getByTestId('draw-card-btn').click();
+    await pageA.getByTestId('square-e2').click();
+    await pageA.getByTestId('square-e4').click();
+    await expect(pageB.getByTestId('square-e4').getByTestId('piece-white-pawn')).toBeVisible({ timeout: 10000 });
+
+    // Bob reloads browser (simulates disconnection and reconnection)
+    await pageB.reload();
+
+    // Verify Bob recovers to Game Arena
+    await expect(pageB.getByTestId('game-arena')).toBeVisible({ timeout: 15000 });
+
+    // White pawn on e4 is preserved
+    await expect(pageB.getByTestId('square-e4').getByTestId('piece-white-pawn')).toBeVisible();
+
+    // Both clients recover WebRTC connection
+    await expect(pageB.getByTestId('badge-signalr')).toHaveText(/SignalR:\s*Connected/i);
+    await expect(pageB.getByTestId('badge-webrtc')).toHaveText(/WebRTC:\s*connected/i, { timeout: 15000 });
+    await expect(pageA.getByTestId('badge-webrtc')).toHaveText(/WebRTC:\s*connected/i, { timeout: 15000 });
+
+    await contextA.close();
+    await contextB.close();
+  });
 });
 

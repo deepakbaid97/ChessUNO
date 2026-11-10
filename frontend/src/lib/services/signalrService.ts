@@ -72,28 +72,43 @@ export class SignalRService {
     return this.hubConnection.invoke('SendSignal', gameId, playerToken, signalType, payload);
   }
 
-  async drawCard(gameId: string, playerToken: string): Promise<boolean> {
+  async drawCard(gameId: string, playerToken: string, actionId?: string, expectedRevision?: number): Promise<boolean> {
     if (!this.hubConnection) throw new Error('Not connected to SignalR');
+    if (actionId) {
+      return this.hubConnection.invoke('DrawCardWithIdempotency', gameId, playerToken, actionId, expectedRevision ?? null);
+    }
     return this.hubConnection.invoke('DrawCard', gameId, playerToken);
   }
 
-  async submitChoice(gameId: string, playerToken: string, choiceEffectKey: string): Promise<boolean> {
+  async submitChoice(gameId: string, playerToken: string, choiceEffectKey: string, actionId?: string, expectedRevision?: number): Promise<boolean> {
     if (!this.hubConnection) throw new Error('Not connected to SignalR');
+    if (actionId) {
+      return this.hubConnection.invoke('SubmitChoiceWithIdempotency', gameId, playerToken, choiceEffectKey, actionId, expectedRevision ?? null);
+    }
     return this.hubConnection.invoke('SubmitChoice', gameId, playerToken, choiceEffectKey);
   }
 
-  async submitMove(gameId: string, playerToken: string, from: string, to: string, promotion?: string): Promise<boolean> {
+  async submitMove(gameId: string, playerToken: string, from: string, to: string, promotion?: string, actionId?: string, expectedRevision?: number): Promise<boolean> {
     if (!this.hubConnection) throw new Error('Not connected to SignalR');
+    if (actionId) {
+      return this.hubConnection.invoke('SubmitMoveWithIdempotency', gameId, playerToken, from, to, promotion || null, actionId, expectedRevision ?? null);
+    }
     return this.hubConnection.invoke('SubmitMove', gameId, playerToken, from, to, promotion || null);
   }
 
-  async submitRevival(gameId: string, playerToken: string, pieceType: string, targetSquare: string): Promise<boolean> {
+  async submitRevival(gameId: string, playerToken: string, pieceType: string, targetSquare: string, actionId?: string, expectedRevision?: number): Promise<boolean> {
     if (!this.hubConnection) throw new Error('Not connected to SignalR');
+    if (actionId) {
+      return this.hubConnection.invoke('SubmitRevivalWithIdempotency', gameId, playerToken, pieceType, targetSquare, actionId, expectedRevision ?? null);
+    }
     return this.hubConnection.invoke('SubmitRevival', gameId, playerToken, pieceType, targetSquare);
   }
 
-  async submitSwap(gameId: string, playerToken: string, sq1: string, sq2: string): Promise<boolean> {
+  async submitSwap(gameId: string, playerToken: string, sq1: string, sq2: string, actionId?: string, expectedRevision?: number): Promise<boolean> {
     if (!this.hubConnection) throw new Error('Not connected to SignalR');
+    if (actionId) {
+      return this.hubConnection.invoke('SubmitSwapWithIdempotency', gameId, playerToken, sq1, sq2, actionId, expectedRevision ?? null);
+    }
     return this.hubConnection.invoke('SubmitSwap', gameId, playerToken, sq1, sq2);
   }
 
@@ -102,14 +117,25 @@ export class SignalRService {
     return this.hubConnection.invoke('Resign', gameId, playerToken);
   }
 
-  async endTurn(gameId: string, playerToken: string): Promise<boolean> {
+  async endTurn(gameId: string, playerToken: string, actionId?: string, expectedRevision?: number): Promise<boolean> {
     if (!this.hubConnection) throw new Error('Not connected to SignalR');
+    if (actionId) {
+      return this.hubConnection.invoke('EndTurnWithIdempotency', gameId, playerToken, actionId, expectedRevision ?? null);
+    }
     return this.hubConnection.invoke('EndTurn', gameId, playerToken);
   }
 
   async getLegalMoves(gameId: string, playerToken: string): Promise<string[]> {
     if (!this.hubConnection) throw new Error('Not connected to SignalR');
     return this.hubConnection.invoke('GetLegalMoves', gameId, playerToken);
+  }
+
+  onActionRejected(callback: (data: { reason: string; currentRevision: number; expectedRevision?: number }) => void): void {
+    this.registerHandler('ActionRejected', callback);
+  }
+
+  onPlayerDisconnected(callback: (data: { playerName: string; color: string }) => void): void {
+    this.registerHandler('PlayerDisconnected', callback);
   }
 
   onGameStateSnapshot(callback: (snapshot: GameSnapshot) => void): void {

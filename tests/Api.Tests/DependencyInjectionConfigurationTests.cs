@@ -162,4 +162,18 @@ public class DependencyInjectionConfigurationTests
         var repo = scope.ServiceProvider.GetRequiredService<IGameSessionRepository>();
         Assert.IsType<InMemoryGameSessionRepository>(repo);
     }
+
+    [Fact]
+    public void Development_WithPlaceholderPasswordAndEnvironmentPassword_SubstitutesPassword()
+    {
+        var rawConn = "Host=localhost;Database=chessuno;Username=postgres;Password=YOUR_POSTGRES_PASSWORD_HERE;";
+        var testPassword = "secret";
+
+        var resolvedConn = rawConn.Contains("YOUR_POSTGRES_PASSWORD_HERE")
+            ? rawConn.Replace("YOUR_POSTGRES_PASSWORD_HERE", testPassword)
+            : rawConn;
+
+        Assert.DoesNotContain("YOUR_POSTGRES_PASSWORD_HERE", resolvedConn);
+        Assert.Contains("Password=secret;", resolvedConn);
+    }
 }

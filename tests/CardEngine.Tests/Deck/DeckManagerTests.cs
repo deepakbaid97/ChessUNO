@@ -87,5 +87,16 @@ public class DeckManagerTests
         Assert.Equal(107, deckManager.RemainingCount);
         Assert.Equal(0, deckManager.DiscardCount);
     }
+
+    [Fact]
+    public void DeckManager_KnownSeeds_ProduceExpectedSpecialCards()
+    {
+        var cards = _repository.LoadFromPath(_configPath);
+        Assert.Equal("card-reverse", new DeckManager(cards, seed: 15).Draw().Id);
+        Assert.Equal("card-wild-draw-four", new DeckManager(cards, seed: 19).Draw().Id);
+        Assert.Equal("card-draw-two", new DeckManager(cards, seed: 20).Draw().Id);
+        Assert.Equal("card-skip", new DeckManager(cards, seed: 27).Draw().Id);
+        Assert.Equal("card-wild", new DeckManager(cards, seed: 93).Draw().Id);
+    }
 }
 

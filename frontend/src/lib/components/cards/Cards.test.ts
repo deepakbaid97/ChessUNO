@@ -113,5 +113,57 @@ describe('Card and CardHand Components', () => {
     await fireEvent.click(moveBtn);
     expect(chosen).toEqual({ choice: 'MOVE_1' });
   });
+
+  it('CardHand displays quick swap action button and emits activateSwap when canSwap is true in ActionPhase', async () => {
+    const { getByTestId, component } = render(CardHand, {
+      props: {
+        turnPhase: 'ActionPhase',
+        isMyTurn: true,
+        activeCard: actionCard,
+        canSwap: true,
+        remainingMoves: 0
+      }
+    });
+
+    const swapBtn = getByTestId('btn-activate-swap');
+    expect(swapBtn).toBeTruthy();
+
+    let swapTriggered = false;
+    component.$on('activateSwap', () => {
+      swapTriggered = true;
+    });
+
+    await fireEvent.click(swapBtn);
+    expect(swapTriggered).toBe(true);
+  });
+
+  it('CardHand displays quick revival action button and emits activateRevival when remainingRevivals > 0 in ActionPhase', async () => {
+    const { getByTestId, component } = render(CardHand, {
+      props: {
+        turnPhase: 'ActionPhase',
+        isMyTurn: true,
+        activeCard: {
+          id: 'card-draw-two',
+          name: 'Draw Two (+2)',
+          category: 'ACTION',
+          description: 'Revives up to 2 captured friendly pieces.',
+          effectKey: 'REVIVE_UP_TO_TWO'
+        },
+        remainingRevivals: 2,
+        remainingMoves: 0
+      }
+    });
+
+    const revivalBtn = getByTestId('btn-activate-revival');
+    expect(revivalBtn).toBeTruthy();
+
+    let revivalTriggered = false;
+    component.$on('activateRevival', () => {
+      revivalTriggered = true;
+    });
+
+    await fireEvent.click(revivalBtn);
+    expect(revivalTriggered).toBe(true);
+  });
 });
 

@@ -17,6 +17,16 @@ var isProduction = builder.Environment.IsProduction();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 var useInMemory = builder.Configuration.GetValue<bool>("UseInMemoryRepository", false);
 
+if (!isProduction && !string.IsNullOrWhiteSpace(connectionString) && connectionString.Contains("YOUR_POSTGRES_PASSWORD_HERE"))
+{
+    var envPassword = Environment.GetEnvironmentVariable("CHESSUNO_TEST_PASSWORD")
+                      ?? Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
+    if (!string.IsNullOrWhiteSpace(envPassword))
+    {
+        connectionString = connectionString.Replace("YOUR_POSTGRES_PASSWORD_HERE", envPassword);
+    }
+}
+
 // HMAC Token Security Key Configuration
 var hmacKey = builder.Configuration["TokenSecurity:HmacKey"]
               ?? Environment.GetEnvironmentVariable("CHESSUNO_HMAC_KEY");
@@ -51,7 +61,7 @@ else
     }
 }
 
-if (!string.IsNullOrWhiteSpace(connectionString) && !useInMemory && !connectionString.Contains("YOUR_POSTGRES_PASSWORD_HERE"))
+if (!string.IsNullOrWhiteSpace(connectionString) && !connectionString.Contains("YOUR_POSTGRES_PASSWORD_HERE"))
 {
     Console.WriteLine("[ChessUNO Startup] Initializing persistent PostgreSQL Game Session Repository.");
     builder.Services.AddDbContextFactory<ChessUnoDbContext>(options =>
@@ -59,6 +69,18 @@ if (!string.IsNullOrWhiteSpace(connectionString) && !useInMemory && !connectionS
 
     builder.Services.AddSingleton<IGameSessionRepository>(sp =>
     {
+        var config = sp.GetRequiredService<IConfiguration>();
+        var env = sp.GetRequiredService<IHostEnvironment>();
+        var inMem = config.GetValue<bool>("UseInMemoryRepository", false);
+        if (inMem)
+        {
+            if (env.IsProduction())
+            {
+                throw new InvalidOperationException("In-memory game session repository cannot be registered in Production.");
+            }
+            return new InMemoryGameSessionRepository();
+        }
+
         var factory = sp.GetRequiredService<IDbContextFactory<ChessUnoDbContext>>();
         using var initDb = factory.CreateDbContext();
         initDb.Database.Migrate();
