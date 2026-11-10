@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using ChessUno.Core.Sessions;
 
 namespace ChessUno.Web.Controllers;
@@ -10,10 +11,12 @@ namespace ChessUno.Web.Controllers;
 public class GamesController : ControllerBase
 {
     private readonly IGameSessionRepository _sessionRepository;
+    private readonly IConfiguration? _configuration;
 
-    public GamesController(IGameSessionRepository sessionRepository)
+    public GamesController(IGameSessionRepository sessionRepository, IConfiguration? configuration = null)
     {
         _sessionRepository = sessionRepository;
+        _configuration = configuration;
     }
 
     [HttpPost]
@@ -21,7 +24,26 @@ public class GamesController : ControllerBase
     {
         var session = await _sessionRepository.CreateSessionAsync(request.PlayerName, request.Seed);
 
-        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var configuredFrontendUrl = _configuration?["FrontendBaseUrl"] ?? Environment.GetEnvironmentVariable("FRONTEND_BASE_URL");
+        string baseUrl;
+        if (!string.IsNullOrWhiteSpace(configuredFrontendUrl))
+        {
+            baseUrl = configuredFrontendUrl.Trim().TrimEnd('/');
+        }
+        else if (Request.Headers.TryGetValue("Origin", out var origin) && !string.IsNullOrWhiteSpace(origin))
+        {
+            baseUrl = origin.ToString().Trim().TrimEnd('/');
+        }
+        else if (Request.Headers.TryGetValue("Referer", out var referer) && !string.IsNullOrWhiteSpace(referer))
+        {
+            var uri = new Uri(referer.ToString());
+            baseUrl = $"{uri.Scheme}://{uri.Authority}".TrimEnd('/');
+        }
+        else
+        {
+            baseUrl = $"{Request.Scheme}://{Request.Host}".TrimEnd('/');
+        }
+
         var invitationUrl = $"{baseUrl}/join/{session.InvitationToken}";
 
         var response = new CreateGameResponseDto(

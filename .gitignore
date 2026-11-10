@@ -21,6 +21,7 @@ Thumbs.db
 ## Environment and Secret Files
 .env
 .env.*
+!.env.example
 *.local
 secrets.json
 appsettings*.local.json

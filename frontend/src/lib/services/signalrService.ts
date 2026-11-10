@@ -1,4 +1,5 @@
 import * as signalR from '@microsoft/signalr';
+import { getHubUrl } from '../config/apiConfig';
 import type {
   GameSnapshot,
   GameStateUpdate,
@@ -27,13 +28,14 @@ export class SignalRService {
     }
   }
 
-  async connect(hubUrl: string = '/hubs/game'): Promise<void> {
+  async connect(hubUrl?: string): Promise<void> {
+    const url = hubUrl || getHubUrl();
     if (this.hubConnection && this.hubConnection.state === signalR.HubConnectionState.Connected) {
       return;
     }
 
     this.hubConnection = new signalR.HubConnectionBuilder()
-      .withUrl(hubUrl)
+      .withUrl(url)
       .withAutomaticReconnect([0, 2000, 5000, 10000])
       .build();
 

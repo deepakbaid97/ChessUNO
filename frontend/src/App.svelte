@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import { get } from 'svelte/store';
+  import { buildInvitationUrl } from './lib/config/apiConfig';
   import { GameApiService } from './lib/services/gameApiService';
   import { SignalRService } from './lib/services/signalrService';
   import { WebRtcService } from './lib/services/webrtcService';
@@ -265,12 +266,13 @@
     errorMessage = '';
     try {
       const res = await apiService.createGame(event.detail.playerName, event.detail.seed);
+      const effectiveInviteUrl = buildInvitationUrl(res.invitationToken);
       gameStore.setPlayerSession({
         gameId: res.gameId,
         playerToken: res.playerToken,
         assignedColor: res.assignedColor,
         playerName: event.detail.playerName,
-        invitationUrl: res.invitationUrl,
+        invitationUrl: effectiveInviteUrl,
         invitationToken: res.invitationToken
       });
 
@@ -279,7 +281,7 @@
         playerToken: res.playerToken,
         assignedColor: res.assignedColor,
         playerName: event.detail.playerName,
-        invitationUrl: res.invitationUrl,
+        invitationUrl: effectiveInviteUrl,
         invitationToken: res.invitationToken
       }));
 

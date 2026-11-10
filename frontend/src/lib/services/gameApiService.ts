@@ -4,12 +4,13 @@ import type {
   GameSessionView,
   InvitationInfo
 } from '../types/game';
+import { getApiBaseUrl } from '../config/apiConfig';
 
 export class GameApiService {
   private baseUrl: string;
 
-  constructor(baseUrl: string = '') {
-    this.baseUrl = baseUrl;
+  constructor(baseUrl?: string) {
+    this.baseUrl = baseUrl !== undefined ? baseUrl : getApiBaseUrl();
   }
 
   async createGame(playerName: string, seed?: number): Promise<CreateGameResponse> {
