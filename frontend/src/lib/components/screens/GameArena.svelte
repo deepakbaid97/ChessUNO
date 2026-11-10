@@ -33,7 +33,7 @@
   $: storeState = $gameStore;
   $: connState = $connectionStore;
 
-  $: isMyTurn = storeState.activePlayer === storeState.assignedColor;
+  $: isMyTurn = storeState.activePlayer === storeState.assignedColor && !isGameOver;
   $: opponentColor = (storeState.assignedColor === 'White' ? 'Black' : 'White') as PlayerColor;
 
   $: myReserves = storeState.assignedColor === 'White' ? storeState.whiteReserves : storeState.blackReserves;

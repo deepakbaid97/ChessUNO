@@ -162,8 +162,8 @@ public class ChessEngine : IChessEngine
             newReserves[capturedOwner] = reserveList;
         }
 
-        // If move delivered checkmate, game ends immediately with victory regardless of remaining moves!
-        if (opponentCheckmated)
+        // If move captured the king or delivered checkmate, game ends immediately with victory regardless of remaining moves!
+        if (capturedType == PieceType.King || opponentCheckmated)
         {
             var fenPartsImmediate = newFen.Split(' ');
             int hmcImmediate = fenPartsImmediate.Length > 4 && int.TryParse(fenPartsImmediate[4], out int hmc1) ? hmc1 : 0;

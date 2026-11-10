@@ -24,7 +24,7 @@
 
   function getSubtitle(): string {
     if (gameStatus === 'Checkmate') {
-      return isWinner ? 'You delivered checkmate!' : 'Your king was checkmated.';
+      return isWinner ? 'You delivered checkmate or captured the king!' : 'Your king was checkmated or captured.';
     }
     if (gameStatus === 'Resigned') {
       return isWinner ? 'Opponent resigned the match.' : 'You resigned the match.';

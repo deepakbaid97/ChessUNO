@@ -236,5 +236,70 @@ public class TurnControllerTests
         var moveResult = controller.SubmitChessMove(PlayerColor.Black, new ChessMove(Square.Parse("e7"), Square.Parse("e5")));
         Assert.False(moveResult.IsSuccess);
     }
+
+    [Fact]
+    public void TurnController_CapturingKingWithMultiMoveCard_ImmediatelyEndsGameWithVictory()
+    {
+        // FEN where White Queen on e1 can capture Black King on e8
+        var controller = CreateController(initialFen: "4k3/8/8/8/8/8/8/4Q2K w - - 0 1");
+        controller.StartGame();
+
+        // Inject Card-6 (MOVE_6 with 6 moves)
+        var card6 = new CardInstance(Guid.NewGuid(), new CardDefinition("card-6", "6 Card", "NUMBER", 8, "MOVE_6", "", Value: 6));
+        controller.InjectNextCard(card6);
+
+        controller.DrawCard(PlayerColor.White);
+        Assert.Equal(6, controller.CurrentTurn.RemainingMoves);
+
+        // White captures Black King on e8 with Queen
+        var moveResult = controller.SubmitChessMove(PlayerColor.White, new ChessMove(Square.Parse("e1"), Square.Parse("e8")));
+        Assert.True(moveResult.IsSuccess);
+
+        // Must immediately terminate the game with Checkmate victory for White and clamp moves to 0
+        Assert.Equal(GameStatus.Checkmate, controller.ChessState.Status);
+        Assert.Equal(PlayerColor.White, controller.ChessState.Winner);
+        Assert.Equal(0, controller.CurrentTurn.RemainingMoves);
+        Assert.Equal(TurnPhase.TurnEnded, controller.CurrentTurn.Phase);
+
+        // Any subsequent move attempts should be rejected
+        var illegalFollowup = controller.SubmitChessMove(PlayerColor.White, new ChessMove(Square.Parse("h1"), Square.Parse("h2")));
+        Assert.False(illegalFollowup.IsSuccess);
+    }
+
+    [Fact]
+    public void TurnController_FourMoveScholarSequence_CapturingKingWith6MovesCard_EndsGameImmediately()
+    {
+        var controller = CreateController(seed: 1); // Seed 1 draws card-6
+        controller.StartGame();
+
+        var card = controller.DrawCard(PlayerColor.White);
+        Assert.Equal("card-6", card.Id);
+        Assert.Equal(6, controller.CurrentTurn.RemainingMoves);
+
+        // Move 1: e2 -> e4
+        var m1 = controller.SubmitChessMove(PlayerColor.White, new ChessMove(Square.Parse("e2"), Square.Parse("e4")));
+        Assert.True(m1.IsSuccess);
+        Assert.Equal(5, controller.CurrentTurn.RemainingMoves);
+
+        // Move 2: d1 -> f3
+        var m2 = controller.SubmitChessMove(PlayerColor.White, new ChessMove(Square.Parse("d1"), Square.Parse("f3")));
+        Assert.True(m2.IsSuccess);
+        Assert.Equal(4, controller.CurrentTurn.RemainingMoves);
+
+        // Move 3: f3 -> f7
+        var m3 = controller.SubmitChessMove(PlayerColor.White, new ChessMove(Square.Parse("f3"), Square.Parse("f7")));
+        Assert.True(m3.IsSuccess);
+        Assert.Equal(3, controller.CurrentTurn.RemainingMoves);
+
+        // Move 4: f7 -> e8 (CAPTURES BLACK KING!)
+        var m4 = controller.SubmitChessMove(PlayerColor.White, new ChessMove(Square.Parse("f7"), Square.Parse("e8")));
+        Assert.True(m4.IsSuccess);
+
+        // Immediate victory!
+        Assert.Equal(GameStatus.Checkmate, controller.ChessState.Status);
+        Assert.Equal(PlayerColor.White, controller.ChessState.Winner);
+        Assert.Equal(0, controller.CurrentTurn.RemainingMoves);
+        Assert.Equal(TurnPhase.TurnEnded, controller.CurrentTurn.Phase);
+    }
 }
 

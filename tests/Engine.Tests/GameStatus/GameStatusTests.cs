@@ -96,5 +96,20 @@ public class GameStatusEvaluationTests
         Assert.Equal(GameStatus.DrawByInsufficientMaterial, game.Status);
         Assert.Null(game.Winner);
     }
+
+    [Fact]
+    public void KingCapture_ImmediatelyEndsGameWithVictory()
+    {
+        // White Queen on e1, Black King on e8. White captures Black King on e8 during multi-move card.
+        var fen = "4k3/8/8/8/8/8/8/4Q2K w - - 0 1";
+        var game = _engine.CreateFromFen(fen);
+
+        var move = new ChessMove(Square.Parse("e1"), Square.Parse("e8"));
+        var nextState = _engine.ApplyMove(game, move, toggleTurn: false);
+
+        Assert.Equal(GameStatus.Checkmate, nextState.Status);
+        Assert.Equal(PlayerColor.White, nextState.Winner);
+        Assert.True(_engine.IsTerminalState(nextState.Status));
+    }
 }
 

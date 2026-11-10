@@ -270,5 +270,62 @@ test.describe('Chess UNO Two-Player End-to-End Experience', () => {
     await contextA.close();
     await contextB.close();
   });
+
+  test('Drawing 6 Card and capturing opponent King concludes match immediately on both clients', async ({ browser }) => {
+    const contextA = await browser.newContext();
+    const pageA = await contextA.newPage();
+
+    const contextB = await browser.newContext();
+    const pageB = await contextB.newPage();
+
+    // Alice creates game with seed 1 (which guarantees card-6 on first draw)
+    await pageA.goto('/?seed=1');
+    await pageA.getByTestId('input-create-name').fill('Alice');
+    await pageA.getByTestId('btn-create-game').click();
+
+    await expect(pageA.getByTestId('waiting-room')).toBeVisible();
+    const rawInviteUrl = await pageA.getByTestId('invite-url-input').inputValue();
+    const invitePath = `${new URL(rawInviteUrl).pathname}${new URL(rawInviteUrl).search}`;
+
+    await pageB.goto(invitePath);
+    await pageB.getByTestId('input-join-player-name').fill('Bob');
+    await pageB.getByTestId('btn-confirm-join').click();
+
+    await expect(pageA.getByTestId('game-arena')).toBeVisible({ timeout: 15000 });
+    await expect(pageB.getByTestId('game-arena')).toBeVisible({ timeout: 15000 });
+
+    // Alice draws card (card-6 -> 6 moves allocated)
+    await pageA.getByTestId('draw-card-btn').click();
+    await expect(pageA.getByTestId('card-hand')).toBeVisible();
+
+    // Move 1: e2 -> e4
+    await pageA.getByTestId('square-e2').click();
+    await pageA.getByTestId('square-e4').click();
+    await expect(pageA.getByTestId('square-e4').getByTestId('piece-white-pawn')).toBeVisible({ timeout: 5000 });
+
+    // Move 2: d1 -> f3
+    await pageA.getByTestId('square-d1').click();
+    await pageA.getByTestId('square-f3').click();
+    await expect(pageA.getByTestId('square-f3').getByTestId('piece-white-queen')).toBeVisible({ timeout: 5000 });
+
+    // Move 3: f3 -> f7
+    await pageA.getByTestId('square-f3').click();
+    await pageA.getByTestId('square-f7').click();
+    await expect(pageA.getByTestId('square-f7').getByTestId('piece-white-queen')).toBeVisible({ timeout: 5000 });
+
+    // Move 4: f7 -> e8 (CAPTURES BLACK KING!)
+    await pageA.getByTestId('square-f7').click();
+    await pageA.getByTestId('square-e8').click();
+
+    // Verify game concludes immediately right there without allowing remaining moves
+    await expect(pageA.getByTestId('game-over-modal')).toBeVisible({ timeout: 10000 });
+    await expect(pageB.getByTestId('game-over-modal')).toBeVisible({ timeout: 10000 });
+
+    await expect(pageA.getByText('Victory!')).toBeVisible();
+    await expect(pageB.getByText('Defeat')).toBeVisible();
+
+    await contextA.close();
+    await contextB.close();
+  });
 });
 
