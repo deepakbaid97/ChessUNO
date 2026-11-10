@@ -35,6 +35,7 @@ export interface CardRevealState {
   targetRect: RevealCoordinates | null;
   effectConfig: CardEffectConfig | null;
   revealId: string;
+  sequenceId: number;
 }
 
 export interface RevealRequestOptions {
@@ -43,4 +44,7 @@ export interface RevealRequestOptions {
   sourceRect?: RevealCoordinates | null;
   targetRect?: RevealCoordinates | null;
   force?: boolean;
+  revision?: number;
+  drawKey?: string;
 }
+

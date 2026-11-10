@@ -76,13 +76,16 @@ const initialState: CardRevealState = {
   sourceRect: null,
   targetRect: null,
   effectConfig: null,
-  revealId: ''
+  revealId: '',
+  sequenceId: 0
 };
 
 export class CardAnimationService {
   private state = writable<CardRevealState>(initialState);
   private lastRevealedId: string | null = null;
   private failsafeTimer: ReturnType<typeof setTimeout> | null = null;
+  private drawCounter = 0;
+  private sequenceCounter = 0;
 
   public subscribe = this.state.subscribe;
 
@@ -91,7 +94,10 @@ export class CardAnimationService {
 
     const drawerColor = options?.drawerColor || 'White';
     const isLocalPlayer = options?.isLocalPlayer ?? true;
-    const revealId = `${card.id}-${card.value}-${drawerColor}`;
+    const revealId = options?.drawKey ||
+      (options?.revision !== undefined
+        ? `rev-${options.revision}-${card.id}-${drawerColor}`
+        : `${card.id}-${card.value}-${drawerColor}`);
 
     // Deduplication check: prevent multiple triggers from stale/redundant events
     if (!options?.force && this.lastRevealedId === revealId) {
@@ -99,6 +105,7 @@ export class CardAnimationService {
     }
 
     this.lastRevealedId = revealId;
+    const sequenceId = ++this.sequenceCounter;
 
     if (this.failsafeTimer) {
       clearTimeout(this.failsafeTimer);
@@ -115,7 +122,8 @@ export class CardAnimationService {
       sourceRect: options?.sourceRect || null,
       targetRect: options?.targetRect || null,
       effectConfig,
-      revealId
+      revealId,
+      sequenceId
     });
 
     // Failsafe timeout: ensure overlay never stays stuck if tab inactive or sequence drops
@@ -138,7 +146,14 @@ export class CardAnimationService {
       clearTimeout(this.failsafeTimer);
       this.failsafeTimer = null;
     }
-    this.state.set(initialState);
+    this.state.set({
+      ...initialState,
+      sequenceId: this.sequenceCounter
+    });
+  }
+
+  public resetLastRevealed() {
+    this.lastRevealedId = null;
   }
 
   public reset() {
@@ -153,3 +168,4 @@ export class CardAnimationService {
 
 export const cardAnimationService = new CardAnimationService();
 export const cardRevealStore = cardAnimationService;
+

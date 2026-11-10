@@ -333,13 +333,17 @@
     return { x: r.left, y: r.top, width: r.width, height: r.height };
   }
 
-  let lastHandledCardKey: string | null = null;
+  let lastRevealedCardKey: string | null = null;
+  let lastRevealedDrawCounter: number = 0;
+  let previousActiveCardId: string | null = null;
   let previousTurnPhase: string = '';
 
   onMount(() => {
-    // If mounting into an already active card (e.g. page reload), record it so we don't replay
+    // If mounting into an already active card (e.g. page reload mid-game), record it so we don't replay
     if (storeState.activeCard?.id) {
-      lastHandledCardKey = `${storeState.activeCard.id}-${storeState.activeCard.value}-${storeState.revision}`;
+      lastRevealedCardKey = `${storeState.activeCard.id}-${storeState.activeCard.value}-${storeState.revision}`;
+      previousActiveCardId = storeState.activeCard.id;
+      lastRevealedDrawCounter = storeState.drawEventCounter;
     }
   });
 
@@ -351,31 +355,48 @@
     cardAnimationService.dismiss();
   }
 
-  // Authoritative Card Reveal Trigger
+  // Authoritative Card Reveal Trigger:
+  // Detect fresh card draws reliably across turns for both local player and remote opponent
   $: if (storeState.activeCard && storeState.activeCard.id) {
-    const currentKey = `${storeState.activeCard.id}-${storeState.activeCard.value}-${storeState.revision}`;
-    if (currentKey !== lastHandledCardKey) {
-      // Trigger when entering ActionPhase or AwaitingChoice from DrawPhase (or a confirmed fresh card draw)
-      const isFreshDraw = previousTurnPhase === 'DrawPhase' || (!lastHandledCardKey && storeState.turnPhase !== 'TurnEnded');
-      if (isFreshDraw) {
-        lastHandledCardKey = currentKey;
-        const isLocal = storeState.activePlayer === storeState.assignedColor;
+    const cardKey = `${storeState.activeCard.id}-${storeState.activeCard.value}-${storeState.revision}`;
+    const isNewDrawEvent = storeState.drawEventCounter > lastRevealedDrawCounter;
+    const isNewCardArrival = previousActiveCardId === null;
+    const isTransitionFromDrawPhase = previousTurnPhase === 'DrawPhase';
 
-        const sourceRect = isLocal
-          ? (getElementRect('[data-testid="draw-card-slot"]') || getElementRect('.draw-card-slot'))
-          : getElementRect('[data-testid="opponent-info"]');
+    const isFreshDraw = (isNewDrawEvent || isNewCardArrival || isTransitionFromDrawPhase) && (cardKey !== lastRevealedCardKey);
 
-        const targetRect = getElementRect('.card-column') || getElementRect('[data-testid="card-hand"]');
+    if (isFreshDraw) {
+      lastRevealedCardKey = cardKey;
+      lastRevealedDrawCounter = storeState.drawEventCounter;
+      previousActiveCardId = storeState.activeCard.id;
 
-        cardAnimationService.triggerCardReveal(storeState.activeCard, {
-          drawerColor: storeState.activePlayer,
-          isLocalPlayer: isLocal,
-          sourceRect,
-          targetRect
-        });
-      }
+      const isLocal = storeState.activePlayer === storeState.assignedColor;
+
+      const sourceRect = isLocal
+        ? (getElementRect('[data-testid="draw-card-slot"]') || getElementRect('.draw-card-slot'))
+        : getElementRect('[data-testid="opponent-info"]');
+
+      const targetRect = getElementRect('.card-column') || getElementRect('[data-testid="card-hand"]');
+
+      cardAnimationService.triggerCardReveal(storeState.activeCard, {
+        drawerColor: storeState.activePlayer,
+        isLocalPlayer: isLocal,
+        sourceRect,
+        targetRect,
+        revision: storeState.revision,
+        drawKey: `draw-${storeState.revision}-${storeState.activePlayer}-${storeState.activeCard.id}-${storeState.drawEventCounter}`
+      });
     }
   }
+
+  // Reset tracking when activeCard clears at turn end
+  $: if (!storeState.activeCard) {
+    previousActiveCardId = null;
+    if (storeState.turnPhase === 'DrawPhase') {
+      cardAnimationService.resetLastRevealed();
+    }
+  }
+
   $: previousTurnPhase = storeState.turnPhase;
 </script>
 

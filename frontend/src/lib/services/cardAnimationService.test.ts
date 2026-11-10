@@ -95,6 +95,48 @@ describe('cardAnimationService', () => {
     expect(duplicate).toBe(false);
   });
 
+  it('allows same card to trigger animation on subsequent turn with different revision', () => {
+    // Turn 1 draw
+    const turn1 = cardAnimationService.triggerCardReveal(numberCard, {
+      drawerColor: 'White',
+      revision: 2,
+      drawKey: 'draw-2-White-card-num-3-1'
+    });
+    expect(turn1).toBe(true);
+
+    // Stale duplicate event for Turn 1 is suppressed
+    const duplicateTurn1 = cardAnimationService.triggerCardReveal(numberCard, {
+      drawerColor: 'White',
+      revision: 2,
+      drawKey: 'draw-2-White-card-num-3-1'
+    });
+    expect(duplicateTurn1).toBe(false);
+
+    // Turn 3: White draws the exact same card-num-3 again
+    const turn3 = cardAnimationService.triggerCardReveal(numberCard, {
+      drawerColor: 'White',
+      revision: 6,
+      drawKey: 'draw-6-White-card-num-3-2'
+    });
+    expect(turn3).toBe(true);
+    expect(get(cardAnimationService).sequenceId).toBeGreaterThan(1);
+  });
+
+  it('resets last revealed ID when resetLastRevealed is called', () => {
+    const first = cardAnimationService.triggerCardReveal(numberCard, { drawerColor: 'White' });
+    expect(first).toBe(true);
+
+    // Without reset, duplicate is blocked
+    expect(cardAnimationService.triggerCardReveal(numberCard, { drawerColor: 'White' })).toBe(false);
+
+    // Turn ends, reset called
+    cardAnimationService.resetLastRevealed();
+
+    // Now drawing same card is accepted
+    const second = cardAnimationService.triggerCardReveal(numberCard, { drawerColor: 'White' });
+    expect(second).toBe(true);
+  });
+
   it('allows forced re-trigger when force flag is set', () => {
     cardAnimationService.triggerCardReveal(numberCard);
     const forced = cardAnimationService.triggerCardReveal(numberCard, { force: true });
@@ -119,3 +161,4 @@ describe('cardAnimationService', () => {
     expect(get(cardAnimationService).isActive).toBe(false);
   });
 });
+

@@ -59,3 +59,4 @@ describe('CardRevealOverlay Component', () => {
     expect(queryByTestId('card-reveal-overlay')).toBeNull();
   });
 });
+

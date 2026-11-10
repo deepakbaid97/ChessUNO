@@ -35,6 +35,7 @@ export interface GameStoreState {
   legalMoves: string[];
   availableChoices: string[];
   revision: number;
+  drawEventCounter: number;
 
   // UI Interactive State
   selectedSquare: string | null;
@@ -71,6 +72,7 @@ export function createGameStore() {
     legalMoves: [],
     availableChoices: [],
     revision: 0,
+    drawEventCounter: 0,
     selectedSquare: null,
     validDestinations: [],
     lastMove: null,
@@ -191,7 +193,8 @@ export function createGameStore() {
     onCardDrawn: (data: CardDrawnData) => {
       update(s => ({
         ...s,
-        remainingDeckCount: data.remainingDeckCount
+        remainingDeckCount: data.remainingDeckCount,
+        drawEventCounter: s.drawEventCounter + 1
       }));
       log(`${data.player} drew card: ${data.cardName}`);
     },

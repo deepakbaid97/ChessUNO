@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount, onDestroy, tick } from 'svelte';
   import { animate, spring } from 'motion';
   import { cardRevealStore, cardAnimationService } from '../../services/cardAnimationService';
   import type { CardRevealState, CardEffectConfig } from '../../types/animation';
@@ -15,6 +15,8 @@
 
   let activeAnimations: any[] = [];
   let isAnimating = false;
+  let currentSequenceId = 0;
+  let lastHandledSequenceId = -1;
 
   interface ParticleDef {
     id: number;
@@ -89,7 +91,12 @@
   }
 
   async function runCinematicSequence(revealState: CardRevealState) {
-    if (!revealState.isActive || !revealState.card || isAnimating) return;
+    if (!revealState.isActive || !revealState.card) return;
+
+    // Interrupt/stop any previous sequence to avoid deadlocks
+    stopAllAnimations();
+
+    const seqId = ++currentSequenceId;
     isAnimating = true;
 
     if (prefersReducedMotion()) {
@@ -100,8 +107,15 @@
 
     particles = generateParticles(revealState.effectConfig);
 
-    // Wait for DOM to render overlay elements
-    await new Promise(r => setTimeout(r, 16));
+    // Wait for Svelte DOM tick and ensure elements are mounted
+    await tick();
+    if (seqId !== currentSequenceId) return;
+
+    if (!cardContainerEl || !cardFlipperEl) {
+      await new Promise(r => requestAnimationFrame(r));
+    }
+    if (seqId !== currentSequenceId) return;
+
     if (!cardContainerEl || !cardFlipperEl) {
       cardAnimationService.dismiss();
       isAnimating = false;
@@ -307,27 +321,38 @@
       activeAnimations.push(anim5);
       await anim5;
 
+      if (seqId !== currentSequenceId) return;
+
       // Completion
       cardAnimationService.setPhase('complete');
     } catch (err) {
-      console.warn('[CardRevealOverlay] Animation sequence interrupted:', err);
-      cardAnimationService.dismiss();
+      if (seqId === currentSequenceId) {
+        console.warn('[CardRevealOverlay] Animation sequence interrupted:', err);
+        cardAnimationService.dismiss();
+      }
     } finally {
-      stopAllAnimations();
+      if (seqId === currentSequenceId) {
+        stopAllAnimations();
+      }
     }
   }
 
   function handleSkip() {
+    currentSequenceId++;
     stopAllAnimations();
     cardAnimationService.dismiss();
   }
 
-  // Trigger sequence whenever reveal becomes active
+  // Trigger sequence whenever reveal becomes active and new card/sequence appears
   $: if (state.isActive && state.card) {
-    runCinematicSequence(state);
+    if (state.sequenceId !== lastHandledSequenceId) {
+      lastHandledSequenceId = state.sequenceId;
+      runCinematicSequence(state);
+    }
   }
 
   onDestroy(() => {
+    currentSequenceId++;
     stopAllAnimations();
     cardAnimationService.dismiss();
   });
