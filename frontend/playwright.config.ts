@@ -16,7 +16,7 @@ export default defineConfig({
     {
       command: 'dotnet run --project ../backend/ChessUno/ChessUno.Web --urls "http://localhost:5000"',
       url: 'http://localhost:5000/health',
-      reuseExistingServer: false,
+      reuseExistingServer: true,
       timeout: 30000,
       env: {
         CHESSUNO_TEST_PASSWORD: process.env.CHESSUNO_TEST_PASSWORD || ''
@@ -25,7 +25,7 @@ export default defineConfig({
     {
       command: 'npm run dev -- --port 5173',
       url: 'http://localhost:5173',
-      reuseExistingServer: false,
+      reuseExistingServer: true,
       timeout: 20000
     }
   ],

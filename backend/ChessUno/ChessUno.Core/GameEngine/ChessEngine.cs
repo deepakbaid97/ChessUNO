@@ -87,12 +87,13 @@ public class ChessEngine : IChessEngine
 
     public IReadOnlyList<ChessMove> GetLegalMoves(GameState state, PlayerColor player)
     {
-        if (IsTerminalState(state.Status))
+        if (IsTerminalState(state.Status) || player != state.ActivePlayer)
         {
             return Array.Empty<ChessMove>();
         }
 
-        var game = new ChessGame(state.Fen);
+        var fen = SetFenActivePlayer(state.Fen, player);
+        var game = new ChessGame(fen);
         var cdnPlayer = player == PlayerColor.White ? ChessDotNet.Player.White : ChessDotNet.Player.Black;
         var validMoves = game.GetValidMoves(cdnPlayer);
 
@@ -105,8 +106,9 @@ public class ChessEngine : IChessEngine
 
     public bool IsLegalMove(GameState state, PlayerColor player, ChessMove move)
     {
-        if (IsTerminalState(state.Status)) return false;
-        var game = new ChessGame(state.Fen);
+        if (IsTerminalState(state.Status) || player != state.ActivePlayer) return false;
+        var fen = SetFenActivePlayer(state.Fen, player);
+        var game = new ChessGame(fen);
         var cdnPlayer = player == PlayerColor.White ? ChessDotNet.Player.White : ChessDotNet.Player.Black;
         var cdnMove = ToChessDotNetMove(move, cdnPlayer);
         return game.IsValidMove(cdnMove);
@@ -122,7 +124,8 @@ public class ChessEngine : IChessEngine
             throw new InvalidOperationException($"Cannot make a move in terminal game state '{state.Status}'.");
         }
 
-        var game = new ChessGame(state.Fen);
+        var fen = SetFenActivePlayer(state.Fen, state.ActivePlayer);
+        var game = new ChessGame(fen);
         var cdnPlayer = state.ActivePlayer == PlayerColor.White ? ChessDotNet.Player.White : ChessDotNet.Player.Black;
         var cdnMove = ToChessDotNetMove(move, cdnPlayer);
 
@@ -498,16 +501,22 @@ public class ChessEngine : IChessEngine
             ?? throw new InvalidOperationException("Failed to deserialize GameState from JSON.");
     }
 
-    private static string SetFenActivePlayer(string fen, PlayerColor player)
+    public static string SetFenActivePlayer(string fen, PlayerColor player)
     {
         var parts = fen.Split(' ');
         if (parts.Length > 1)
         {
             parts[1] = player == PlayerColor.White ? "w" : "b";
         }
-        if (parts.Length > 3)
+        if (parts.Length > 3 && parts[3] != "-")
         {
-            parts[3] = "-";
+            char epRank = parts[3].Length > 1 ? parts[3][1] : ' ';
+            bool validForWhite = player == PlayerColor.White && epRank == '6';
+            bool validForBlack = player == PlayerColor.Black && epRank == '3';
+            if (!validForWhite && !validForBlack)
+            {
+                parts[3] = "-";
+            }
         }
         return string.Join(" ", parts);
     }

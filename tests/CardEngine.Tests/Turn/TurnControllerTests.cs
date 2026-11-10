@@ -301,5 +301,40 @@ public class TurnControllerTests
         Assert.Equal(0, controller.CurrentTurn.RemainingMoves);
         Assert.Equal(TurnPhase.TurnEnded, controller.CurrentTurn.Phase);
     }
+
+    [Fact]
+    public void TurnController_WhenWhitePassesOrHasZeroMoves_BlackCanGetLegalMovesAndMove()
+    {
+        var controller = CreateController();
+        controller.StartGame();
+
+        // White draws Draw Two (no captured pieces -> White ends turn)
+        var drawTwoCard = new CardInstance(Guid.NewGuid(), new CardDefinition("card-draw-two", "Draw Two (+2)", "ACTION", 8, "REVIVE_UP_TO_TWO", ""));
+        controller.InjectNextCard(drawTwoCard);
+        controller.DrawCard(PlayerColor.White);
+
+        var endTurnResult = controller.EndTurn(PlayerColor.White);
+        Assert.True(endTurnResult.IsSuccess);
+
+        // Turn should have passed to Black
+        Assert.Equal(PlayerColor.Black, controller.ActivePlayer);
+        Assert.Equal(TurnPhase.DrawPhase, controller.CurrentTurn.Phase);
+
+        // Black draws Card-6
+        var card6 = new CardInstance(Guid.NewGuid(), new CardDefinition("card-6", "6 Card", "NUMBER", 8, "MOVE_6", "", Value: 6));
+        controller.InjectNextCard(card6);
+        controller.DrawCard(PlayerColor.Black);
+
+        Assert.Equal(6, controller.CurrentTurn.RemainingMoves);
+
+        // Black MUST have legal moves (20 moves from starting position: 16 pawn + 4 knight)!
+        var legalMoves = controller.GetLegalMoves();
+        Assert.NotEmpty(legalMoves);
+        Assert.Equal(20, legalMoves.Count);
+
+        // Black moving e7 -> e5 must succeed!
+        var moveResult = controller.SubmitChessMove(PlayerColor.Black, new ChessMove(Square.Parse("e7"), Square.Parse("e5")));
+        Assert.True(moveResult.IsSuccess, moveResult.Error);
+    }
 }
 

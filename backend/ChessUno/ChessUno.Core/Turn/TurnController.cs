@@ -68,6 +68,11 @@ public class TurnController
 
     public void StartGame()
     {
+        ChessState = ChessState with
+        {
+            ActivePlayer = PlayerColor.White,
+            Fen = ChessEngine.SetFenActivePlayer(ChessState.Fen, PlayerColor.White)
+        };
         CurrentTurn = TurnState.StartDrawPhase(PlayerColor.White);
         EmitEvent(new TurnChangedEvent(Guid.NewGuid(), _sequenceNumber++, DateTimeOffset.UtcNow, PlayerColor.White, 1));
     }
@@ -377,6 +382,11 @@ public class TurnController
     {
         if (execution.SkipOpponent)
         {
+            ChessState = ChessState with
+            {
+                ActivePlayer = ActivePlayer,
+                Fen = ChessEngine.SetFenActivePlayer(ChessState.Fen, ActivePlayer)
+            };
             CurrentTurn = TurnState.StartDrawPhase(ActivePlayer);
             EmitEvent(new TurnChangedEvent(Guid.NewGuid(), _sequenceNumber++, DateTimeOffset.UtcNow, ActivePlayer, ChessState.FullMoveNumber));
             return;
@@ -460,6 +470,11 @@ public class TurnController
     private void EndTurnInternal()
     {
         var nextPlayer = ActivePlayer.Opponent();
+        ChessState = ChessState with
+        {
+            ActivePlayer = nextPlayer,
+            Fen = ChessEngine.SetFenActivePlayer(ChessState.Fen, nextPlayer)
+        };
         CurrentTurn = TurnState.StartDrawPhase(nextPlayer);
         EmitEvent(new TurnChangedEvent(Guid.NewGuid(), _sequenceNumber++, DateTimeOffset.UtcNow, nextPlayer, ChessState.FullMoveNumber));
     }

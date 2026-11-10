@@ -327,5 +327,59 @@ test.describe('Chess UNO Two-Player End-to-End Experience', () => {
     await contextA.close();
     await contextB.close();
   });
+
+  test('Zero-move card turn transition allows subsequent player to select pieces and view valid moves', async ({ browser }) => {
+    const contextA = await browser.newContext();
+    const pageA = await contextA.newPage();
+
+    const contextB = await browser.newContext();
+    const pageB = await contextB.newPage();
+
+    // Alice creates game with seed 20 (guarantees Draw Two (+2) on first draw)
+    await pageA.goto('/?seed=20');
+    await pageA.getByTestId('input-create-name').fill('Alice');
+    await pageA.getByTestId('btn-create-game').click();
+
+    await expect(pageA.getByTestId('waiting-room')).toBeVisible();
+    const rawInviteUrl = await pageA.getByTestId('invite-url-input').inputValue();
+    const invitePath = `${new URL(rawInviteUrl).pathname}${new URL(rawInviteUrl).search}`;
+
+    await pageB.goto(invitePath);
+    await pageB.getByTestId('input-join-player-name').fill('Bob');
+    await pageB.getByTestId('btn-confirm-join').click();
+
+    await expect(pageA.getByTestId('game-arena')).toBeVisible({ timeout: 15000 });
+    await expect(pageB.getByTestId('game-arena')).toBeVisible({ timeout: 15000 });
+
+    // Alice draws card (Draw Two (+2) - 0 revivals possible since reserve is empty)
+    await pageA.getByTestId('draw-card-btn').click();
+    await expect(pageA.getByTestId('card-hand')).toBeVisible();
+
+    // Alice ends turn without making chess moves
+    await pageA.getByTestId('btn-end-turn').click();
+
+    // Bob receives turn to move and draws card
+    await expect(pageB.getByTestId('draw-card-slot')).toBeVisible({ timeout: 10000 });
+    await pageB.getByTestId('draw-card-btn').click();
+    await expect(pageB.getByTestId('card-hand')).toBeVisible();
+
+    // Bob (Black) selects pawn on e7
+    const squareE7 = pageB.getByTestId('square-e7');
+    await squareE7.click();
+
+    // Valid destination dots (e5, e6) MUST appear for Bob!
+    await expect(pageB.getByTestId('dest-dot-e5')).toBeVisible({ timeout: 5000 });
+    await expect(pageB.getByTestId('dest-dot-e6')).toBeVisible({ timeout: 5000 });
+
+    // Bob clicks destination e5 and executes move
+    await pageB.getByTestId('square-e5').click();
+    await expect(pageB.getByTestId('square-e5').getByTestId('piece-black-pawn')).toBeVisible({ timeout: 5000 });
+
+    // Alice sees Bob's move on e5
+    await expect(pageA.getByTestId('square-e5').getByTestId('piece-black-pawn')).toBeVisible({ timeout: 5000 });
+
+    await contextA.close();
+    await contextB.close();
+  });
 });
 
