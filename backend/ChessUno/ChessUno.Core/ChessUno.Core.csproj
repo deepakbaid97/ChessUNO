@@ -11,4 +11,11 @@
     <PackageReference Include="JsonSchema.Net" Version="9.6.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Include="..\..\..\configs\chess-uno.json" Link="configs\chess-uno.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
 </Project>
