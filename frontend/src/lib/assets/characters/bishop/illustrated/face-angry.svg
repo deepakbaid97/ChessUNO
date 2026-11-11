@@ -23,3 +23,4 @@
   <polygon points="128,80 132,86 128,92 124,86" fill="var(--bishop-magic-bright,#e6fffa)" stroke="var(--bishop-magic,#4fd1c5)" stroke-width="1.5"/>
   <line x1="128" y1="78" x2="128" y2="94" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
 </svg>
+

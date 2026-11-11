@@ -27,3 +27,4 @@
   <circle cx="128" cy="146" r="3.5" fill="var(--bishop-magic,#4fd1c5)" stroke="var(--bishop-ink,#211e2f)" stroke-width="2"/>
   <circle cx="128" cy="146" r="1.5" fill="var(--bishop-magic-bright,#e6fffa)"/>
 </svg>
+

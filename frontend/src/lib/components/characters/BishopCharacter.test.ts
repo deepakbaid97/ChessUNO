@@ -93,3 +93,4 @@ describe('BishopCharacter Component', () => {
     expect(faceRig.contains(faceExpr)).toBe(true);
   });
 });
+

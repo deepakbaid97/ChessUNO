@@ -33,3 +33,4 @@
   <circle cx="204" cy="42" r="2" fill="var(--bishop-magic,#4fd1c5)"/>
   <circle cx="228" cy="74" r="1.5" fill="var(--bishop-magic-bright,#e6fffa)"/>
 </svg>
+

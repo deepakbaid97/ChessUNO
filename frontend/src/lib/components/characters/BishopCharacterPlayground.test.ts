@@ -56,3 +56,4 @@ describe('BishopCharacterPlayground', () => {
     expect(getByTestId('battle-animation-overlay')).toBeTruthy();
   });
 });
+
