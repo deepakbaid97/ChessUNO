@@ -104,6 +104,9 @@
     webrtcService.setOnVoiceStatus((sender, payload) => {
       voiceStore.setOpponentSpeaking(payload.speaking);
       voiceStore.setOpponentVoiceActive(payload.voiceActive);
+      if (payload.speaking) {
+        webrtcService?.unlockAudio();
+      }
     });
 
     // Setup SignalR Callbacks
@@ -530,7 +533,13 @@
     webrtcService.muteOpponent(!isMuted);
     voiceStore.toggleOpponentMuted();
   }
+
+  function handleDocumentInteraction() {
+    webrtcService?.unlockAudio();
+  }
 </script>
+
+<svelte:window on:click={handleDocumentInteraction} on:keydown={handleDocumentInteraction} />
 
 <div class="app-container">
   <!-- Global App Header -->

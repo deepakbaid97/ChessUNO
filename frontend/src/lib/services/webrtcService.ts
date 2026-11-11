@@ -67,13 +67,25 @@ export class WebRtcService {
     this.onVoiceStatusCallback = cb;
   }
 
+  setAudioElement(el: HTMLAudioElement | null): void {
+    this.remoteAudioElement = el;
+    if (this.remoteAudioElement) {
+      this.remoteAudioElement.autoplay = true;
+      (this.remoteAudioElement as any).playsInline = true;
+      if (this.remoteAudioStream) {
+        this.remoteAudioElement.srcObject = this.remoteAudioStream;
+        this.playRemoteAudio();
+      }
+    }
+  }
+
   getQueuedCandidatesCount(): number {
     return this.pendingCandidates.length;
   }
 
   initializePeerConnection(config?: RtcConfig): void {
     if (this.peerConnection) {
-      this.close();
+      this.close(true);
     }
 
     let iceServers: RTCIceServer[] = [
@@ -105,7 +117,7 @@ export class WebRtcService {
         }
       }
 
-      // If local audio stream was already obtained before peer connection was created
+      // If local audio stream was already obtained, attach to new peer connection
       if (this.localAudioStream) {
         const audioTrack = this.localAudioStream.getAudioTracks()[0];
         if (audioTrack) {
@@ -140,11 +152,28 @@ export class WebRtcService {
       };
 
       this.peerConnection.ontrack = (event) => {
-        if (event.streams && event.streams[0]) {
-          this.remoteAudioStream = event.streams[0];
-          this.attachRemoteAudio(this.remoteAudioStream);
-          this.onRemoteStreamCallback?.(this.remoteAudioStream);
+        console.log('[WebRTC Audio] ontrack event received:', {
+          kind: event.track.kind,
+          id: event.track.id,
+          enabled: event.track.enabled,
+          streamsCount: event.streams ? event.streams.length : 0
+        });
+
+        // Some browsers provide an empty event.streams array when SDP lacked msid
+        const stream = (event.streams && event.streams.length > 0 && event.streams[0])
+          ? event.streams[0]
+          : (typeof MediaStream !== 'undefined' ? new MediaStream([event.track]) : null);
+
+        if (stream) {
+          this.remoteAudioStream = stream;
+          this.attachRemoteAudio(stream);
+          this.onRemoteStreamCallback?.(stream);
         }
+
+        event.track.onunmute = () => {
+          console.log('[WebRTC Audio] Remote track unmuted, initiating playback');
+          this.playRemoteAudio();
+        };
       };
     }
 
@@ -246,6 +275,10 @@ export class WebRtcService {
         const parsed = typeof event.data === 'string' ? JSON.parse(event.data) : null;
         if (parsed && parsed.type === 'voice-status' && parsed.payload) {
           this.onVoiceStatusCallback?.(parsed.sender, parsed.payload);
+          // If opponent is transmitting, ensure audio element playback is active
+          if (parsed.payload.speaking) {
+            this.playRemoteAudio();
+          }
         }
       } catch {}
       this.onDataMessage(event.data);
@@ -308,12 +341,18 @@ export class WebRtcService {
         // Start muted by default — Push-to-Talk enables it while pressed
         audioTrack.enabled = false;
 
-        if (this.audioSender && typeof this.audioSender.replaceTrack === 'function') {
-          await this.audioSender.replaceTrack(audioTrack);
+        const sender = this.audioSender || this.audioTransceiver?.sender || this.peerConnection?.getSenders().find(s => !s.track || s.track.kind === 'audio');
+        if (sender && typeof sender.replaceTrack === 'function') {
+          await sender.replaceTrack(audioTrack);
+          this.audioSender = sender;
         } else if (this.peerConnection && typeof this.peerConnection.addTrack === 'function') {
           this.audioSender = this.peerConnection.addTrack(audioTrack, stream);
         }
       }
+
+      // Unlock incoming audio playback on this direct user gesture
+      this.unlockAudio();
+
       return true;
     } catch (err: any) {
       console.error('[WebRTC Audio] getUserMedia error:', err);
@@ -329,6 +368,10 @@ export class WebRtcService {
       }
     }
 
+    if (this.audioSender?.track) {
+      this.audioSender.track.enabled = speaking;
+    }
+
     return this.sendTypedMessage<VoiceStatusPayload>('voice-status', sender, {
       speaking,
       voiceActive: !!this.localAudioStream
@@ -336,17 +379,39 @@ export class WebRtcService {
   }
 
   private attachRemoteAudio(stream: MediaStream): void {
-    if (typeof Audio !== 'undefined') {
+    if (typeof document !== 'undefined') {
       if (!this.remoteAudioElement) {
-        this.remoteAudioElement = new Audio();
-        this.remoteAudioElement.autoplay = true;
-        (this.remoteAudioElement as any).playsInline = true;
+        let el = document.getElementById('chessuno-remote-audio') as HTMLAudioElement | null;
+        if (!el) {
+          el = document.createElement('audio');
+          el.id = 'chessuno-remote-audio';
+          el.autoplay = true;
+          (el as any).playsInline = true;
+          el.style.display = 'none';
+          document.body.appendChild(el);
+        }
+        this.remoteAudioElement = el;
       }
+
       this.remoteAudioElement.srcObject = stream;
-      this.remoteAudioElement.play().catch(err => {
-        console.warn('[WebRTC Audio] Remote audio playback handled warning:', err);
-      });
+      this.remoteAudioElement.volume = 1.0;
+      this.playRemoteAudio();
     }
+  }
+
+  playRemoteAudio(): void {
+    if (this.remoteAudioElement && this.remoteAudioElement.srcObject) {
+      const p = this.remoteAudioElement.play();
+      if (p !== undefined) {
+        p.catch(err => {
+          console.warn('[WebRTC Audio] Remote audio playback waiting for user gesture:', err.message);
+        });
+      }
+    }
+  }
+
+  unlockAudio(): void {
+    this.playRemoteAudio();
   }
 
   muteOpponent(muted: boolean): void {
@@ -369,19 +434,29 @@ export class WebRtcService {
     if (this.remoteAudioElement) {
       this.remoteAudioElement.pause();
       this.remoteAudioElement.srcObject = null;
+      if (this.remoteAudioElement.parentNode && this.remoteAudioElement.id === 'chessuno-remote-audio') {
+        this.remoteAudioElement.parentNode.removeChild(this.remoteAudioElement);
+      }
       this.remoteAudioElement = null;
     }
     this.remoteAudioStream = null;
   }
 
-  close(): void {
+  closePeerConnection(): void {
     this.clearConnectionTimeout();
-    this.closeAudio();
     this.pendingCandidates = [];
     this.dataChannel?.close();
     this.peerConnection?.close();
     this.dataChannel = null;
     this.peerConnection = null;
     this.audioTransceiver = null;
+    this.audioSender = null;
+  }
+
+  close(preserveAudio: boolean = false): void {
+    this.closePeerConnection();
+    if (!preserveAudio) {
+      this.closeAudio();
+    }
   }
 }
