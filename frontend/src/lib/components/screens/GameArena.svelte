@@ -38,6 +38,7 @@
     pushToTalkStart: void;
     pushToTalkEnd: void;
     toggleMuteOpponent: void;
+    unlockAudio: void;
   }>();
 
   // Active target mode for Reverse / Revival
@@ -472,6 +473,7 @@
             on:pushToTalkStart={() => dispatch('pushToTalkStart')}
             on:pushToTalkEnd={() => dispatch('pushToTalkEnd')}
             on:toggleMuteOpponent={() => dispatch('toggleMuteOpponent')}
+            on:unlockAudio={() => dispatch('unlockAudio')}
           />
           <button
             class="btn btn-danger btn-resign"

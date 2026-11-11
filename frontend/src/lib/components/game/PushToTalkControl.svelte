@@ -11,6 +11,7 @@
     pushToTalkStart: void;
     pushToTalkEnd: void;
     toggleMuteOpponent: void;
+    unlockAudio: void;
   }>();
 
   let state = $voiceStore;
@@ -208,6 +209,19 @@
           </div>
         {/if}
       </div>
+
+      {#if state.isAutoplayBlocked}
+        <button
+          type="button"
+          class="btn-autoplay-blocked"
+          on:click={() => dispatch('unlockAudio')}
+          data-testid="btn-enable-audio"
+          title="Browser blocked automatic audio playback. Click to enable audio."
+        >
+          <span class="unmute-icon" aria-hidden="true">🔊</span>
+          <span>Tap to enable audio</span>
+        </button>
+      {/if}
 
       <!-- Leave Voice Button -->
       <button
@@ -414,6 +428,34 @@
   @keyframes soundWave {
     0% { height: 3px; }
     100% { height: 12px; }
+  }
+
+  .btn-autoplay-blocked {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #fbbf24;
+    background: rgba(245, 158, 11, 0.15);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    animation: pulseBorder 1.8s infinite ease-in-out;
+  }
+
+  .btn-autoplay-blocked:hover {
+    background: rgba(245, 158, 11, 0.28);
+    border-color: #f59e0b;
+    color: #ffffff;
+  }
+
+  @keyframes pulseBorder {
+    0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+    70% { box-shadow: 0 0 0 5px rgba(245, 158, 11, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
   }
 
   .btn-leave-voice {

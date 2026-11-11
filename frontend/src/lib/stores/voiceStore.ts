@@ -8,6 +8,7 @@ export interface VoiceState {
   isOpponentSpeaking: boolean;
   isOpponentVoiceActive: boolean;
   isOpponentMuted: boolean;
+  isAutoplayBlocked: boolean;
   error: string | null;
 }
 
@@ -22,6 +23,7 @@ export function createVoiceStore() {
     isOpponentSpeaking: false,
     isOpponentVoiceActive: false,
     isOpponentMuted: false,
+    isAutoplayBlocked: false,
     error: null
   };
 
@@ -39,6 +41,7 @@ export function createVoiceStore() {
     setOpponentVoiceActive: (active: boolean) => update(s => ({ ...s, isOpponentVoiceActive: active })),
     toggleOpponentMuted: () => update(s => ({ ...s, isOpponentMuted: !s.isOpponentMuted })),
     setOpponentMuted: (muted: boolean) => update(s => ({ ...s, isOpponentMuted: muted })),
+    setAutoplayBlocked: (blocked: boolean) => update(s => ({ ...s, isAutoplayBlocked: blocked })),
     setError: (error: string | null) => update(s => ({ ...s, error })),
     reset: () => update(() => ({
       isSupported: typeof navigator !== 'undefined' && !!navigator.mediaDevices && !!navigator.mediaDevices.getUserMedia,
@@ -48,6 +51,7 @@ export function createVoiceStore() {
       isOpponentSpeaking: false,
       isOpponentVoiceActive: false,
       isOpponentMuted: false,
+      isAutoplayBlocked: false,
       error: null
     }))
   };

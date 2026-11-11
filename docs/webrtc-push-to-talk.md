@@ -65,18 +65,35 @@ Chess UNO features peer-to-peer real-time voice chat alongside authoritative mul
 ## 5. Voice Status Synchronization & Remote Playback
 
 - **Transmission Independence:** Audio transmission over RTP is decoupled from DataChannel status. Voice continues to transmit even if the DataChannel is connecting, closed, or unavailable.
-- **Signaling Fallback:** If the DataChannel is unavailable, voice status messages (`voice-status`) fall back to SignalR `SendSignal`.
-- **Speaking Watchdog:** When `speaking: true` is received, a 15-second watchdog timer starts. If `speaking: false` is dropped due to packet loss or unexpected peer exit, the opponent speaking indicator resets automatically.
-- **Disconnect Reset:** Opponent disconnect events immediately clear opponent speaking and voice-active indicators.
+- **Unified Voice Status Handling:** Both DataChannel packets and SignalR fallback signals route into a single entry point: `webrtcService.handleVoiceStatus(sender, payload, epoch)`.
+- **Epoch Correlation:** Remote voice status packets carry the sender's connection epoch. Outdated status signals from prior connection epochs are safely discarded without interfering with the active match.
+- **Speaking Watchdog:** When `speaking: true` is received, a 15-second watchdog timer starts regardless of the underlying transport (DataChannel or SignalR). If `speaking: false` is dropped due to packet loss or unexpected peer exit, the opponent speaking indicator resets automatically.
+- **Disconnect Reset:** Opponent disconnect events, connection close, and track end immediately clear opponent speaking and voice-active indicators.
 - **Stable Remote Audio Element:** The `<audio id="chessuno-remote-audio">` DOM element is maintained stably across voice activations rather than being repeatedly removed and recreated.
-- **Autoplay Handling:** Browser autoplay rejections (`NotAllowedError`) mark `audioPlaybackPending = true`. Any user interaction (`click`, `keydown`, `pointerdown`) triggers `unlockAudio()` to resume playback.
+- **Reliable Autoplay Recovery:**
+  - Network callbacks (`onmessage`, `handleVoiceStatus`, `onReceiveSignal`) never directly invoke `.play()` or `unlockAudio()`, adhering strictly to browser autoplay security policies.
+  - When initial audio playback is blocked (`NotAllowedError`), `webrtcService` registers targeted, one-time user interaction listeners on `window` (`pointerdown`, `keydown`) and surfaces `isAutoplayBlocked: true` in `voiceStore`.
+  - The UI renders an interactive "Tap to enable audio" button (`btn-autoplay-blocked`).
+  - Upon genuine user gesture or clicking the button, audio playback is retried synchronously.
+  - Once playback succeeds, the interaction listeners are immediately detached to prevent redundant `.play()` calls during normal gameplay.
+  - Listeners and timers are cleanly removed when the service or component is destroyed.
 - **Opponent Muting:** Muting the opponent sets `audioElement.muted = true`. WebRTC RTP tracks continue flowing undisturbed in the background.
 
 ---
 
-## 6. Verification Matrix
+## 6. ICE Server Configuration
 
-### 6.1. Unit & Component Tests (Vitest)
+- **Default STUN Configuration:** Chess UNO defaults to public Google and Twilio STUN servers:
+  - `stun:stun.l.google.com:19302`
+  - `stun:global.stun.twilio.com:3478`
+- **Configurable Override (`VITE_ICE_SERVERS`):** Configured via `.env` and documented in `.env.example`.
+- **Validation & Fallback:** `WebRtcService.parseIceServers()` parses and validates the JSON string. If the JSON is invalid, not an array, or missing required `urls` properties, a descriptive warning is logged via `console.warn` and the service safely falls back to the default STUN servers without breaking connection establishment. No TURN or secret credentials are required.
+
+---
+
+## 7. Verification Matrix
+
+### 7.1. Unit & Component Tests (Vitest)
 Located in `frontend/src/lib/services/webrtcService.test.ts` and `frontend/src/lib/components/game/PushToTalkControl.test.ts`.
 
 | ID | Description | Result |
@@ -111,6 +128,9 @@ Located in `frontend/src/lib/services/webrtcService.test.ts` and `frontend/src/l
 | **C13** | Keyboard shortcuts do not activate while typing in inputs or textareas | Pass |
 | **C14** | Disabled controls cannot activate transmission | Pass |
 | **C15** | Microphone track never remains enabled after release | Pass |
+| **C16** | Autoplay UI: shows "Tap to enable audio" button when `isAutoplayBlocked` is true | Pass |
+| **C17** | Autoplay UI: does not show "Tap to enable audio" button when `isAutoplayBlocked` is false | Pass |
+| **C18** | Autoplay UI: clicking "Tap to enable audio" dispatches `unlockAudio` event | Pass |
 | **D1** | Speaking status transmitted over DataChannel when open | Pass |
 | **D2** | DataChannel unavailability does not break RTP audio transmission | Pass |
 | **D3** | Opponent speaking indicator updates correctly | Pass |
@@ -119,14 +139,32 @@ Located in `frontend/src/lib/services/webrtcService.test.ts` and `frontend/src/l
 | **D6** | Remote audio playback retries after user interaction on autoplay block | Pass |
 | **D7** | Muting opponent suppresses playback without affecting incoming tracks | Pass |
 | **D8** | Remote track ending resets stream and speaking indicator | Pass |
+| **E1** | ICE Config: returns default STUN servers when no config provided | Pass |
+| **E2** | ICE Config: parses valid JSON array of RTCIceServer objects | Pass |
+| **E3** | ICE Config: warns and falls back to defaults on invalid JSON | Pass |
+| **E4** | ICE Config: warns and falls back when JSON is not an array | Pass |
+| **E5** | ICE Config: warns and falls back when items lack `urls` property | Pass |
+| **E6** | Autoplay Recovery: notifies `onAutoplayBlocked(true)` and registers interaction listeners | Pass |
+| **E7** | Autoplay Recovery: retries playback synchronously on window user gesture (`pointerdown`) | Pass |
+| **E8** | Autoplay Recovery: retries playback synchronously on window user gesture (`keydown`) | Pass |
+| **E9** | Autoplay Recovery: interaction before stream arrival handled safely without error | Pass |
+| **E10** | Autoplay Recovery: cleans up interaction listeners on service close | Pass |
+| **E11** | Unified Voice Status: processes DataChannel message without calling play from network callback | Pass |
+| **E12** | Unified Voice Status: processes SignalR message and runs 15s watchdog | Pass |
+| **E13** | Unified Voice Status: discards voice status with stale epoch | Pass |
+| **E14** | Unified Voice Status: accepts voice status matching current epoch | Pass |
+| **E15** | Unified Voice Status: resets speaking state on disconnect or connection close | Pass |
 
-### 6.2. Two-Peer Integration Test
+### 7.2. Two-Peer Integration Test
 Located in `frontend/src/lib/services/webrtcIntegration.test.ts`.
 - Simulates two complete `WebRtcService` instances exchanging signaling messages over an asynchronous pipe.
 - Verifies joining voice, peer negotiation, 12 alternating speaking cycles, leaving voice, rejoining voice with fresh streams, and SignalR reconnect preservation without connection teardown.
 
-### 6.3. Playwright Dual-Browser End-to-End Test
+### 7.3. Playwright Dual-Browser End-to-End Test (Real Audio Verification)
 Located in `frontend/e2e/webrtcVoice.spec.ts`.
 - Launches two real Chromium browser contexts with fake media stream devices (`--use-fake-ui-for-media-stream`, `--use-fake-device-for-media-stream`) and microphone permissions.
-- Alice (Host / White) and Bob (Guest / Black) join a real match, establish WebRTC peer connection, enable voice, transmit audio via PTT (`KeyV`, `Space`, mouse drag), verify mutual speaking indicators, leave voice, and rejoin voice seamlessly.
+- Alice (Host / White) and Bob (Guest / Black) join a real match, establish WebRTC peer connection, enable voice, transmit audio via PTT (`KeyV`, `Space`, pointer click/hold), leave voice, and rejoin voice seamlessly.
+- **Browser-Level Audio Energy Verification:** Connects Web Audio `AudioContext` and `AnalyserNode` (`fftSize = 256`) to the live remote audio stream in each browser context.
+- **Physical Audio Verification:** Asserts `maxFrequencyEnergy > 0` during active PTT transmissions (audio tone arriving from the remote browser peer over WebRTC RTP) and `0` when idle across 10 consecutive cycles.
+- Verifies real audio transmission re-engages and produces energy > 0 after leaving and rejoining voice chat without browser reload.
 

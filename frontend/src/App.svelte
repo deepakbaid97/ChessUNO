@@ -116,12 +116,13 @@
       }
     );
 
+    webrtcService.setOnAutoplayBlocked((blocked) => {
+      voiceStore.setAutoplayBlocked(blocked);
+    });
+
     webrtcService.setOnVoiceStatus((sender, payload) => {
       voiceStore.setOpponentSpeaking(payload.speaking);
       voiceStore.setOpponentVoiceActive(payload.voiceActive);
-      if (payload.speaking) {
-        webrtcService?.unlockAudio();
-      }
     });
 
     webrtcService.setOnLocalTrackEnded(() => {
@@ -220,12 +221,8 @@
       if (signalType === 'voice-status') {
         try {
           const parsed = JSON.parse(payload);
-          if (parsed.payload) {
-            voiceStore.setOpponentSpeaking(parsed.payload.speaking);
-            voiceStore.setOpponentVoiceActive(parsed.payload.voiceActive);
-            if (parsed.payload.speaking) {
-              webrtcService?.unlockAudio();
-            }
+          if (parsed && parsed.payload) {
+            webrtcService?.handleVoiceStatus(parsed.sender, parsed.payload, parsed.epoch);
           }
         } catch {}
         return;
@@ -563,13 +560,7 @@
     webrtcService.muteOpponent(!isMuted);
     voiceStore.toggleOpponentMuted();
   }
-
-  function handleDocumentInteraction() {
-    webrtcService?.unlockAudio();
-  }
 </script>
-
-<svelte:window on:click={handleDocumentInteraction} on:keydown={handleDocumentInteraction} />
 
 <div class="app-container">
   <!-- Global App Header -->
@@ -660,6 +651,7 @@
         on:pushToTalkStart={handlePushToTalkStart}
         on:pushToTalkEnd={handlePushToTalkEnd}
         on:toggleMuteOpponent={handleToggleMuteOpponent}
+        on:unlockAudio={() => webrtcService?.unlockAudio()}
       />
     {/if}
   </main>

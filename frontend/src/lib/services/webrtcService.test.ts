@@ -579,4 +579,233 @@ describe('WebRtcService', () => {
       expect(voiceStatusCb).toHaveBeenCalledWith('Opponent', { speaking: false, voiceActive: false });
     });
   });
+
+  describe('Autoplay Recovery, Unified Voice Status, and ICE Configuration', () => {
+    describe('ICE Configuration Handling', () => {
+      it('returns default STUN servers when no config is provided', () => {
+        const servers = WebRtcService.parseIceServers();
+        expect(servers).toEqual([
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:global.stun.twilio.com:3478' }
+        ]);
+      });
+
+      it('parses valid JSON array of RTCIceServer objects', () => {
+        const custom = '[{"urls":["stun:stun.custom.com:3478"]}]';
+        const servers = WebRtcService.parseIceServers(custom);
+        expect(servers).toEqual([{ urls: ['stun:stun.custom.com:3478'] }]);
+      });
+
+      it('warns and returns defaults on invalid JSON string', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const servers = WebRtcService.parseIceServers('invalid-json{{{');
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[WebRTC Diagnostic] Failed to parse VITE_ICE_SERVERS:'),
+          expect.any(Error)
+        );
+        expect(servers).toEqual([
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:global.stun.twilio.com:3478' }
+        ]);
+      });
+
+      it('warns and returns defaults when JSON is not an array', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const servers = WebRtcService.parseIceServers('{"urls":"stun:something"}');
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[WebRTC Diagnostic] VITE_ICE_SERVERS must be a JSON array of RTCIceServer objects.')
+        );
+        expect(servers).toEqual([
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:global.stun.twilio.com:3478' }
+        ]);
+      });
+
+      it('warns and returns defaults when array items lack urls property', () => {
+        const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        const servers = WebRtcService.parseIceServers('[{"username":"alice"}]');
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining('[WebRTC Diagnostic] Invalid RTCIceServer in VITE_ICE_SERVERS: missing "urls".')
+        );
+        expect(servers).toEqual([
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:global.stun.twilio.com:3478' }
+        ]);
+      });
+    });
+
+    describe('Autoplay Recovery', () => {
+      let service: WebRtcService;
+      let mockAudioEl: any;
+
+      beforeEach(() => {
+        service = new WebRtcService(vi.fn(), vi.fn(), vi.fn());
+        mockAudioEl = {
+          play: vi.fn().mockRejectedValue(Object.assign(new Error('Autoplay blocked'), { name: 'NotAllowedError' })),
+          pause: vi.fn(),
+          srcObject: { getTracks: () => [] },
+          muted: false,
+          volume: 1.0
+        };
+        service.setAudioElement(mockAudioEl);
+      });
+
+      it('notifies onAutoplayBlocked(true) and registers interaction listeners when play() rejects with NotAllowedError', async () => {
+        const autoplaySpy = vi.fn();
+        service.setOnAutoplayBlocked(autoplaySpy);
+
+        service.playRemoteAudio();
+        await Promise.resolve(); // flush microtasks
+        await Promise.resolve();
+
+        expect(service.isAudioPlaybackPending()).toBe(true);
+        expect(autoplaySpy).toHaveBeenCalledWith(true);
+      });
+
+      it('retries playback synchronously on window user gesture (pointerdown) and clears blocked state on success', async () => {
+        const autoplaySpy = vi.fn();
+        service.setOnAutoplayBlocked(autoplaySpy);
+
+        // First play is blocked
+        service.playRemoteAudio();
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(autoplaySpy).toHaveBeenCalledWith(true);
+
+        // Now user performs pointerdown, play succeeds
+        mockAudioEl.play.mockResolvedValueOnce(undefined);
+        window.dispatchEvent(new Event('pointerdown'));
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(mockAudioEl.play).toHaveBeenCalledTimes(2);
+        expect(service.isAudioPlaybackPending()).toBe(false);
+        expect(autoplaySpy).toHaveBeenCalledWith(false);
+
+        // Subsequent gestures should NOT trigger additional play calls because listeners were removed
+        window.dispatchEvent(new Event('pointerdown'));
+        expect(mockAudioEl.play).toHaveBeenCalledTimes(2);
+      });
+
+      it('retries playback synchronously on window user gesture (keydown) and clears blocked state on success', async () => {
+        const autoplaySpy = vi.fn();
+        service.setOnAutoplayBlocked(autoplaySpy);
+
+        service.playRemoteAudio();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        mockAudioEl.play.mockResolvedValueOnce(undefined);
+        window.dispatchEvent(new Event('keydown'));
+        await Promise.resolve();
+        await Promise.resolve();
+
+        expect(service.isAudioPlaybackPending()).toBe(false);
+        expect(autoplaySpy).toHaveBeenCalledWith(false);
+      });
+
+      it('does not crash if user interaction happens before remote audio arrives', () => {
+        const emptyService = new WebRtcService(vi.fn(), vi.fn(), vi.fn());
+        // No audio element or srcObject set yet
+        expect(() => {
+          emptyService.unlockAudio();
+          window.dispatchEvent(new Event('pointerdown'));
+        }).not.toThrow();
+      });
+
+      it('cleans up interaction listeners when service is closed', async () => {
+        service.playRemoteAudio();
+        await Promise.resolve();
+        await Promise.resolve();
+
+        // Close service
+        service.close();
+
+        // Subsequent gestures should not attempt play
+        mockAudioEl.play.mockClear();
+        window.dispatchEvent(new Event('pointerdown'));
+        expect(mockAudioEl.play).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('Unified Voice Status Handling', () => {
+      let service: WebRtcService;
+
+      beforeEach(() => {
+        vi.useFakeTimers();
+        service = new WebRtcService(vi.fn(), vi.fn(), vi.fn());
+        service.initializePeerConnection();
+      });
+
+      afterEach(() => {
+        vi.useRealTimers();
+        service.close();
+      });
+
+      it('processes voice status from DataChannel without attempting playback from network callback', () => {
+        const mockAudioEl: any = {
+          play: vi.fn().mockResolvedValue(undefined),
+          pause: vi.fn(),
+          srcObject: { getTracks: () => [] }
+        };
+        service.setAudioElement(mockAudioEl);
+
+        const voiceStatusSpy = vi.fn();
+        service.setOnVoiceStatus(voiceStatusSpy);
+
+        const dc: any = (service as any).dataChannel || { onmessage: null };
+        // Simulate DataChannel receiving voice-status
+        service.handleVoiceStatus('Alice', { speaking: true, voiceActive: true });
+
+        expect(voiceStatusSpy).toHaveBeenCalledWith('Alice', { speaking: true, voiceActive: true });
+        // Network callback must NOT trigger audio playback!
+        expect(mockAudioEl.play).not.toHaveBeenCalled();
+      });
+
+      it('processes voice status from SignalR and runs opponent speaking watchdog', () => {
+        const voiceStatusSpy = vi.fn();
+        service.setOnVoiceStatus(voiceStatusSpy);
+
+        // Opponent starts speaking via SignalR
+        service.handleVoiceStatus('Bob', { speaking: true, voiceActive: true });
+        expect(voiceStatusSpy).toHaveBeenCalledWith('Bob', { speaking: true, voiceActive: true });
+
+        // Fast-forward 15 seconds watchdog
+        vi.advanceTimersByTime(15000);
+        expect(voiceStatusSpy).toHaveBeenLastCalledWith('Bob', { speaking: false, voiceActive: true });
+      });
+
+      it('discards voice status with a stale epoch', () => {
+        const voiceStatusSpy = vi.fn();
+        service.setOnVoiceStatus(voiceStatusSpy);
+
+        // Remote epoch established at 2
+        (service as any).remoteEpoch = 2;
+        // Stale epoch (e.g. from previous connection)
+        service.handleVoiceStatus('Bob', { speaking: true, voiceActive: true }, 1);
+
+        expect(voiceStatusSpy).not.toHaveBeenCalled();
+      });
+
+      it('accepts voice status matching current epoch', () => {
+        const voiceStatusSpy = vi.fn();
+        service.setOnVoiceStatus(voiceStatusSpy);
+
+        (service as any).remoteEpoch = 2;
+        service.handleVoiceStatus('Bob', { speaking: true, voiceActive: true }, 2);
+
+        expect(voiceStatusSpy).toHaveBeenCalledWith('Bob', { speaking: true, voiceActive: true });
+      });
+
+      it('resets opponent voice status on disconnect or connection close', () => {
+        const voiceStatusSpy = vi.fn();
+        service.setOnVoiceStatus(voiceStatusSpy);
+
+        service.handleVoiceStatus('Bob', { speaking: true, voiceActive: true });
+        service.resetOpponentVoiceStatus();
+
+        expect(voiceStatusSpy).toHaveBeenLastCalledWith('Opponent', { speaking: false, voiceActive: false });
+      });
+    });
+  });
 });

@@ -3,7 +3,7 @@
 **Date**: November 2026  
 **Auditor**: Antigravity Pair Programming Agent  
 **Verdict**: **READY FOR PHASE 6**  
-**Total Automated Tests**: 258 Passing (163 Backend .NET + 88 Frontend Vitest + 7 Playwright Dual-Browser E2E Tests)
+**Total Automated Tests**: 276 Passing (163 Backend .NET + 106 Frontend Vitest + 7 Playwright Dual-Browser E2E Tests)
 
 ---
 
@@ -66,10 +66,13 @@ All requirements have been developed and verified using strict **Test-Driven Dev
    - Replaced fragmented mouse/touch event listeners with unified Pointer Events (`pointerdown`, `pointerup`, `pointercancel`, `lostpointercapture`) with pointer capture.
    - Added keyboard shortcut triggers (`KeyV`, `Space` with scroll prevention), window blur auto-release, and component destruction cleanup.
    - Prevented keyboard shortcuts from triggering while typing in text inputs or editable elements.
-4. **Decoupled Voice Status & Resilient Playback**:
+4. **Decoupled Voice Status, Reliable Autoplay Recovery & Real Audio Verification**:
    - RTP audio media transmission is independent of DataChannel status, with SignalR fallback for `voice-status` messages when the DataChannel is unavailable.
-   - Opponent speaking watchdog (15s timeout) and disconnect listener prevent stuck speaking indicators.
-   - Maintained a stable remote `<audio>` DOM element with autoplay handling (`unlockAudio()` retries playback on document interaction) and opponent muting that suppresses playback without dropping incoming tracks.
+   - Unified entry point `handleVoiceStatus(sender, payload, epoch)` routes both transports with remote epoch validation and a 15-second watchdog timer.
+   - Initialized the audio transceiver on the offerer (`direction: 'sendrecv'`) and dynamically bound to the negotiated audio m-line (`mid: 0`) on the answerer, eliminating orphaned transceivers and enabling seamless bidirectional `replaceTrack` without renegotiation.
+   - Autoplay recovery uses targeted one-time user interaction listeners on `window` (`pointerdown`, `keydown`) and an interactive "Tap to enable audio" button, avoiding `.play()` calls from network callbacks.
+   - `WebRtcService.parseIceServers` validates JSON schemas for `VITE_ICE_SERVERS`, falling back safely with descriptive warnings to default Google and Twilio STUN servers without introducing TURN or secrets.
+   - Validated real audio transmission across real browser peers in Playwright E2E with Web Audio API `AudioContext` and `AnalyserNode` frequency energy (> 0) across 10 consecutive PTT cycles and after leaving/rejoining.
 
 ---
 
@@ -81,9 +84,9 @@ All requirements have been developed and verified using strict **Test-Driven Dev
 | `CardEngine.Tests` | 47 | 47 | 0 | Deck management, card effect registry, turn transitions, seeded reproducible shuffles |
 | `Config.Tests` | 10 | 10 | 0 | JSON configuration schema validation, card definitions |
 | `Api.Tests` | 59 | 59 | 0 | SignalR Hub, PostgreSQL persistence, process restart recovery, HMAC key security, snapshot sanitization, action idempotency, atomic mutations, test isolation, secret scanning |
-| `frontend` (Vitest) | 88 | 88 | 0 | Svelte stores, Chessboard, CardHand action buttons, WebRTC lifecycle, candidate queuing, microphone lifecycle, PTT controls, voice status, remote playback, two-peer integration suite |
-| `frontend` (Playwright E2E) | 7 | 7 | 0 | Dual-browser multiplayer match, Wild special card choice & move, out-of-turn rejection, disconnect/reconnect recovery, real WebRTC voice chat & PTT transmission |
-| **Total Automated Tests** | **258** | **258** | **0** | **100% Pass Rate** |
+| `frontend` (Vitest) | 106 | 106 | 0 | Svelte stores, Chessboard, CardHand action buttons, WebRTC lifecycle, candidate queuing, microphone lifecycle, PTT controls, voice status, remote playback, autoplay recovery, ICE server validation, two-peer integration suite |
+| `frontend` (Playwright E2E) | 7 | 7 | 0 | Dual-browser multiplayer match, Wild special card choice & move, out-of-turn rejection, disconnect/reconnect recovery, real WebRTC voice chat & PTT transmission with AudioContext frequency energy verification |
+| **Total Automated Tests** | **276** | **276** | **0** | **100% Pass Rate** |
 
 ---
 

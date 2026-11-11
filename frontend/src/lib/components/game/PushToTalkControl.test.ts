@@ -315,4 +315,50 @@ describe('PushToTalkControl (Section C Requirements)', () => {
 
     expect(pttBtn.classList.contains('transmitting')).toBe(false);
   });
+
+  describe('Autoplay Recovery UI', () => {
+    it('shows "Tap to enable audio" button when isAutoplayBlocked is true', () => {
+      voiceStore.setVoiceEnabled(true);
+      voiceStore.setMicActive(true);
+      voiceStore.setAutoplayBlocked(true);
+
+      const { getByTestId } = render(PushToTalkControl, {
+        props: { opponentName: 'Bob' }
+      });
+
+      const btn = getByTestId('btn-enable-audio');
+      expect(btn).toBeTruthy();
+      expect(btn.textContent).toContain('Tap to enable audio');
+    });
+
+    it('does not show "Tap to enable audio" button when isAutoplayBlocked is false', () => {
+      voiceStore.setVoiceEnabled(true);
+      voiceStore.setMicActive(true);
+      voiceStore.setAutoplayBlocked(false);
+
+      const { queryByTestId } = render(PushToTalkControl, {
+        props: { opponentName: 'Bob' }
+      });
+
+      expect(queryByTestId('btn-enable-audio')).toBeNull();
+    });
+
+    it('clicking "Tap to enable audio" dispatches unlockAudio event', async () => {
+      voiceStore.setVoiceEnabled(true);
+      voiceStore.setMicActive(true);
+      voiceStore.setAutoplayBlocked(true);
+
+      const { getByTestId, component } = render(PushToTalkControl, {
+        props: { opponentName: 'Bob' }
+      });
+
+      const unlockSpy = vi.fn();
+      component.$on('unlockAudio', unlockSpy);
+
+      const btn = getByTestId('btn-enable-audio');
+      await fireEvent.click(btn);
+
+      expect(unlockSpy).toHaveBeenCalledTimes(1);
+    });
+  });
 });
