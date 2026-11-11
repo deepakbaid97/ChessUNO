@@ -47,7 +47,11 @@
       <div class="pawn-layer pawn-weapon" data-testid="pawn-weapon">{@html weaponArtwork}</div>
       <div class="pawn-layer pawn-head" data-testid="pawn-head">{@html headArtwork}</div>
       <div class="pawn-layer pawn-helmet" data-testid="pawn-helmet">{@html helmetArtwork}</div>
-      <div class="pawn-layer pawn-face-rig" data-testid="pawn-face-rig">{@html faceArtwork}</div>
+      <div class="pawn-layer pawn-face-rig" data-testid="pawn-face-rig">
+        <div class="pawn-face-expression" data-testid="pawn-face-expression">
+          {@html faceArtwork}
+        </div>
+      </div>
     </div>
   </div>
 </div>
@@ -153,6 +157,12 @@
     transform-origin: 50% 48%;
   }
 
+  .pawn-face-expression {
+    position: absolute;
+    inset: 0;
+    transform-origin: 50% 48%;
+  }
+
   .pawn-weapon {
     z-index: 2;
     opacity: 0;
@@ -212,16 +222,16 @@
     animation: pawn-shadow-fade 1s ease-out both;
   }
 
-  /* Expression Overlays */
-  .expression-happy .pawn-face-rig {
+  /* Expression Overlays - targets nested wrapper to prevent colliding with idle blink */
+  .expression-happy .pawn-face-expression {
     animation: pawn-face-delight 0.58s ease-in-out infinite;
   }
 
-  .expression-scared .pawn-face-rig {
+  .expression-scared .pawn-face-expression {
     animation: pawn-tremble 0.12s linear infinite;
   }
 
-  .expression-angry .pawn-face-rig {
+  .expression-angry .pawn-face-expression {
     animation: pawn-angry 0.19s ease-in-out 5;
   }
 

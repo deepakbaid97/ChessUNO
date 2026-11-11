@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import PawnCharacter from './PawnCharacter.svelte';
+import pawnCharacterSource from './PawnCharacter.svelte?raw';
 
 describe('PawnCharacter', () => {
   it('renders the requested team and its independent character layers', () => {
@@ -73,5 +74,34 @@ describe('PawnCharacter', () => {
 
     const pawn = getByTestId('pawn-character');
     expect(pawn.dataset).toMatchObject({ team: 'dark', expression: 'angry', animation: 'attack' });
+  });
+
+  it('isolates idle blink animation from expression animations using a nested wrapper', () => {
+    const { getByTestId, container } = render(PawnCharacter, {
+      props: { expression: 'happy', animation: 'idle' }
+    });
+
+    // Face rig holds the blink animation track
+    const faceRig = getByTestId('pawn-face-rig');
+    expect(faceRig).toBeTruthy();
+
+    // Nested wrapper holds the expression animation track
+    const faceExpression = getByTestId('pawn-face-expression');
+    expect(faceExpression).toBeTruthy();
+    expect(faceRig.contains(faceExpression)).toBe(true);
+    expect(faceExpression.querySelector('svg')).toBeTruthy();
+
+    // Verify CSS styles target separate elements so one does not override the other
+    expect(pawnCharacterSource).toMatch(/\.animation-idle\s+\.pawn-face-rig\s*\{[^}]*animation:\s*pawn-blink/);
+    expect(pawnCharacterSource).toMatch(/\.expression-happy\s+\.pawn-face-expression\s*\{[^}]*animation:\s*pawn-face-delight/);
+    expect(pawnCharacterSource).toMatch(/\.expression-scared\s+\.pawn-face-expression\s*\{[^}]*animation:\s*pawn-tremble/);
+    expect(pawnCharacterSource).toMatch(/\.expression-angry\s+\.pawn-face-expression\s*\{[^}]*animation:\s*pawn-angry/);
+
+    // Ensure expression animations no longer target .pawn-face-rig directly
+    expect(pawnCharacterSource).not.toMatch(/\.expression-(?:happy|scared|angry)\s+\.pawn-face-rig\s*\{/);
+  });
+
+  it('respects prefers-reduced-motion for all animation layers', () => {
+    expect(pawnCharacterSource).toMatch(/@media\s*\(\s*prefers-reduced-motion:\s*reduce\s*\)\s*\{[^}]*\.pawn-character\s*\*[^}]*animation:\s*none\s*!important/);
   });
 });
