@@ -222,5 +222,85 @@ describe('GameArena Card Reveal Integration (Card 0 & Draws)', () => {
     // Now GameOverModal is visible
     expect(queryByTestId('game-over-modal')).toBeTruthy();
   });
+
+  it('does NOT pop up or re-reveal card when turn ends and transitions to DrawPhase', async () => {
+    const cardThree: CardModel = {
+      id: 'card-3',
+      name: '3 Card',
+      category: 'NUMBER',
+      description: 'Make 3 chess moves.',
+      effectKey: 'MOVE_3',
+      value: 3
+    };
+
+    gameStore.update(s => ({
+      ...s,
+      boardFen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+      assignedColor: 'White',
+      activePlayer: 'White',
+      turnPhase: 'DrawPhase',
+      revision: 1
+    }));
+
+    render(GameArena);
+    await tick();
+
+    // 1. White draws card-3
+    gameStore.onCardDrawn({
+      player: 'White',
+      cardName: '3 Card',
+      remainingDeckCount: 107,
+      card: cardThree
+    });
+    await tick();
+
+    // The reveal is triggered for the initial draw
+    expect(get(cardRevealStore).isActive).toBe(true);
+    expect(get(cardRevealStore).card?.id).toBe('card-3');
+
+    // 2. Card reveal completes / is dismissed
+    cardAnimationService.dismiss();
+    await tick();
+    expect(get(cardRevealStore).isActive).toBe(false);
+
+    // 3. Game enters ActionPhase with activeCard
+    gameStore.applyUpdate({
+      turnPhase: 'ActionPhase',
+      activeCard: cardThree,
+      remainingMoves: 3,
+      revision: 2
+    });
+    await tick();
+    expect(get(cardRevealStore).isActive).toBe(false);
+
+    // 4. White makes a move
+    gameStore.onMoveAccepted({
+      player: 'White',
+      from: 'e2',
+      to: 'e4',
+      boardFen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1'
+    });
+    gameStore.applyUpdate({
+      boardFen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1',
+      remainingMoves: 2,
+      revision: 3
+    });
+    await tick();
+    // Must NOT pop up during move
+    expect(get(cardRevealStore).isActive).toBe(false);
+
+    // 5. White finishes remaining moves and turn ends -> transitions to DrawPhase for Black
+    gameStore.applyUpdate({
+      activePlayer: 'Black',
+      turnPhase: 'DrawPhase',
+      activeCard: null,
+      remainingMoves: 0,
+      revision: 5
+    });
+    await tick();
+
+    // CRITICAL: Card reveal MUST REMAIN FALSE when turn ends! Must NOT pop up!
+    expect(get(cardRevealStore).isActive).toBe(false);
+  });
 });
 

@@ -234,16 +234,26 @@ export class AudioTrackManager {
     console.log('[WebRTC Audio Diagnostic] Closing audio: stopping local tracks and detaching sender');
     this.autoplayManager.reset();
 
-    if (this.localAudioStream) {
-      this.localAudioStream.getTracks().forEach((track) => track.stop());
-      this.localAudioStream = null;
-    }
+    const streamToStop = this.localAudioStream;
+    this.localAudioStream = null;
+
+    // Detach from WebRTC sender first, then stop local hardware tracks
     if (this.audioSender && typeof this.audioSender.replaceTrack === 'function') {
       try {
-        this.audioSender.replaceTrack(null).catch(() => {});
-      } catch {}
+        void this.audioSender.replaceTrack(null);
+      } catch {
+        // ignore
+      }
       this.audioSender = null;
     }
+
+    if (streamToStop) {
+      streamToStop.getTracks().forEach((track) => {
+        track.onended = null;
+        track.stop();
+      });
+    }
+
     if (this.remoteAudioElement) {
       if (typeof this.remoteAudioElement.pause === 'function') {
         this.remoteAudioElement.pause();

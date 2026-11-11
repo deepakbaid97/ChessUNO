@@ -9,6 +9,7 @@
   export let reserves: string[] = [];
   export let isOpponent: boolean = false;
   export let isSpeaking: boolean = false;
+  export let hasActiveRevivals: boolean = false;
 
   $: initials = name ? name.substring(0, 2).toUpperCase() : '??';
   $: isWhite = color === 'White';
@@ -53,7 +54,11 @@
 
   <div class="player-right">
     {#if reserves.length > 0}
-      <div class="reserves-strip" title="Captured friendly pieces available for revival">
+      <div
+        class="reserves-strip"
+        class:attention-pulse={isCurrentTurn && !isOpponent && hasActiveRevivals}
+        title="Captured friendly pieces available for revival"
+      >
         <span class="reserves-label">Reserve ({reserves.length}):</span>
         <div class="reserves-icons">
           {#each reserves.slice(0, 6) as piece}
@@ -273,6 +278,30 @@
     border: 1px solid var(--border-subtle);
     border-radius: 5px;
     padding: 3px 8px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .reserves-strip.attention-pulse {
+    border-color: var(--accent-green);
+    box-shadow: 0 0 0 1.5px var(--accent-green), 0 0 10px rgba(78, 222, 163, 0.45);
+    animation: reservesStripPulse 1.4s ease-in-out infinite alternate;
+  }
+
+  @keyframes reservesStripPulse {
+    0% {
+      border-color: rgba(78, 222, 163, 0.5);
+      box-shadow: 0 0 0 1px rgba(78, 222, 163, 0.3), 0 0 6px rgba(78, 222, 163, 0.2);
+    }
+    100% {
+      border-color: var(--accent-green);
+      box-shadow: 0 0 0 2px var(--accent-green), 0 0 14px rgba(78, 222, 163, 0.6);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reserves-strip.attention-pulse {
+      animation: none !important;
+    }
   }
 
   .reserves-label {

@@ -36,11 +36,13 @@
         <span class="empty-reserves">No captured pieces in reserve.</span>
       {:else}
         <div class="reserves-list">
-          {#each reserves as piece}
+          {#each reserves as piece, index}
             <button
               type="button"
               class="reserve-btn"
+              class:attention-pulse={!selectedPieceType}
               class:selected={selectedPieceType === piece}
+              style="--pulse-delay: {index * 100}ms;"
               on:click={() => dispatch('selectReservePiece', { pieceType: piece })}
               data-testid="reserve-{piece.toLowerCase()}"
             >
@@ -157,6 +159,32 @@
     background-color: rgba(78, 222, 163, 0.16);
     box-shadow: 0 0 0 1px var(--accent-green), 0 0 8px var(--accent-green-glow);
     transform: scale(1.04);
+  }
+
+  .reserve-btn.attention-pulse {
+    animation: reservePiecePulse 1.35s ease-in-out infinite alternate;
+    animation-delay: var(--pulse-delay, 0ms);
+    border-color: var(--accent-green);
+  }
+
+  @keyframes reservePiecePulse {
+    0% {
+      border-color: rgba(78, 222, 163, 0.45);
+      box-shadow: 0 0 0 1px rgba(78, 222, 163, 0.2), 0 0 6px rgba(78, 222, 163, 0.15);
+      background-color: var(--bg-surface);
+    }
+    100% {
+      border-color: var(--accent-green);
+      box-shadow: 0 0 0 2px var(--accent-green), 0 0 14px rgba(78, 222, 163, 0.55);
+      background-color: rgba(78, 222, 163, 0.1);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reserve-btn.attention-pulse {
+      animation: none !important;
+      transform: none !important;
+    }
   }
 
   .piece-name {

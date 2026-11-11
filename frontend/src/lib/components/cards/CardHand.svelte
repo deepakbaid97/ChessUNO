@@ -122,11 +122,12 @@
             <div class="choices-container" data-testid="choices-container">
               <div class="choices-title">SELECT TACTICAL ABILITY:</div>
               <div class="choices-buttons">
-                {#each availableChoices as choice}
+                {#each availableChoices as choice, index}
                   {@const meta = getChoiceMeta(choice)}
                   <button
-                    class="choice-btn"
+                    class="choice-btn attention-pulse"
                     data-testid="btn-choice-{choice.toLowerCase()}"
+                    style="--pulse-delay: {index * 120}ms;"
                     on:click={() => dispatch('submitChoice', { choice })}
                   >
                     <span class="choice-name">{meta.title}</span>
@@ -154,6 +155,7 @@
               {#if canSwap}
                 <button
                   class="btn btn-gold swap-action-btn"
+                  class:attention-pulse={canSwap}
                   on:click={() => dispatch('activateSwap')}
                   data-testid="btn-activate-swap"
                 >
@@ -164,6 +166,7 @@
               {#if remainingRevivals > 0}
                 <button
                   class="btn btn-primary revival-action-btn"
+                  class:attention-pulse={remainingRevivals > 0}
                   on:click={() => dispatch('activateRevival')}
                   data-testid="btn-activate-revival"
                 >
@@ -426,6 +429,26 @@
     transform: scale(0.99);
   }
 
+  .choice-btn.attention-pulse {
+    animation: choicePulse 1.4s ease-in-out infinite alternate;
+    animation-delay: var(--pulse-delay, 0ms);
+    border-color: var(--accent-gold);
+    box-shadow: 0 0 0 1px var(--accent-gold), 0 0 10px rgba(245, 158, 11, 0.4);
+  }
+
+  @keyframes choicePulse {
+    0% {
+      border-color: rgba(245, 158, 11, 0.45);
+      box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.2), 0 0 5px rgba(245, 158, 11, 0.15);
+      background-color: var(--bg-surface);
+    }
+    100% {
+      border-color: var(--accent-gold-bright);
+      box-shadow: 0 0 0 2px var(--accent-gold-bright), 0 0 14px rgba(245, 158, 11, 0.65);
+      background-color: rgba(245, 158, 11, 0.08);
+    }
+  }
+
   .choice-name {
     font-family: var(--font-headline);
     font-size: 0.78rem;
@@ -498,6 +521,36 @@
     width: 100%;
     font-size: 0.82rem;
     padding: 9px 12px;
+  }
+
+  .revival-action-btn.attention-pulse {
+    animation: revivalActionPulse 1.35s ease-in-out infinite alternate;
+  }
+
+  @keyframes revivalActionPulse {
+    0% {
+      box-shadow: 0 0 0 1px rgba(78, 222, 163, 0.35), 0 0 8px rgba(78, 222, 163, 0.2);
+      filter: brightness(1);
+    }
+    100% {
+      box-shadow: 0 0 0 2.5px var(--accent-green), 0 0 18px rgba(78, 222, 163, 0.65);
+      filter: brightness(1.1);
+    }
+  }
+
+  .swap-action-btn.attention-pulse {
+    animation: swapActionPulse 1.35s ease-in-out infinite alternate;
+  }
+
+  @keyframes swapActionPulse {
+    0% {
+      box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.35), 0 0 8px rgba(245, 158, 11, 0.2);
+      filter: brightness(1);
+    }
+    100% {
+      box-shadow: 0 0 0 2.5px var(--accent-gold-bright), 0 0 18px rgba(245, 158, 11, 0.65);
+      filter: brightness(1.1);
+    }
   }
 
   .dock-bottom-row {
@@ -636,6 +689,15 @@
 
     .choice-detail {
       font-size: 0.62rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .choice-btn.attention-pulse,
+    .revival-action-btn.attention-pulse,
+    .swap-action-btn.attention-pulse {
+      animation: none !important;
+      transform: none !important;
     }
   }
 </style>

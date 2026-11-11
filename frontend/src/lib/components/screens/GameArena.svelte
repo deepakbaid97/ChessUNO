@@ -256,7 +256,8 @@
   onMount(() => {
     // If mounting into an already active card (e.g. page reload mid-game), record it so we don't replay
     if (storeState?.activeCard?.id) {
-      lastRevealedCardKey = `${storeState.activeCard.id}-${storeState.activeCard.value}-${storeState.revision}`;
+      const drawerColor: PlayerColor = (storeState?.lastDrawerColor || storeState?.activePlayer || 'White') as PlayerColor;
+      lastRevealedCardKey = `draw-${storeState.drawEventCounter || 0}-${storeState.activeCard.id}-${storeState.activeCard.value ?? 'x'}-${drawerColor}`;
       previousActiveCardId = storeState.activeCard.id;
       lastRevealedDrawCounter = storeState.drawEventCounter || 0;
     }
@@ -298,17 +299,23 @@
   // Authoritative Card Reveal Trigger:
   // Detects fresh card draws reliably across turns (including Card 0, Draw cards, etc.) for both local player and remote opponent
   $: {
-    const cardToReveal = storeState?.activeCard || storeState?.lastDrawnCard;
     const currentDrawCounter = storeState?.drawEventCounter || 0;
     const isNewDrawEvent = currentDrawCounter > lastRevealedDrawCounter;
 
+    // A card should be revealed ONLY when:
+    // 1. A new card draw event occurred (e.g. onCardDrawn fired, incrementing drawEventCounter)
+    // 2. Or a new activeCard arrives during an active ActionPhase/AwaitingChoice (e.g. initial game state or direct transition)
+    // CRITICAL: A card must NEVER be revealed when a turn ends and transitions back to DrawPhase!
+    const cardToReveal = isNewDrawEvent
+      ? (storeState?.lastDrawnCard || storeState?.activeCard)
+      : (storeState?.turnPhase !== 'DrawPhase' ? storeState?.activeCard : null);
+
     if (cardToReveal?.id) {
       const drawerColor: PlayerColor = (storeState?.lastDrawerColor || storeState?.activePlayer || 'White') as PlayerColor;
-      const cardKey = `draw-${currentDrawCounter}-${cardToReveal.id}-${cardToReveal.value ?? 'x'}-${drawerColor}-${storeState?.revision ?? 0}`;
-      const isNewCardArrival = previousActiveCardId === null;
-      const isTransitionFromDrawPhase = previousTurnPhase === 'DrawPhase';
+      const cardKey = `draw-${currentDrawCounter}-${cardToReveal.id}-${cardToReveal.value ?? 'x'}-${drawerColor}`;
+      const isNewCardInActionPhase = storeState?.turnPhase !== 'DrawPhase' && cardToReveal.id !== previousActiveCardId;
 
-      const isFreshDraw = (isNewDrawEvent || isNewCardArrival || isTransitionFromDrawPhase) && (cardKey !== lastRevealedCardKey);
+      const isFreshDraw = (isNewDrawEvent || isNewCardInActionPhase) && (cardKey !== lastRevealedCardKey);
 
       if (isFreshDraw) {
         lastRevealedCardKey = cardKey;
@@ -335,12 +342,9 @@
     }
   }
 
-  // Reset tracking when turn returns to DrawPhase
-  $: if (!storeState?.activeCard) {
+  // Reset active card id when returning to DrawPhase
+  $: if (!storeState?.activeCard && storeState?.turnPhase === 'DrawPhase') {
     previousActiveCardId = null;
-    if (storeState?.turnPhase === 'DrawPhase') {
-      cardAnimationService.resetLastRevealed();
-    }
   }
 
   $: previousTurnPhase = storeState?.turnPhase || '';
@@ -401,6 +405,7 @@
         isConnected={connState?.signalR === 'Connected'}
         reserves={myReserves}
         isOpponent={false}
+        hasActiveRevivals={activeAbilityMode === 'revival' || (storeState?.remainingRevivals || 0) > 0}
       >
         <div slot="actions" class="player-actions-cluster">
           <PushToTalkControl

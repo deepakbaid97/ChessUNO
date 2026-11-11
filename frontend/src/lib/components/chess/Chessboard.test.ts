@@ -127,6 +127,24 @@ describe('Chessboard Component', () => {
     expect(selectedSquare).toEqual({ square: 'd2' });
   });
 
+  it('highlights eligible squares with revival-target class when in revival mode', () => {
+    const { getByTestId } = render(Chessboard, {
+      props: {
+        fen: initialFen,
+        perspective: 'White',
+        activePlayer: 'White',
+        isMyTurn: true,
+        mode: 'revival',
+        validDestinations: ['e3', 'e4']
+      }
+    });
+
+    const squareE3 = getByTestId('square-e3');
+    const squareE4 = getByTestId('square-e4');
+    expect(squareE3.classList.contains('revival-target')).toBe(true);
+    expect(squareE4.classList.contains('revival-target')).toBe(true);
+  });
+
   it('displays loading indicator when isSubmitting is true', () => {
     const { getByTestId } = render(Chessboard, {
       props: {

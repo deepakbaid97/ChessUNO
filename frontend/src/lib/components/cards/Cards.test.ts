@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { render, fireEvent } from '@testing-library/svelte';
 import Card from './Card.svelte';
 import CardHand from './CardHand.svelte';
+import CardTargetSelector from './CardTargetSelector.svelte';
 import type { CardModel } from '../../types/game';
 
 describe('Card and CardHand Components', () => {
@@ -164,6 +165,99 @@ describe('Card and CardHand Components', () => {
 
     await fireEvent.click(revivalBtn);
     expect(revivalTriggered).toBe(true);
+  });
+
+  it('CardHand adds attention-pulse class to choices in AwaitingChoice phase', () => {
+    const { getByTestId } = render(CardHand, {
+      props: {
+        turnPhase: 'AwaitingChoice',
+        isMyTurn: true,
+        activeCard: {
+          id: 'card-wild-draw-four',
+          name: 'Wild Draw Four (+4)',
+          category: 'WILD',
+          description: 'Choose ability.',
+          effectKey: 'WILD_DRAW_FOUR'
+        },
+        availableChoices: ['MOVE_1', 'REVIVE_UP_TO_TWO']
+      }
+    });
+
+    const moveChoice = getByTestId('btn-choice-move_1');
+    const reviveChoice = getByTestId('btn-choice-revive_up_to_two');
+    expect(moveChoice.classList.contains('attention-pulse')).toBe(true);
+    expect(reviveChoice.classList.contains('attention-pulse')).toBe(true);
+  });
+
+  it('CardHand adds attention-pulse class to revival button when remainingRevivals > 0', () => {
+    const { getByTestId } = render(CardHand, {
+      props: {
+        turnPhase: 'ActionPhase',
+        isMyTurn: true,
+        activeCard: {
+          id: 'card-draw-two',
+          name: 'Draw Two (+2)',
+          category: 'ACTION',
+          description: 'Revive pieces.',
+          effectKey: 'REVIVE_UP_TO_TWO'
+        },
+        remainingRevivals: 2,
+        remainingMoves: 0
+      }
+    });
+
+    const revivalBtn = getByTestId('btn-activate-revival');
+    expect(revivalBtn.classList.contains('attention-pulse')).toBe(true);
+  });
+
+  it('CardHand adds attention-pulse class to swap button when canSwap is true', () => {
+    const { getByTestId } = render(CardHand, {
+      props: {
+        turnPhase: 'ActionPhase',
+        isMyTurn: true,
+        activeCard: actionCard,
+        canSwap: true,
+        remainingMoves: 0
+      }
+    });
+
+    const swapBtn = getByTestId('btn-activate-swap');
+    expect(swapBtn.classList.contains('attention-pulse')).toBe(true);
+  });
+
+  it('CardTargetSelector highlights available reserve pieces with attention-pulse when none is selected', () => {
+    const { getByTestId } = render(CardTargetSelector, {
+      props: {
+        mode: 'revival',
+        playerColor: 'White',
+        reserves: ['Pawn', 'Knight'],
+        selectedPieceType: null
+      }
+    });
+
+    const pawnBtn = getByTestId('reserve-pawn');
+    const knightBtn = getByTestId('reserve-knight');
+    expect(pawnBtn.classList.contains('attention-pulse')).toBe(true);
+    expect(knightBtn.classList.contains('attention-pulse')).toBe(true);
+    expect(pawnBtn.classList.contains('selected')).toBe(false);
+  });
+
+  it('CardTargetSelector removes attention-pulse and marks selected piece when a piece is chosen', () => {
+    const { getByTestId } = render(CardTargetSelector, {
+      props: {
+        mode: 'revival',
+        playerColor: 'White',
+        reserves: ['Pawn', 'Knight'],
+        selectedPieceType: 'Pawn'
+      }
+    });
+
+    const pawnBtn = getByTestId('reserve-pawn');
+    const knightBtn = getByTestId('reserve-knight');
+    expect(pawnBtn.classList.contains('attention-pulse')).toBe(false);
+    expect(knightBtn.classList.contains('attention-pulse')).toBe(false);
+    expect(pawnBtn.classList.contains('selected')).toBe(true);
+    expect(knightBtn.classList.contains('selected')).toBe(false);
   });
 });
 
