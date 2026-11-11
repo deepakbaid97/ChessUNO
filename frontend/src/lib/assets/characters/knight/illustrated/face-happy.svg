@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Knight Happy Expression: Proud Victory, Grinning Champion -->
+  <!-- Arched Joyful Eyebrows -->
+  <path d="M96 102c7-6 16-6 24-1M136 101c7-5 16-5 24 1" stroke="var(--knight-ink,#25203b)" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Beaming Crescent Joy Eyes -->
+  <path d="M102 124c2-9 10-14 20-14s18 5 20 14" stroke="var(--knight-ink,#25203b)" stroke-width="6.5" stroke-linecap="round"/>
+  <path d="M103 124c4-7 11-10 19-10" stroke="white" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+  
+  <path d="M136 124c2-9 10-14 20-14s18 5 20 14" stroke="var(--knight-ink,#25203b)" stroke-width="6.5" stroke-linecap="round"/>
+  <path d="M137 124c4-7 11-10 19-10" stroke="white" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+
+  <!-- Cheerful Victory Blush -->
+  <ellipse cx="96" cy="132" rx="7" ry="5" fill="var(--knight-plume,#e53e3e)" opacity=".4"/>
+  <ellipse cx="160" cy="132" rx="7" ry="5" fill="var(--knight-plume,#e53e3e)" opacity=".4"/>
+
+  <!-- Big Confident Champion Grin with Teeth -->
+  <path d="M112 136h32c0 14-8 22-16 22s-16-8-16-22Z" fill="#ffffff" stroke="var(--knight-ink,#25203b)" stroke-width="5.5" stroke-linejoin="round"/>
+  <line x1="128" y1="138" x2="128" y2="154" stroke="var(--knight-ink,#25203b)" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Cheek dimples -->
+  <path d="M107 135c-2 3-2 6 0 9M149 135c2 3 2 6 0 9" stroke="var(--knight-ink,#25203b)" stroke-width="4" stroke-linecap="round"/>
+</svg>
+

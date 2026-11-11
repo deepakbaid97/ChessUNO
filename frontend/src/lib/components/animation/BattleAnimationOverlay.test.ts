@@ -140,5 +140,59 @@ describe('BattleAnimationOverlay Component', () => {
 
     expect(queryByTestId('battle-animation-overlay')).toBeNull();
   });
+
+  it('renders generic combatants: Knight attacking Pawn', async () => {
+    const { getByTestId, getByRole } = render(BattleAnimationOverlay);
+
+    battleAnimationService.triggerBattle({
+      id: 'knight-attack-pawn',
+      attacker: { piece: 'Knight', color: 'White' },
+      defender: { piece: 'Pawn', color: 'Black' },
+      from: 'b1',
+      to: 'c3',
+      attackStyle: 'leap'
+    });
+    await tick();
+
+    const overlay = getByTestId('battle-animation-overlay');
+    expect(overlay).toBeTruthy();
+
+    const attacker = getByTestId('battle-attacker');
+    expect(attacker).toBeTruthy();
+    expect(attacker.getAttribute('aria-label')).toContain('knight');
+    expect(attacker.dataset.team).toBe('light');
+
+    const defender = getByTestId('battle-defender');
+    expect(defender).toBeTruthy();
+    expect(defender.getAttribute('aria-label')).toContain('pawn');
+    expect(defender.dataset.team).toBe('dark');
+
+    const heading = getByRole('heading', { level: 2 });
+    expect(heading.textContent).toContain('White Knight strikes Black Pawn');
+  });
+
+  it('renders Knight defender against Knight attacker with KNIGHT CLASH tag', async () => {
+    const { getByTestId, getByText } = render(BattleAnimationOverlay);
+
+    battleAnimationService.triggerBattle({
+      id: 'knight-vs-knight',
+      attacker: { piece: 'Knight', color: 'Black' },
+      defender: { piece: 'Knight', color: 'White' },
+      from: 'f6',
+      to: 'e4',
+      attackStyle: 'leap'
+    });
+    await tick();
+
+    expect(getByText('KNIGHT CLASH')).toBeTruthy();
+
+    const attacker = getByTestId('battle-attacker');
+    expect(attacker.getAttribute('aria-label')).toContain('knight');
+    expect(attacker.dataset.team).toBe('dark');
+
+    const defender = getByTestId('battle-defender');
+    expect(defender.getAttribute('aria-label')).toContain('knight');
+    expect(defender.dataset.team).toBe('light');
+  });
 });
 

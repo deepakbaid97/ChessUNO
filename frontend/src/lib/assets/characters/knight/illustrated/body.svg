@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Knight Torso, Surcoat & Plate Armor -->
+  <!-- Underlying Cape / Mantle flowing behind -->
+  <path d="M68 126c-6 24-8 54-4 82h128c4-28 2-58-4-82l-22 4H90l-22-4Z" fill="var(--knight-cloth-shadow,#1d4e89)" stroke="var(--knight-ink,#25203b)" stroke-width="6" stroke-linejoin="round"/>
+  
+  <!-- Breastplate / Surcoat -->
+  <path d="M78 124c8-14 26-22 50-22s42 8 50 22l12 78H66l12-78Z" fill="var(--knight-cloth,#3b7dc4)" stroke="var(--knight-ink,#25203b)" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M128 102c24 0 42 8 50 22l-6 40c-14-10-28-14-44-14s-30 4-44 14l-6-40c8-14 26-22 50-22Z" fill="var(--knight-cloth-light,#65a2e5)"/>
+
+  <!-- Steel Cuirass (Center chest piece) -->
+  <path d="M92 120c10-10 22-14 36-14s26 4 36 14l-4 44H96l-4-44Z" fill="var(--knight-metal,#e4ecf2)" stroke="var(--knight-ink,#25203b)" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M128 106v58" stroke="var(--knight-ink,#25203b)" stroke-width="4"/>
+  <path d="M128 106v58h28l4-44c-9-8-19-12-32-14Z" fill="var(--knight-metal-shadow,#9eb4c3)" opacity=".7"/>
+
+  <!-- Golden Heraldic Knight Emblem (Horse profile on chest) -->
+  <path d="M124 122c-3-5 2-10 7-9 6 1 9 6 8 11l-3 6c-2 2-6 2-8 0l-4-8Z" fill="var(--knight-gold,#f3c95f)" stroke="var(--knight-ink,#25203b)" stroke-width="3"/>
+  <path d="M132 120c3 1 5 4 4 7" stroke="var(--knight-ink,#25203b)" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Shoulder Pauldrons (Left & Right) -->
+  <!-- Left Pauldron -->
+  <path d="M60 126c-4-12 5-24 18-28l14 16-8 22c-12 2-21-3-24-10Z" fill="var(--knight-metal,#e4ecf2)" stroke="var(--knight-ink,#25203b)" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M78 98c4-1 8 0 14 16l-8 22c-3 1-6 0-8-2l2-36Z" fill="var(--knight-metal-shadow,#9eb4c3)"/>
+  <circle cx="70" cy="118" r="3" fill="var(--knight-gold,#f3c95f)" stroke="var(--knight-ink,#25203b)" stroke-width="2"/>
+
+  <!-- Right Pauldron -->
+  <path d="M196 126c4-12-5-24-18-28l-14 16 8 22c12 2 21-3 24-10Z" fill="var(--knight-metal,#e4ecf2)" stroke="var(--knight-ink,#25203b)" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M178 98c-4-1-8 0-14 16l8 22c3 1 6 0 8-2l-2-36Z" fill="var(--knight-metal-shadow,#9eb4c3)"/>
+  <circle cx="186" cy="118" r="3" fill="var(--knight-gold,#f3c95f)" stroke="var(--knight-ink,#25203b)" stroke-width="2"/>
+
+  <!-- Heavy Belt & Golden Buckle -->
+  <path d="M70 174h116v16H70z" fill="var(--knight-belt,#4a384e)" stroke="var(--knight-ink,#25203b)" stroke-width="6"/>
+  <rect x="114" y="168" width="28" height="28" rx="6" fill="var(--knight-gold,#f3c95f)" stroke="var(--knight-ink,#25203b)" stroke-width="5"/>
+  <rect x="122" y="176" width="12" height="12" rx="2" fill="var(--knight-belt,#4a384e)"/>
+
+  <!-- Segmented Armored Fauld Skirt -->
+  <path d="M74 190h108l-8 20h-24l-16-10-16 10H82l-8-20Z" fill="var(--knight-metal,#e4ecf2)" stroke="var(--knight-ink,#25203b)" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M128 190v10l16 10h18l6-20h-40Z" fill="var(--knight-metal-shadow,#9eb4c3)"/>
+</svg>
+

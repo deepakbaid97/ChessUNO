@@ -1,7 +1,9 @@
-import type { PlayerColor } from './game';
+import type { PlayerColor, PieceType } from './game';
+
+export type AttackStyle = 'strike' | 'charge' | 'leap' | 'slash';
 
 export interface BattleCombatant {
-  piece: 'Pawn';
+  piece: PieceType;
   color: PlayerColor;
 }
 
@@ -12,6 +14,7 @@ export interface BattleEvent {
   from: string;
   to: string;
   isEnPassant?: boolean;
+  attackStyle?: AttackStyle;
 }
 
 export type BattlePhase = 'idle' | 'enter' | 'clash' | 'impact' | 'outcome' | 'exit';

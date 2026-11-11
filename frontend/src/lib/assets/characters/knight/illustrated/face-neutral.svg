@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Knight Neutral Expression: Reckless, Brave, Confident Smirk -->
+  <!-- Eyebrows: Left eyebrow cocked high, right eyebrow sharp & relaxed -->
+  <path d="M96 106c6-8 16-8 24-4" stroke="var(--knight-ink,#25203b)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M136 108c8-1 16 2 24 6" stroke="var(--knight-ink,#25203b)" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Confident Eyes -->
+  <ellipse cx="112" cy="122" rx="10.5" ry="12.5" fill="var(--knight-ink,#25203b)"/>
+  <ellipse cx="144" cy="122" rx="10.5" ry="12.5" fill="var(--knight-ink,#25203b)"/>
+
+  <!-- High-Energy Highlights -->
+  <circle cx="108" cy="118" r="4" fill="#ffffff"/>
+  <circle cx="140" cy="118" r="4" fill="#ffffff"/>
+  <circle cx="114" cy="125" r="1.5" fill="#ffffff" opacity=".8"/>
+  <circle cx="146" cy="125" r="1.5" fill="#ffffff" opacity=".8"/>
+
+  <!-- Subtle battle scar on cheek (reckless personality!) -->
+  <path d="M96 128l8 12" stroke="var(--knight-skin-shadow,#d78461)" stroke-width="3" stroke-linecap="round"/>
+  <path d="M98 134l4-1" stroke="var(--knight-skin-shadow,#d78461)" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Overconfident Smirk (curved up at right corner) -->
+  <path d="M116 142c6 0 14 3 22-4" stroke="var(--knight-ink,#25203b)" stroke-width="6" stroke-linecap="round"/>
+  <!-- Smirk dimple -->
+  <path d="M141 137c2 2 4 4 3 7" stroke="var(--knight-ink,#25203b)" stroke-width="3.5" stroke-linecap="round"/>
+</svg>
+

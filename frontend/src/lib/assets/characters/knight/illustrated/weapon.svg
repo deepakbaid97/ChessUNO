@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Knight Broadsword -->
+  <!-- Pommel (Round golden counter-weight) -->
+  <circle cx="212" cy="208" r="7.5" fill="var(--knight-gold,#f3c95f)" stroke="var(--knight-ink,#25203b)" stroke-width="4.5"/>
+  <circle cx="210" cy="206" r="2.5" fill="#ffffff" opacity=".7"/>
+
+  <!-- Leather Grip -->
+  <path d="M207 186l6 16" stroke="var(--knight-belt,#4a384e)" stroke-width="8" stroke-linecap="round"/>
+  <path d="M208 190l4 2M209 196l4 2" stroke="var(--knight-gold,#f3c95f)" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Cruciform Crossguard (Golden quillons with downturned tips) -->
+  <path d="M188 184c8-4 18-5 28-2l14-2c4 4 1 8-3 9l-13 1c-9 5-18 4-26-2l-3-2c-3-1-3-4 3-2Z" fill="var(--knight-gold,#f3c95f)" stroke="var(--knight-ink,#25203b)" stroke-width="4.5" stroke-linejoin="round"/>
+  <circle cx="204" cy="180" r="3.5" fill="var(--knight-cloth,#3b7dc4)" stroke="var(--knight-ink,#25203b)" stroke-width="2"/>
+
+  <!-- Sword Blade (Extending high from hand at ~176 up to ~65) -->
+  <!-- Left Blade Bevel (Light steel) -->
+  <path d="M200 176l10-100 6-12 1 112-17 0Z" fill="var(--knight-metal,#e4ecf2)" stroke="var(--knight-ink,#25203b)" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Right Blade Bevel (Shadow steel) -->
+  <path d="M217 176l-1 0 1-112 6 12-6 100Z" fill="var(--knight-metal-shadow,#9eb4c3)" stroke="var(--knight-ink,#25203b)" stroke-width="5" stroke-linejoin="round"/>
+  
+  <!-- Central Fuller Ridge line -->
+  <line x1="216" y1="168" x2="216" y2="76" stroke="var(--knight-ink,#25203b)" stroke-width="2.5"/>
+  <!-- Blade Edge Gleam / Highlight -->
+  <line x1="203" y1="162" x2="214" y2="74" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" opacity=".75"/>
+</svg>
+

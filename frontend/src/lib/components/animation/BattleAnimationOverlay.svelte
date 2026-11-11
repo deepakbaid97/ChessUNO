@@ -1,8 +1,10 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
-  import PawnCharacter, { type PawnAnimation, type PawnExpression } from '../characters/PawnCharacter.svelte';
+  import PawnCharacter from '../characters/PawnCharacter.svelte';
+  import KnightCharacter from '../characters/KnightCharacter.svelte';
   import { battleAnimationStore, battleAnimationService } from '../../services/battleAnimationService';
   import { prefersReducedMotion } from '../../utils/cardDisplayUtils';
+  import type { AttackStyle } from '../../types/battle';
 
   $: state = $battleAnimationStore;
   $: active = state.isActive;
@@ -10,11 +12,15 @@
 
   $: attackerTeam = currentEvent?.attacker.color === 'White' ? 'light' : 'dark';
   $: defenderTeam = currentEvent?.defender.color === 'White' ? 'light' : 'dark';
+  $: attackStyle = (currentEvent?.attackStyle || (currentEvent?.attacker.piece === 'Knight' ? 'leap' : 'charge')) as AttackStyle;
 
-  let attackerAnimation: PawnAnimation = 'walk';
-  let attackerExpression: PawnExpression = 'neutral';
-  let defenderAnimation: PawnAnimation = 'idle';
-  let defenderExpression: PawnExpression = 'neutral';
+  type CharacterAnimation = 'idle' | 'walk' | 'attack' | 'death';
+  type CharacterExpression = 'neutral' | 'happy' | 'scared' | 'angry';
+
+  let attackerAnimation: CharacterAnimation = 'walk';
+  let attackerExpression: CharacterExpression = 'neutral';
+  let defenderAnimation: CharacterAnimation = 'idle';
+  let defenderExpression: CharacterExpression = 'neutral';
 
   let stagePhase: 'enter' | 'charge' | 'clash' | 'reaction' | 'exit' = 'enter';
   let shakeActive = false;
@@ -155,13 +161,15 @@
     <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
     <div class="battle-arena" class:shake={shakeActive} role="document" on:click|stopPropagation>
       <header class="battle-header">
-        <span class="battle-tag">PAWN DUEL</span>
+        <span class="battle-tag">
+          {currentEvent.attacker.piece === 'Knight' || currentEvent.defender.piece === 'Knight' ? 'KNIGHT CLASH' : 'PAWN DUEL'}
+        </span>
         <h2 class="battle-title">
-          {currentEvent.attacker.color} Pawn strikes {currentEvent.defender.color} Pawn
+          {currentEvent.attacker.color} {currentEvent.attacker.piece} strikes {currentEvent.defender.color} {currentEvent.defender.piece}
         </h2>
       </header>
 
-      <div class="combat-stage">
+      <div class="combat-stage style-{attackStyle}">
         <!-- Floor Ring Plinth -->
         <div class="stage-plinth" aria-hidden="true">
           <div class="plinth-ring ring-outer"></div>
@@ -169,14 +177,24 @@
         </div>
 
         <!-- Attacker Slot (Left) -->
-        <div class="combatant-slot slot-attacker phase-{stagePhase}">
-          <PawnCharacter
-            team={attackerTeam}
-            animation={attackerAnimation}
-            expression={attackerExpression}
-            size={180}
-            testId="battle-attacker"
-          />
+        <div class="combatant-slot slot-attacker piece-{currentEvent.attacker.piece.toLowerCase()} phase-{stagePhase}">
+          {#if currentEvent.attacker.piece === 'Knight'}
+            <KnightCharacter
+              team={attackerTeam}
+              animation={attackerAnimation}
+              expression={attackerExpression}
+              size={180}
+              testId="battle-attacker"
+            />
+          {:else}
+            <PawnCharacter
+              team={attackerTeam}
+              animation={attackerAnimation}
+              expression={attackerExpression}
+              size={180}
+              testId="battle-attacker"
+            />
+          {/if}
         </div>
 
         <!-- Clash Center FX (Sparks, Flash, & Shockwave) -->
@@ -194,14 +212,24 @@
         </div>
 
         <!-- Defender Slot (Right, flipped) -->
-        <div class="combatant-slot slot-defender phase-{stagePhase}">
-          <PawnCharacter
-            team={defenderTeam}
-            animation={defenderAnimation}
-            expression={defenderExpression}
-            size={180}
-            testId="battle-defender"
-          />
+        <div class="combatant-slot slot-defender piece-{currentEvent.defender.piece.toLowerCase()} phase-{stagePhase}">
+          {#if currentEvent.defender.piece === 'Knight'}
+            <KnightCharacter
+              team={defenderTeam}
+              animation={defenderAnimation}
+              expression={defenderExpression}
+              size={180}
+              testId="battle-defender"
+            />
+          {:else}
+            <PawnCharacter
+              team={defenderTeam}
+              animation={defenderAnimation}
+              expression={defenderExpression}
+              size={180}
+              testId="battle-defender"
+            />
+          {/if}
         </div>
       </div>
 
@@ -339,6 +367,15 @@
 
   .slot-attacker.phase-reaction {
     transform: translateX(52px) scale(1.08);
+  }
+
+  /* Leaping Knight attack style */
+  .style-leap .slot-attacker.phase-charge {
+    transform: translateX(48px) translateY(-14px) rotate(4deg);
+  }
+
+  .style-leap .slot-attacker.phase-clash {
+    transform: translateX(88px) translateY(-4px) scale(1.12) rotate(2deg);
   }
 
   /* Defender (Right) flipped facing left */

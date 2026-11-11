@@ -27,7 +27,13 @@
 
 <main class="playground">
   <header class="playground-header">
-    <a href="/" class="back-link">← Back to Chess UNO</a>
+    <div class="nav-links">
+      <a href="/" class="back-link">← Back to Chess UNO</a>
+      <span class="nav-divider">|</span>
+      <span class="current-lab">Pawn Lab</span>
+      <span class="nav-divider">|</span>
+      <a href="/knight-playground" class="nav-sublink">Knight Lab</a>
+    </div>
     <span>Character Lab / Pawn Prototype</span>
   </header>
 
@@ -195,13 +201,31 @@
     color: #b9afc9;
   }
 
-  .back-link {
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .nav-divider {
+    color: rgba(248, 239, 217, 0.25);
+  }
+
+  .back-link,
+  .nav-sublink {
     color: #f3ce73;
     text-decoration: none;
     transition: color 0.15s ease;
   }
-  .back-link:hover {
+
+  .back-link:hover,
+  .nav-sublink:hover {
     color: #ffe6a3;
+  }
+
+  .current-lab {
+    color: #ffffff;
+    font-weight: 700;
   }
 
   .stage {
