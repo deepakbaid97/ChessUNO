@@ -51,44 +51,46 @@
   let secondSwapSquare: string | null = null;
   let selectedRevivalPiece: string | null = null;
 
+  let storeState = $gameStore;
+  let connState = $connectionStore;
+
   $: storeState = $gameStore;
   $: connState = $connectionStore;
 
-  $: isMyTurn = storeState.activePlayer === storeState.assignedColor && !isGameOver;
-  $: opponentColor = (storeState.assignedColor === 'White' ? 'Black' : 'White') as PlayerColor;
+  $: isGameOver = ['Checkmate', 'Stalemate', 'Resigned', 'DrawByInsufficientMaterial', 'DrawByFiftyMoveRule', 'DrawByThreefoldRepetition'].includes(storeState?.gameStatus || '');
+  $: isMyTurn = !!(storeState?.activePlayer && storeState?.assignedColor && storeState.activePlayer === storeState.assignedColor && !isGameOver);
+  $: opponentColor = ((storeState?.assignedColor === 'White' ? 'Black' : 'White') || 'Black') as PlayerColor;
 
-  $: myReserves = storeState.assignedColor === 'White' ? storeState.whiteReserves : storeState.blackReserves;
-  $: opponentReserves = storeState.assignedColor === 'White' ? storeState.blackReserves : storeState.whiteReserves;
-
-  $: isGameOver = ['Checkmate', 'Stalemate', 'Resigned', 'DrawByInsufficientMaterial', 'DrawByFiftyMoveRule', 'DrawByThreefoldRepetition'].includes(storeState.gameStatus);
+  $: myReserves = storeState?.assignedColor === 'White' ? (storeState.whiteReserves || []) : (storeState?.blackReserves || []);
+  $: opponentReserves = storeState?.assignedColor === 'White' ? (storeState?.blackReserves || []) : (storeState?.whiteReserves || []);
 
   // Auto-activate ability mode when drawing swap or revival cards
-  $: if (isMyTurn && storeState.canSwap && activeAbilityMode === 'none') {
+  $: if (isMyTurn && storeState?.canSwap && activeAbilityMode === 'none') {
     activeAbilityMode = 'swap';
     firstSwapSquare = null;
     secondSwapSquare = null;
   }
-  $: if (!storeState.canSwap && activeAbilityMode === 'swap') {
+  $: if (!storeState?.canSwap && activeAbilityMode === 'swap') {
     activeAbilityMode = 'none';
     firstSwapSquare = null;
     secondSwapSquare = null;
   }
-  $: if (isMyTurn && storeState.remainingRevivals > 0 && myReserves.length > 0 && activeAbilityMode === 'none') {
+  $: if (isMyTurn && (storeState?.remainingRevivals || 0) > 0 && myReserves.length > 0 && activeAbilityMode === 'none') {
     activeAbilityMode = 'revival';
     if (!selectedRevivalPiece && myReserves.length === 1) {
       selectedRevivalPiece = myReserves[0];
     }
   }
-  $: if (storeState.remainingRevivals === 0 && activeAbilityMode === 'revival') {
+  $: if ((storeState?.remainingRevivals || 0) === 0 && activeAbilityMode === 'revival') {
     activeAbilityMode = 'none';
     selectedRevivalPiece = null;
   }
 
-  $: swapEligibleSquares = activeAbilityMode === 'swap'
+  $: swapEligibleSquares = activeAbilityMode === 'swap' && storeState?.boardFen && storeState?.assignedColor
     ? getEligibleSwapSquares(storeState.boardFen, storeState.assignedColor)
     : [];
 
-  $: revivalEligibleSquares = activeAbilityMode === 'revival' && selectedRevivalPiece
+  $: revivalEligibleSquares = activeAbilityMode === 'revival' && selectedRevivalPiece && storeState?.boardFen && storeState?.assignedColor
     ? getEligibleRevivalSquares(storeState.boardFen, storeState.assignedColor, selectedRevivalPiece)
     : [];
 
@@ -96,11 +98,11 @@
     ? swapEligibleSquares.filter(sq => sq !== firstSwapSquare)
     : activeAbilityMode === 'revival'
       ? revivalEligibleSquares
-      : storeState.validDestinations;
+      : (storeState?.validDestinations || []);
 
   $: displayedSelectedSquare = activeAbilityMode === 'swap'
     ? (firstSwapSquare || null)
-    : storeState.selectedSquare;
+    : (storeState?.selectedSquare || null);
 
   $: coachGuide = computeCoachGuide({
     isGameOver,
@@ -220,7 +222,7 @@
     showMatchStartBanner = false;
   }, 2400);
 
-  $: if (storeState.lastMove && (storeState.lastMove.from !== prevLastMove?.from || storeState.lastMove.to !== prevLastMove?.to)) {
+  $: if (storeState?.lastMove && (storeState.lastMove.from !== prevLastMove?.from || storeState.lastMove.to !== prevLastMove?.to)) {
     prevLastMove = storeState.lastMove;
     const actor = storeState.activePlayer === storeState.assignedColor ? (storeState.opponentName || 'Opponent') : 'You';
     floatingMoveToast = {
@@ -254,7 +256,7 @@
     if (storeState?.activeCard?.id) {
       lastRevealedCardKey = `${storeState.activeCard.id}-${storeState.activeCard.value}-${storeState.revision}`;
       previousActiveCardId = storeState.activeCard.id;
-      lastRevealedDrawCounter = storeState.drawEventCounter;
+      lastRevealedDrawCounter = storeState.drawEventCounter || 0;
     }
     previousBoardFen = storeState?.boardFen || '';
     lastHandledMoveCounter = storeState?.moveEventCounter || 0;
@@ -271,11 +273,11 @@
   }
 
   // Authoritative Battle Animation Trigger:
-  // Detects accepted captures between supported pieces (Pawn, Knight) when a new move is confirmed/accepted
-  $: if (storeState && storeState.moveEventCounter > lastHandledMoveCounter) {
+  // Detects accepted captures between supported pieces (Pawn, Knight, Rook) when a new move is confirmed/accepted
+  $: if (storeState && (storeState.moveEventCounter || 0) > lastHandledMoveCounter) {
     const moveData = storeState.lastAcceptedMove;
     const currentFen = storeState.boardFen;
-    lastHandledMoveCounter = storeState.moveEventCounter;
+    lastHandledMoveCounter = storeState.moveEventCounter || 0;
 
     if (moveData && previousBoardFen && previousBoardFen !== currentFen) {
       const battleEvent = detectCaptureEvent(previousBoardFen, currentFen, {
@@ -296,7 +298,7 @@
   // Detect fresh card draws reliably across turns for both local player and remote opponent
   $: if (storeState?.activeCard?.id) {
     const cardKey = `${storeState.activeCard.id}-${storeState.activeCard.value}-${storeState.revision}`;
-    const isNewDrawEvent = storeState.drawEventCounter > lastRevealedDrawCounter;
+    const isNewDrawEvent = (storeState.drawEventCounter || 0) > lastRevealedDrawCounter;
     const isNewCardArrival = previousActiveCardId === null;
     const isTransitionFromDrawPhase = previousTurnPhase === 'DrawPhase';
 
@@ -304,7 +306,7 @@
 
     if (isFreshDraw) {
       lastRevealedCardKey = cardKey;
-      lastRevealedDrawCounter = storeState.drawEventCounter;
+      lastRevealedDrawCounter = storeState.drawEventCounter || 0;
       previousActiveCardId = storeState.activeCard.id;
 
       const isLocal = storeState.activePlayer === storeState.assignedColor;
@@ -327,14 +329,14 @@
   }
 
   // Reset tracking when activeCard clears at turn end
-  $: if (!storeState.activeCard) {
+  $: if (!storeState?.activeCard) {
     previousActiveCardId = null;
-    if (storeState.turnPhase === 'DrawPhase') {
+    if (storeState?.turnPhase === 'DrawPhase') {
       cardAnimationService.resetLastRevealed();
     }
   }
 
-  $: previousTurnPhase = storeState.turnPhase;
+  $: previousTurnPhase = storeState?.turnPhase || '';
 </script>
 
 <div class="game-arena" data-testid="game-arena">
@@ -607,21 +609,6 @@
     .area-command {
       gap: 6px;
       min-width: 0;
-    }
-
-    .coach-banner {
-      padding: 8px 10px;
-      gap: 2px;
-      min-width: 0;
-    }
-
-    .coach-headline {
-      font-size: 0.88rem;
-    }
-
-    .coach-instruction {
-      font-size: 0.74rem;
-      line-height: 1.25;
     }
   }
 </style>

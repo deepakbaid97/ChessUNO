@@ -85,7 +85,79 @@ describe('battleAnimationService', () => {
       expect(event?.attackStyle).toBe('leap');
     });
 
-    it('returns null when an unsupported piece type is the attacker (e.g. Queen captures Knight)', () => {
+    it('detects a Rook capturing a Pawn with smash attack style', () => {
+      // White Rook on d1, Black Pawn on d5
+      const prevFen = 'rnbqkbnr/ppp1pppp/8/3p4/8/8/PPP1PPPP/3RKB1R w KQkq - 0 3';
+      // After d1xd5 (Rxd5)
+      const currentFen = 'rnbqkbnr/ppp1pppp/8/3R4/8/8/PPP1PPPP/4KB1R b KQkq - 0 3';
+      const lastMove = { from: 'd1', to: 'd5' };
+
+      const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+      expect(event).not.toBeNull();
+      expect(event?.attacker).toEqual({ piece: 'Rook', color: 'White' });
+      expect(event?.defender).toEqual({ piece: 'Pawn', color: 'Black' });
+      expect(event?.attackStyle).toBe('smash');
+      expect(event?.from).toBe('d1');
+      expect(event?.to).toBe('d5');
+    });
+
+    it('detects a Pawn capturing a Rook with charge attack style', () => {
+      // Black Pawn on a6, White Rook on b5
+      const prevFen = 'rnbqkbnr/1ppppppp/p7/1R6/8/8/PPPPPPPP/RNBQKBN1 b Qkq - 0 3';
+      // After a6xb5 (axb5)
+      const currentFen = 'rnbqkbnr/1ppppppp/8/1p6/8/8/PPPPPPPP/RNBQKBN1 w Qkq - 0 4';
+      const lastMove = { from: 'a6', to: 'b5' };
+
+      const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+      expect(event).not.toBeNull();
+      expect(event?.attacker).toEqual({ piece: 'Pawn', color: 'Black' });
+      expect(event?.defender).toEqual({ piece: 'Rook', color: 'White' });
+      expect(event?.attackStyle).toBe('charge');
+    });
+
+    it('detects a Rook capturing a Knight with smash attack style', () => {
+      // White Rook on e1, Black Knight on e5
+      const prevFen = 'rnbqkb1r/pppp1ppp/8/4n3/8/8/PPPPPPPP/4R1K1 w KQkq - 0 3';
+      // After e1xe5 (Rxe5)
+      const currentFen = 'rnbqkb1r/pppp1ppp/8/4R3/8/8/PPPPPPPP/6K1 b Qkq - 0 3';
+      const lastMove = { from: 'e1', to: 'e5' };
+
+      const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+      expect(event).not.toBeNull();
+      expect(event?.attacker).toEqual({ piece: 'Rook', color: 'White' });
+      expect(event?.defender).toEqual({ piece: 'Knight', color: 'Black' });
+      expect(event?.attackStyle).toBe('smash');
+    });
+
+    it('detects a Knight capturing a Rook with leap attack style', () => {
+      // White Knight on c7, Black Rook on a8
+      const prevFen = 'rnbqkbnr/ppNp1ppp/8/8/8/8/PPPPPPPP/R1BQKBNR w KQkq - 0 4';
+      // After c7xa8 (Nxa8)
+      const currentFen = 'Nnbqkbnr/pp1p1ppp/8/8/8/8/PPPPPPPP/R1BQKBNR b KQkq - 0 4';
+      const lastMove = { from: 'c7', to: 'a8' };
+
+      const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+      expect(event).not.toBeNull();
+      expect(event?.attacker).toEqual({ piece: 'Knight', color: 'White' });
+      expect(event?.defender).toEqual({ piece: 'Rook', color: 'Black' });
+      expect(event?.attackStyle).toBe('leap');
+    });
+
+    it('detects a Rook capturing another Rook with smash attack style', () => {
+      // White Rook on a1, Black Rook on a8
+      const prevFen = 'rnbqkbnr/1ppppppp/8/8/8/8/1PPPPPPP/R3KBNR w KQkq - 0 5';
+      // After a1xa8 (Rxa8)
+      const currentFen = 'Rnbqkbnr/1ppppppp/8/8/8/8/1PPPPPPP/4KBNR b Kkq - 0 5';
+      const lastMove = { from: 'a1', to: 'a8' };
+
+      const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+      expect(event).not.toBeNull();
+      expect(event?.attacker).toEqual({ piece: 'Rook', color: 'White' });
+      expect(event?.defender).toEqual({ piece: 'Rook', color: 'Black' });
+      expect(event?.attackStyle).toBe('smash');
+    });
+
+    it('returns null when an unsupported piece type is the attacker (e.g. Queen captures Knight or Rook)', () => {
       // Queen on d1 captures Knight on d5
       const prevFen = 'r1bqkbnr/ppp1pppp/8/3n4/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 3';
       const currentFen = 'r1bqkbnr/ppp1pppp/8/3Q4/8/8/PPPPPPPP/RNB1KBNR b KQkq - 0 3';
@@ -95,11 +167,21 @@ describe('battleAnimationService', () => {
       expect(event).toBeNull();
     });
 
-    it('returns null when an unsupported piece type is the defender (e.g. Knight captures Rook)', () => {
-      // White Knight on c7 captures Black Rook on a8
-      const prevFen = 'rnbqkbnr/ppNp1ppp/8/8/8/8/PPPPPPPP/R1BQKBNR w KQkq - 0 4';
-      const currentFen = 'Nnbqkbnr/pp1p1ppp/8/8/8/8/PPPPPPPP/R1BQKBNR b KQkq - 0 4';
-      const lastMove = { from: 'c7', to: 'a8' };
+    it('returns null when an unsupported piece type is the defender (e.g. Rook captures Bishop)', () => {
+      // White Rook on d1 captures Black Bishop on d7
+      const prevFen = 'rnbqk1nr/pppbpppp/8/8/8/8/PPPPPPPP/RN1QKBNR w KQkq - 0 4';
+      const currentFen = 'rnbqk1nr/pppRpppp/8/8/8/8/PPPPPPPP/1N1QKBNR b Kkq - 0 4';
+      const lastMove = { from: 'd1', to: 'd7' };
+
+      const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+      expect(event).toBeNull();
+    });
+
+    it('returns null for non-capture rook movement', () => {
+      // White Rook on a1 moves to a4 (empty square)
+      const prevFen = 'rnbqkbnr/1ppppppp/8/8/8/8/1PPPPPPP/R3KBNR w KQkq - 0 5';
+      const currentFen = 'rnbqkbnr/1ppppppp/8/8/R7/8/1PPPPPPP/4KBNR b Kkq - 1 5';
+      const lastMove = { from: 'a1', to: 'a4' };
 
       const event = detectCaptureEvent(prevFen, currentFen, lastMove);
       expect(event).toBeNull();

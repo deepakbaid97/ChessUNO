@@ -3,7 +3,7 @@ import { parseFenToMatrix, getSquareIndex } from '../utils/boardUtils';
 import type { BattleAnimationState, BattleEvent, BattlePhase } from '../types/battle';
 import type { PieceType } from '../types/game';
 
-export const SUPPORTED_BATTLE_PIECES = new Set<PieceType>(['Pawn', 'Knight']);
+export const SUPPORTED_BATTLE_PIECES = new Set<PieceType>(['Pawn', 'Knight', 'Rook']);
 export const SUPPORTED_RENDER_PIECES = new Set<PieceType>(['Pawn', 'Knight', 'Rook']);
 
 export function isSupportedBattlePiece(piece: string): piece is PieceType {
@@ -52,7 +52,8 @@ export function detectCaptureEvent(
     directCapturedPiece.color !== movedPiece.color &&
     SUPPORTED_BATTLE_PIECES.has(directCapturedPiece.type)
   ) {
-    const attackStyle = movedPiece.type === 'Knight' ? 'leap' : 'charge';
+    const attackStyle =
+      movedPiece.type === 'Knight' ? 'leap' : movedPiece.type === 'Rook' ? 'smash' : 'charge';
     return {
       id: `battle-capture-${lastMove.from}-${lastMove.to}-${Date.now()}`,
       attacker: { piece: movedPiece.type, color: movedPiece.color },

@@ -32,6 +32,9 @@
   let isRestoringSession = false;
   let errorMessage = '';
 
+  let storeState = $gameStore;
+  let connState = $connectionStore;
+
   $: storeState = $gameStore;
   $: connState = $connectionStore;
 

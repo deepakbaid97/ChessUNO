@@ -287,5 +287,59 @@ describe('BattleAnimationOverlay Component', () => {
     expect(defender.getAttribute('aria-label')).toContain('rook');
     expect(defender.dataset.team).toBe('light');
   });
+
+  it('renders Rook attacker against Knight defender with smash style', async () => {
+    const { getByTestId, getByText, getByRole } = render(BattleAnimationOverlay);
+
+    battleAnimationService.triggerBattle({
+      id: 'rook-vs-knight',
+      attacker: { piece: 'Rook', color: 'White' },
+      defender: { piece: 'Knight', color: 'Black' },
+      from: 'd1',
+      to: 'd5',
+      attackStyle: 'smash'
+    });
+    await tick();
+
+    expect(getByText('ROOK CLASH')).toBeTruthy();
+
+    const attacker = getByTestId('battle-attacker');
+    expect(attacker.getAttribute('aria-label')).toContain('rook');
+    expect(attacker.dataset.team).toBe('light');
+
+    const defender = getByTestId('battle-defender');
+    expect(defender.getAttribute('aria-label')).toContain('knight');
+    expect(defender.dataset.team).toBe('dark');
+
+    const heading = getByRole('heading', { level: 2 });
+    expect(heading.textContent).toContain('White Rook strikes Black Knight');
+  });
+
+  it('renders Knight attacker against Rook defender with leap style', async () => {
+    const { getByTestId, getByText, getByRole } = render(BattleAnimationOverlay);
+
+    battleAnimationService.triggerBattle({
+      id: 'knight-vs-rook',
+      attacker: { piece: 'Knight', color: 'Black' },
+      defender: { piece: 'Rook', color: 'White' },
+      from: 'c7',
+      to: 'a8',
+      attackStyle: 'leap'
+    });
+    await tick();
+
+    expect(getByText('ROOK CLASH')).toBeTruthy();
+
+    const attacker = getByTestId('battle-attacker');
+    expect(attacker.getAttribute('aria-label')).toContain('knight');
+    expect(attacker.dataset.team).toBe('dark');
+
+    const defender = getByTestId('battle-defender');
+    expect(defender.getAttribute('aria-label')).toContain('rook');
+    expect(defender.dataset.team).toBe('light');
+
+    const heading = getByRole('heading', { level: 2 });
+    expect(heading.textContent).toContain('Black Knight strikes White Rook');
+  });
 });
 
