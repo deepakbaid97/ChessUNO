@@ -17,3 +17,4 @@
   <path d="M112 128h32l-4 8h-24l-4-8Z" fill="var(--queen-gold,#ecc94b)" stroke="var(--queen-ink,#1a202c)" stroke-width="3.5" stroke-linejoin="round"/>
   <circle cx="128" cy="132" r="2" fill="var(--queen-gem,#e53e3e)"/>
 </svg>
+

@@ -56,3 +56,4 @@ describe('QueenCharacterPlayground', () => {
     expect(getByTestId('battle-animation-overlay')).toBeTruthy();
   });
 });
+

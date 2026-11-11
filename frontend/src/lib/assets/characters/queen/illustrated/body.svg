@@ -35,3 +35,4 @@
   <!-- Right Flank Tasset -->
   <polygon points="158,190 142,190 146,212 162,204" fill="var(--queen-metal-shadow,#cbd5e0)" stroke="var(--queen-ink,#1a202c)" stroke-width="4.5" stroke-linejoin="round"/>
 </svg>
+
