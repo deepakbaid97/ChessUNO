@@ -157,24 +157,289 @@ describe('battleAnimationService', () => {
       expect(event?.attackStyle).toBe('smash');
     });
 
-    it('returns null when an unsupported piece type is the attacker (e.g. Queen captures Knight or Rook)', () => {
-      // Queen on d1 captures Knight on d5
-      const prevFen = 'r1bqkbnr/ppp1pppp/8/3n4/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 3';
-      const currentFen = 'r1bqkbnr/ppp1pppp/8/3Q4/8/8/PPPPPPPP/RNB1KBNR b KQkq - 0 3';
-      const lastMove = { from: 'd1', to: 'd5' };
+    describe('Bishop capture combinations (spell attack style)', () => {
+      it('detects Bishop capturing Pawn', () => {
+        const prevFen = 'rnbqkbnr/ppp1pppp/8/3p4/8/2B5/PPPPPPPP/RN1QKBNR w KQkq - 0 3';
+        const currentFen = 'rnbqkbnr/ppp1pppp/8/3B4/8/8/PPPPPPPP/RN1QKBNR b KQkq - 0 3';
+        const lastMove = { from: 'c3', to: 'd5' };
 
-      const event = detectCaptureEvent(prevFen, currentFen, lastMove);
-      expect(event).toBeNull();
+        const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+        expect(event).not.toBeNull();
+        expect(event?.attacker).toEqual({ piece: 'Bishop', color: 'White' });
+        expect(event?.defender).toEqual({ piece: 'Pawn', color: 'Black' });
+        expect(event?.attackStyle).toBe('spell');
+      });
+
+      it('detects Bishop capturing Knight', () => {
+        const prevFen = 'r1bqkbnr/ppp1pppp/8/3n4/8/2B5/PPPPPPPP/RN1QKBNR w KQkq - 0 3';
+        const currentFen = 'r1bqkbnr/ppp1pppp/8/3B4/8/8/PPPPPPPP/RN1QKBNR b KQkq - 0 3';
+        const lastMove = { from: 'c3', to: 'd5' };
+
+        const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+        expect(event).not.toBeNull();
+        expect(event?.attacker).toEqual({ piece: 'Bishop', color: 'White' });
+        expect(event?.defender).toEqual({ piece: 'Knight', color: 'Black' });
+        expect(event?.attackStyle).toBe('spell');
+      });
+
+      it('detects Bishop capturing Rook', () => {
+        const prevFen = 'rnbqkbnr/1ppppppp/8/8/8/2B5/PPPPPPPP/RN1QKBNR w KQkq - 0 3';
+        const currentFen = 'Bnbqkbnr/1ppppppp/8/8/8/8/PPPPPPPP/RN1QKBNR b KQkq - 0 3';
+        const lastMove = { from: 'c3', to: 'a8' };
+
+        const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+        expect(event).not.toBeNull();
+        expect(event?.attacker).toEqual({ piece: 'Bishop', color: 'White' });
+        expect(event?.defender).toEqual({ piece: 'Rook', color: 'Black' });
+        expect(event?.attackStyle).toBe('spell');
+      });
+
+      it('detects Bishop capturing Bishop', () => {
+        const prevFen = 'rnbqk1nr/pppp1ppp/8/4b3/8/2B5/PPPPPPPP/RN1QKBNR w KQkq - 0 3';
+        const currentFen = 'rnbqk1nr/pppp1ppp/8/4B3/8/8/PPPPPPPP/RN1QKBNR b KQkq - 0 3';
+        const lastMove = { from: 'c3', to: 'e5' };
+
+        const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+        expect(event).not.toBeNull();
+        expect(event?.attacker).toEqual({ piece: 'Bishop', color: 'White' });
+        expect(event?.defender).toEqual({ piece: 'Bishop', color: 'Black' });
+        expect(event?.attackStyle).toBe('spell');
+      });
+
+      it('detects Bishop capturing Queen', () => {
+        const prevFen = 'rnb1kbnr/pppp1ppp/8/4q3/8/2B5/PPPPPPPP/RN1QKBNR w KQkq - 0 3';
+        const currentFen = 'rnb1kbnr/pppp1ppp/8/4B3/8/8/PPPPPPPP/RN1QKBNR b KQkq - 0 3';
+        const lastMove = { from: 'c3', to: 'e5' };
+
+        const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+        expect(event).not.toBeNull();
+        expect(event?.attacker).toEqual({ piece: 'Bishop', color: 'White' });
+        expect(event?.defender).toEqual({ piece: 'Queen', color: 'Black' });
+        expect(event?.attackStyle).toBe('spell');
+      });
     });
 
-    it('returns null when an unsupported piece type is the defender (e.g. Rook captures Bishop)', () => {
-      // White Rook on d1 captures Black Bishop on d7
-      const prevFen = 'rnbqk1nr/pppbpppp/8/8/8/8/PPPPPPPP/RN1QKBNR w KQkq - 0 4';
-      const currentFen = 'rnbqk1nr/pppRpppp/8/8/8/8/PPPPPPPP/1N1QKBNR b Kkq - 0 4';
-      const lastMove = { from: 'd1', to: 'd7' };
+    describe('Queen capture combinations (slash attack style)', () => {
+      it('detects Queen capturing Pawn', () => {
+        const prevFen = 'rnbqkbnr/ppp1pppp/8/3p4/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 2';
+        const currentFen = 'rnbqkbnr/ppp1pppp/8/3Q4/8/8/PPPPPPPP/RNB1KBNR b KQkq - 0 2';
+        const lastMove = { from: 'd1', to: 'd5' };
 
-      const event = detectCaptureEvent(prevFen, currentFen, lastMove);
-      expect(event).toBeNull();
+        const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+        expect(event).not.toBeNull();
+        expect(event?.attacker).toEqual({ piece: 'Queen', color: 'White' });
+        expect(event?.defender).toEqual({ piece: 'Pawn', color: 'Black' });
+        expect(event?.attackStyle).toBe('slash');
+      });
+
+      it('detects Queen capturing Knight', () => {
+        const prevFen = 'r1bqkbnr/ppp1pppp/8/3n4/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 3';
+        const currentFen = 'r1bqkbnr/ppp1pppp/8/3Q4/8/8/PPPPPPPP/RNB1KBNR b KQkq - 0 3';
+        const lastMove = { from: 'd1', to: 'd5' };
+
+        const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+        expect(event).not.toBeNull();
+        expect(event?.attacker).toEqual({ piece: 'Queen', color: 'White' });
+        expect(event?.defender).toEqual({ piece: 'Knight', color: 'Black' });
+        expect(event?.attackStyle).toBe('slash');
+      });
+
+      it('detects Queen capturing Bishop', () => {
+        const prevFen = 'rnbqk1nr/ppp1pppp/8/3b4/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 3';
+        const currentFen = 'rnbqk1nr/ppp1pppp/8/3Q4/8/8/PPPPPPPP/RNB1KBNR b KQkq - 0 3';
+        const lastMove = { from: 'd1', to: 'd5' };
+
+        const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+        expect(event).not.toBeNull();
+        expect(event?.attacker).toEqual({ piece: 'Queen', color: 'White' });
+        expect(event?.defender).toEqual({ piece: 'Bishop', color: 'Black' });
+        expect(event?.attackStyle).toBe('slash');
+      });
+
+      it('detects Queen capturing Rook', () => {
+        const prevFen = 'rnbqkbn1/ppp1pppp/8/3r4/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 3';
+        const currentFen = 'rnbqkbn1/ppp1pppp/8/3Q4/8/8/PPPPPPPP/RNB1KBNR b KQkq - 0 3';
+        const lastMove = { from: 'd1', to: 'd5' };
+
+        const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+        expect(event).not.toBeNull();
+        expect(event?.attacker).toEqual({ piece: 'Queen', color: 'White' });
+        expect(event?.defender).toEqual({ piece: 'Rook', color: 'Black' });
+        expect(event?.attackStyle).toBe('slash');
+      });
+
+      it('detects Queen capturing Queen', () => {
+        const prevFen = 'rnb1kbnr/pppp1ppp/8/4q3/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 3';
+        const currentFen = 'rnb1kbnr/pppp1ppp/8/4Q3/8/8/PPPPPPPP/RNB1KBNR b KQkq - 0 3';
+        const lastMove = { from: 'd1', to: 'e5' };
+
+        const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+        expect(event).not.toBeNull();
+        expect(event?.attacker).toEqual({ piece: 'Queen', color: 'White' });
+        expect(event?.defender).toEqual({ piece: 'Queen', color: 'Black' });
+        expect(event?.attackStyle).toBe('slash');
+      });
+    });
+
+    describe('King capture combinations (strike attack style)', () => {
+      it('detects King capturing Pawn', () => {
+        const prevFen = 'rnbqkbnr/pppp1ppp/8/8/4p3/4K3/PPPP1PPP/RNBQ1BNR w kq - 0 3';
+        const currentFen = 'rnbqkbnr/pppp1ppp/8/8/4K3/8/PPPP1PPP/RNBQ1BNR b kq - 0 3';
+        const lastMove = { from: 'e3', to: 'e4' };
+
+        const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+        expect(event).not.toBeNull();
+        expect(event?.attacker).toEqual({ piece: 'King', color: 'White' });
+        expect(event?.defender).toEqual({ piece: 'Pawn', color: 'Black' });
+        expect(event?.attackStyle).toBe('strike');
+      });
+
+      it('detects King capturing Knight', () => {
+        const prevFen = 'rnbqkb1r/pppppppp/8/8/4n3/4K3/PPPP1PPP/RNBQ1BNR w kq - 0 3';
+        const currentFen = 'rnbqkb1r/pppppppp/8/8/4K3/8/PPPP1PPP/RNBQ1BNR b kq - 0 3';
+        const lastMove = { from: 'e3', to: 'e4' };
+
+        const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+        expect(event).not.toBeNull();
+        expect(event?.attacker).toEqual({ piece: 'King', color: 'White' });
+        expect(event?.defender).toEqual({ piece: 'Knight', color: 'Black' });
+        expect(event?.attackStyle).toBe('strike');
+      });
+
+      it('detects King capturing Bishop', () => {
+        const prevFen = 'rnbqk1nr/pppppppp/8/8/4b3/4K3/PPPP1PPP/RNBQ1BNR w kq - 0 3';
+        const currentFen = 'rnbqk1nr/pppppppp/8/8/4K3/8/PPPP1PPP/RNBQ1BNR b kq - 0 3';
+        const lastMove = { from: 'e3', to: 'e4' };
+
+        const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+        expect(event).not.toBeNull();
+        expect(event?.attacker).toEqual({ piece: 'King', color: 'White' });
+        expect(event?.defender).toEqual({ piece: 'Bishop', color: 'Black' });
+        expect(event?.attackStyle).toBe('strike');
+      });
+
+      it('detects King capturing Rook', () => {
+        const prevFen = 'rnbqkbn1/pppppppp/8/8/4r3/4K3/PPPP1PPP/RNBQ1BNR w q - 0 3';
+        const currentFen = 'rnbqkbn1/pppppppp/8/8/4K3/8/PPPP1PPP/RNBQ1BNR b q - 0 3';
+        const lastMove = { from: 'e3', to: 'e4' };
+
+        const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+        expect(event).not.toBeNull();
+        expect(event?.attacker).toEqual({ piece: 'King', color: 'White' });
+        expect(event?.defender).toEqual({ piece: 'Rook', color: 'Black' });
+        expect(event?.attackStyle).toBe('strike');
+      });
+
+      it('detects King capturing Queen', () => {
+        const prevFen = 'rnb1kbnr/pppppppp/8/8/4q3/4K3/PPPP1PPP/RNBQ1BNR w kq - 0 3';
+        const currentFen = 'rnb1kbnr/pppppppp/8/8/4K3/8/PPPP1PPP/RNBQ1BNR b kq - 0 3';
+        const lastMove = { from: 'e3', to: 'e4' };
+
+        const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+        expect(event).not.toBeNull();
+        expect(event?.attacker).toEqual({ piece: 'King', color: 'White' });
+        expect(event?.defender).toEqual({ piece: 'Queen', color: 'Black' });
+        expect(event?.attackStyle).toBe('strike');
+      });
+    });
+
+    describe('Pawn, Knight, Rook capturing Bishop & Queen', () => {
+      it('detects Pawn capturing Bishop and Queen', () => {
+        // Pawn captures Bishop
+        const prevFen1 = 'rnbqk1nr/ppp1pppp/8/3b4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3';
+        const currentFen1 = 'rnbqk1nr/ppp1pppp/8/3P4/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 3';
+        const event1 = detectCaptureEvent(prevFen1, currentFen1, { from: 'e4', to: 'd5' });
+        expect(event1?.attacker.piece).toBe('Pawn');
+        expect(event1?.defender.piece).toBe('Bishop');
+        expect(event1?.attackStyle).toBe('charge');
+
+        // Pawn captures Queen
+        const prevFen2 = 'rnb1kbnr/ppp1pppp/8/3q4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3';
+        const currentFen2 = 'rnb1kbnr/ppp1pppp/8/3P4/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 3';
+        const event2 = detectCaptureEvent(prevFen2, currentFen2, { from: 'e4', to: 'd5' });
+        expect(event2?.attacker.piece).toBe('Pawn');
+        expect(event2?.defender.piece).toBe('Queen');
+        expect(event2?.attackStyle).toBe('charge');
+      });
+
+      it('detects Knight capturing Bishop and Queen', () => {
+        // Knight captures Bishop
+        const prevFen1 = 'rnbqk1nr/ppp1pppp/8/3b4/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 0 3';
+        const currentFen1 = 'rnbqk1nr/ppp1pppp/8/3N4/8/8/PPPPPPPP/RNBQKB1R b KQkq - 0 3';
+        const event1 = detectCaptureEvent(prevFen1, currentFen1, { from: 'f3', to: 'd5' });
+        expect(event1?.attacker.piece).toBe('Knight');
+        expect(event1?.defender.piece).toBe('Bishop');
+        expect(event1?.attackStyle).toBe('leap');
+
+        // Knight captures Queen
+        const prevFen2 = 'rnb1kbnr/ppp1pppp/8/3q4/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 0 3';
+        const currentFen2 = 'rnb1kbnr/ppp1pppp/8/3N4/8/8/PPPPPPPP/RNBQKB1R b KQkq - 0 3';
+        const event2 = detectCaptureEvent(prevFen2, currentFen2, { from: 'f3', to: 'd5' });
+        expect(event2?.attacker.piece).toBe('Knight');
+        expect(event2?.defender.piece).toBe('Queen');
+        expect(event2?.attackStyle).toBe('leap');
+      });
+
+      it('detects Rook capturing Bishop and Queen', () => {
+        // Rook captures Bishop
+        const prevFen1 = 'rnbqk1nr/ppp1pppp/8/3b4/8/8/PPP1PPPP/3RKB1R w KQkq - 0 3';
+        const currentFen1 = 'rnbqk1nr/ppp1pppp/8/3R4/8/8/PPP1PPPP/4KB1R b KQkq - 0 3';
+        const event1 = detectCaptureEvent(prevFen1, currentFen1, { from: 'd1', to: 'd5' });
+        expect(event1?.attacker.piece).toBe('Rook');
+        expect(event1?.defender.piece).toBe('Bishop');
+        expect(event1?.attackStyle).toBe('smash');
+
+        // Rook captures Queen
+        const prevFen2 = 'rnb1kbnr/ppp1pppp/8/3q4/8/8/PPP1PPPP/3RKB1R w KQkq - 0 3';
+        const currentFen2 = 'rnb1kbnr/ppp1pppp/8/3R4/8/8/PPP1PPPP/4KB1R b KQkq - 0 3';
+        const event2 = detectCaptureEvent(prevFen2, currentFen2, { from: 'd1', to: 'd5' });
+        expect(event2?.attacker.piece).toBe('Rook');
+        expect(event2?.defender.piece).toBe('Queen');
+        expect(event2?.attackStyle).toBe('smash');
+      });
+    });
+
+    describe('Defender King restrictions', () => {
+      it('never generates a battle animation when the King is the captured defender', () => {
+        // White Queen captures Black King on e8
+        const prevFen = '4k3/8/8/4Q3/8/8/8/4K3 w - - 0 1';
+        const currentFen = '4Q3/8/8/8/8/8/8/4K3 b - - 0 1';
+        const lastMove = { from: 'e5', to: 'e8' };
+
+        const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+        expect(event).toBeNull();
+      });
+
+      it('never triggers battle in service when defender piece is King', () => {
+        const invalidKingDefenderEvent = {
+          id: 'invalid-king-defend',
+          attacker: { piece: 'Queen' as const, color: 'White' as const },
+          defender: { piece: 'King' as const, color: 'Black' as const },
+          from: 'e5',
+          to: 'e8'
+        };
+
+        const result = battleAnimationService.triggerBattle(invalidKingDefenderEvent);
+        expect(result).toBe(false);
+        expect(get(battleAnimationStore).isActive).toBe(false);
+      });
+    });
+
+    it('returns null for non-capture piece movement (Bishop, Queen, King)', () => {
+      // White Bishop non-capture move
+      const prevFen1 = 'rnbqkbnr/pppppppp/8/8/8/2B5/PPPPPPPP/RN1QKBNR w KQkq - 0 1';
+      const currentFen1 = 'rnbqkbnr/pppppppp/8/8/5B2/8/PPPPPPPP/RN1QKBNR b KQkq - 1 1';
+      expect(detectCaptureEvent(prevFen1, currentFen1, { from: 'c3', to: 'f4' })).toBeNull();
+
+      // White Queen non-capture move
+      const prevFen2 = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+      const currentFen2 = 'rnbqkbnr/pppppppp/8/8/4Q3/8/PPPPPPPP/RNB1KBNR b KQkq - 1 1';
+      expect(detectCaptureEvent(prevFen2, currentFen2, { from: 'd1', to: 'e4' })).toBeNull();
+
+      // White King non-capture move
+      const prevFen3 = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+      const currentFen3 = 'rnbqkbnr/pppppppp/8/8/8/4K3/PPPPPPPP/RNBQ1BNR b kq - 1 1';
+      expect(detectCaptureEvent(prevFen3, currentFen3, { from: 'e1', to: 'e3' })).toBeNull();
     });
 
     it('returns null for non-capture rook movement', () => {

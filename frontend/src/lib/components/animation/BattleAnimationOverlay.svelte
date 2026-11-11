@@ -21,7 +21,8 @@
   $: isSupportedMatchup = !!(
     currentEvent &&
     isSupportedBattlePiece(currentEvent.attacker.piece) &&
-    isSupportedBattlePiece(currentEvent.defender.piece)
+    isSupportedBattlePiece(currentEvent.defender.piece) &&
+    currentEvent.defender.piece !== 'King'
   );
 
   $: if (active && currentEvent && !isSupportedMatchup) {

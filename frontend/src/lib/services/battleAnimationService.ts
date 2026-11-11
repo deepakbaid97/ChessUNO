@@ -1,13 +1,60 @@
 import { writable } from 'svelte/store';
 import { parseFenToMatrix, getSquareIndex } from '../utils/boardUtils';
-import type { BattleAnimationState, BattleEvent, BattlePhase } from '../types/battle';
+import type { BattleAnimationState, BattleEvent, BattlePhase, AttackStyle } from '../types/battle';
 import type { PieceType } from '../types/game';
 
-export const SUPPORTED_BATTLE_PIECES = new Set<PieceType>(['Pawn', 'Knight', 'Rook']);
-export const SUPPORTED_RENDER_PIECES = new Set<PieceType>(['Pawn', 'Knight', 'Rook', 'Bishop', 'Queen', 'King']);
+export const SUPPORTED_ATTACK_PIECES = new Set<PieceType>([
+  'Pawn',
+  'Knight',
+  'Rook',
+  'Bishop',
+  'Queen',
+  'King'
+]);
+
+export const SUPPORTED_DEFEND_PIECES = new Set<PieceType>([
+  'Pawn',
+  'Knight',
+  'Rook',
+  'Bishop',
+  'Queen'
+]);
+
+// Maintained for backwards compatibility
+export const SUPPORTED_BATTLE_PIECES = SUPPORTED_ATTACK_PIECES;
+export const SUPPORTED_RENDER_PIECES = new Set<PieceType>([
+  'Pawn',
+  'Knight',
+  'Rook',
+  'Bishop',
+  'Queen',
+  'King'
+]);
 
 export function isSupportedBattlePiece(piece: string): piece is PieceType {
   return SUPPORTED_RENDER_PIECES.has(piece as PieceType);
+}
+
+export function isSupportedDefendingPiece(piece: string): piece is PieceType {
+  return SUPPORTED_DEFEND_PIECES.has(piece as PieceType);
+}
+
+export function getAttackStyleForPiece(piece: PieceType): AttackStyle {
+  switch (piece) {
+    case 'Knight':
+      return 'leap';
+    case 'Rook':
+      return 'smash';
+    case 'Bishop':
+      return 'spell';
+    case 'Queen':
+      return 'slash';
+    case 'King':
+      return 'strike';
+    case 'Pawn':
+    default:
+      return 'charge';
+  }
 }
 
 export function detectCaptureEvent(
@@ -29,7 +76,7 @@ export function detectCaptureEvent(
   const { row: toRow, col: toCol } = getSquareIndex(lastMove.to);
 
   const movedPiece = prevBoard[fromRow]?.[fromCol];
-  if (!movedPiece || !SUPPORTED_BATTLE_PIECES.has(movedPiece.type)) {
+  if (!movedPiece || !SUPPORTED_ATTACK_PIECES.has(movedPiece.type)) {
     return null;
   }
 
@@ -46,14 +93,14 @@ export function detectCaptureEvent(
 
   const directCapturedPiece = prevBoard[toRow]?.[toCol];
 
-  // Standard Direct Capture between supported pieces
+  // Standard Direct Capture between supported pieces:
+  // Opponent piece captured, must be in SUPPORTED_DEFEND_PIECES (King can never be captured)
   if (
     directCapturedPiece &&
     directCapturedPiece.color !== movedPiece.color &&
-    SUPPORTED_BATTLE_PIECES.has(directCapturedPiece.type)
+    SUPPORTED_DEFEND_PIECES.has(directCapturedPiece.type)
   ) {
-    const attackStyle =
-      movedPiece.type === 'Knight' ? 'leap' : movedPiece.type === 'Rook' ? 'smash' : 'charge';
+    const attackStyle = getAttackStyleForPiece(movedPiece.type);
     return {
       id: `battle-capture-${lastMove.from}-${lastMove.to}-${Date.now()}`,
       attacker: { piece: movedPiece.type, color: movedPiece.color },
@@ -116,6 +163,17 @@ class BattleAnimationService {
   private isCurrentlyActive = false;
 
   triggerBattle(event: BattleEvent, eventKey?: string): boolean {
+    if (!event || !event.attacker || !event.defender) {
+      return false;
+    }
+    // King can NEVER appear as the captured defender
+    if (event.defender.piece === 'King') {
+      return false;
+    }
+    if (!SUPPORTED_ATTACK_PIECES.has(event.attacker.piece) || !SUPPORTED_DEFEND_PIECES.has(event.defender.piece)) {
+      return false;
+    }
+
     const key = eventKey || `${event.from}-${event.to}-${event.id}`;
     if (this.processedKeys.has(key)) {
       return false;

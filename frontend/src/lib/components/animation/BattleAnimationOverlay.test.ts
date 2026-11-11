@@ -471,15 +471,33 @@ describe('BattleAnimationOverlay Component', () => {
     expect(heading.textContent).toContain('White King strikes Black Pawn');
   });
 
-  it('renders King attacker against King defender', async () => {
-    const { getByTestId, getByText } = render(BattleAnimationOverlay);
+  it('safely skips cinematic and rejects when King is the defender', async () => {
+    const { queryByTestId } = render(BattleAnimationOverlay);
+
+    const result = battleAnimationService.triggerBattle({
+      id: 'queen-vs-king',
+      attacker: { piece: 'Queen', color: 'White' },
+      defender: { piece: 'King', color: 'Black' },
+      from: 'd1',
+      to: 'e8',
+      attackStyle: 'slash'
+    });
+    await tick();
+
+    expect(result).toBe(false);
+    expect(queryByTestId('battle-animation-overlay')).toBeNull();
+    expect(queryByTestId('battle-defender')).toBeNull();
+  });
+
+  it('renders King attacker against Queen defender with strike style', async () => {
+    const { getByTestId, getByText, getByRole } = render(BattleAnimationOverlay);
 
     battleAnimationService.triggerBattle({
-      id: 'king-vs-king',
-      attacker: { piece: 'King', color: 'Black' },
-      defender: { piece: 'King', color: 'White' },
-      from: 'e8',
-      to: 'e7',
+      id: 'king-vs-queen',
+      attacker: { piece: 'King', color: 'White' },
+      defender: { piece: 'Queen', color: 'Black' },
+      from: 'e3',
+      to: 'e4',
       attackStyle: 'strike'
     });
     await tick();
@@ -488,11 +506,14 @@ describe('BattleAnimationOverlay Component', () => {
 
     const attacker = getByTestId('battle-attacker');
     expect(attacker.getAttribute('aria-label')).toContain('king');
-    expect(attacker.dataset.team).toBe('dark');
+    expect(attacker.dataset.team).toBe('light');
 
     const defender = getByTestId('battle-defender');
-    expect(defender.getAttribute('aria-label')).toContain('king');
-    expect(defender.dataset.team).toBe('light');
+    expect(defender.getAttribute('aria-label')).toContain('queen');
+    expect(defender.dataset.team).toBe('dark');
+
+    const heading = getByRole('heading', { level: 2 });
+    expect(heading.textContent).toContain('White King strikes Black Queen');
   });
 });
 
