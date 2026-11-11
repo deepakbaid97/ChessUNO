@@ -36,6 +36,8 @@ export interface GameStoreState {
   availableChoices: string[];
   revision: number;
   drawEventCounter: number;
+  lastDrawnCard: CardModel | null;
+  lastDrawerColor: PlayerColor | null;
   moveEventCounter: number;
   lastAcceptedMove: MoveAcceptedData | null;
 
@@ -75,6 +77,8 @@ export function createGameStore() {
     availableChoices: [],
     revision: 0,
     drawEventCounter: 0,
+    lastDrawnCard: null,
+    lastDrawerColor: null,
     moveEventCounter: 0,
     lastAcceptedMove: null,
     selectedSquare: null,
@@ -197,12 +201,16 @@ export function createGameStore() {
     },
 
     onCardDrawn: (data: CardDrawnData) => {
+      const playerName = data.player || (data as any).playerColor || 'White';
+      const cardName = data.cardName || data.card?.name || '';
       update(s => ({
         ...s,
         remainingDeckCount: data.remainingDeckCount,
-        drawEventCounter: s.drawEventCounter + 1
+        drawEventCounter: s.drawEventCounter + 1,
+        lastDrawnCard: data.card ?? s.lastDrawnCard,
+        lastDrawerColor: (playerName as PlayerColor) || s.lastDrawerColor
       }));
-      log(`${data.player} drew card: ${data.cardName}`);
+      log(`${playerName} drew card: ${cardName}`);
     },
 
     onEffectChosen: (data: { player: string; choice: string }) => {

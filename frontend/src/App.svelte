@@ -284,7 +284,13 @@
   }
 
   async function handleDrawCard() {
-    await gameActions.drawCard(signalRService);
+    if (isSubmitting) return;
+    isSubmitting = true;
+    try {
+      await gameActions.drawCard(signalRService);
+    } finally {
+      isSubmitting = false;
+    }
   }
 
   async function handleSubmitChoice(event: CustomEvent<{ choice: string }>) {

@@ -88,6 +88,7 @@ export interface CardDrawnData {
   player: string;
   cardName: string;
   remainingDeckCount: number;
+  card?: CardModel;
 }
 
 export interface PlayerConnectedData {

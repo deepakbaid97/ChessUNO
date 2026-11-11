@@ -40,6 +40,15 @@ describe('cardAnimationService', () => {
     value: null
   };
 
+  const zeroCard: CardModel = {
+    id: 'card-0',
+    name: '0 Card',
+    category: 'NUMBER',
+    description: 'Pass turn without making any chess moves.',
+    effectKey: 'PASS_TURN_EFFECT',
+    value: 0
+  };
+
   beforeEach(() => {
     vi.useFakeTimers();
     cardAnimationService.reset();
@@ -65,6 +74,45 @@ describe('cardAnimationService', () => {
     const wConfig = getCardEffectConfig(wildCard);
     expect(wConfig.burstType).toBe('wild');
     expect(wConfig.accentColor).toBe('#c084fc');
+
+    const zeroConfig = getCardEffectConfig(zeroCard);
+    expect(zeroConfig.burstType).toBe('number');
+    expect(zeroConfig.accentColor).toBe('#94a3b8');
+  });
+
+  it('triggers reveal reliably for Card 0 (value 0, pass turn)', () => {
+    const triggered = cardAnimationService.triggerCardReveal(zeroCard, {
+      drawerColor: 'White',
+      isLocalPlayer: true,
+      revision: 3,
+      drawKey: 'draw-1-card-0-0-White-3'
+    });
+
+    expect(triggered).toBe(true);
+
+    const state = get(cardAnimationService);
+    expect(state.isActive).toBe(true);
+    expect(state.phase).toBe('anticipation');
+    expect(state.card?.id).toBe('card-0');
+    expect(state.card?.value).toBe(0);
+    expect(state.drawerColor).toBe('White');
+  });
+
+  it('triggers reveal reliably for Draw Two card without skipping', () => {
+    const triggered = cardAnimationService.triggerCardReveal(revivalCard, {
+      drawerColor: 'Black',
+      isLocalPlayer: false,
+      revision: 4,
+      drawKey: 'draw-2-card-draw-two-1-x-Black-4'
+    });
+
+    expect(triggered).toBe(true);
+
+    const state = get(cardAnimationService);
+    expect(state.isActive).toBe(true);
+    expect(state.card?.id).toBe('card-draw-two-1');
+    expect(state.drawerColor).toBe('Black');
+    expect(state.isLocalPlayer).toBe(false);
   });
 
   it('triggers reveal on valid card and transitions into anticipation phase', () => {
