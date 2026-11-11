@@ -55,6 +55,8 @@
       <a href="/bishop-playground" class="nav-sublink">Bishop Lab</a>
       <span class="nav-divider">|</span>
       <span class="current-lab">Queen Lab</span>
+      <span class="nav-divider">|</span>
+      <a href="/king-playground" class="nav-sublink">King Lab</a>
     </div>
     <span>Character Lab / Queen Prototype</span>
   </header>

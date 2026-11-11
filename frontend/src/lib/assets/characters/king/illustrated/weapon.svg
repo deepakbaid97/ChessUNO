@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- King Sovereign Sceptre / Royal Broadsword -->
+  <!-- Pommel (Heavy Faceted Crown Pommel) -->
+  <polygon points="196,224 204,218 212,224 204,232" fill="var(--king-gold,#ecc94b)" stroke="var(--king-ink,#1a202c)" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="204" cy="225" r="2" fill="var(--king-gem,#e53e3e)"/>
+
+  <!-- Grip / Handle (Gold wire spiral on leather) -->
+  <line x1="202" y1="218" x2="194" y2="182" stroke="var(--king-ink,#1a202c)" stroke-width="9" stroke-linecap="round"/>
+  <line x1="202" y1="210" x2="198" y2="206" stroke="var(--king-gold,#ecc94b)" stroke-width="2.5"/>
+  <line x1="199" y1="198" x2="195" y2="194" stroke="var(--king-gold,#ecc94b)" stroke-width="2.5"/>
+
+  <!-- Heavy Ornate Crossguard (Sculpted Golden Eagle/Wing Quillons) -->
+  <path d="M172 182c16 4 32 0 46-12l4 8c-18 14-36 18-52 10l2-6Z" fill="var(--king-gold,#ecc94b)" stroke="var(--king-ink,#1a202c)" stroke-width="4.5" stroke-linejoin="round"/>
+  <circle cx="194" cy="180" r="3.5" fill="var(--king-gem,#e53e3e)" stroke="var(--king-ink,#1a202c)" stroke-width="2"/>
+
+  <!-- Sceptre Shaft / Heavy Broadsword Blade -->
+  <polygon points="192,176 195,178 220,70 212,68 188,174" fill="var(--king-metal,#edf2f7)" stroke="var(--king-ink,#1a202c)" stroke-width="5.5" stroke-linejoin="round"/>
+  <!-- Gold Center Inlay Fuller -->
+  <polygon points="192,176 195,178 220,70 216,70 190,176" fill="var(--king-gold,#ecc94b)"/>
+
+  <!-- Sceptre Cross Pattée Head (Imperial Cross Finial) -->
+  <circle cx="216" cy="64" r="7" fill="var(--king-gold,#ecc94b)" stroke="var(--king-ink,#1a202c)" stroke-width="3"/>
+  <circle cx="216" cy="64" r="3.5" fill="var(--king-gem,#e53e3e)"/>
+  <!-- Cross Pattée Arms radiating from orb -->
+  <path d="M213 57h6v-4l3 2 2-4-5-1v-4h-6v4l-5 1 2 4 3-2v4Z" fill="var(--king-gold,#ecc94b)" stroke="var(--king-ink,#1a202c)" stroke-width="2.5" stroke-linejoin="round"/>
+  <polygon points="216,40 220,44 216,48 212,44" fill="#ffffff"/>
+
+  <!-- Energy Aura Gleam -->
+  <circle cx="216" cy="64" r="14" fill="var(--king-energy,#f6e05e)" opacity=".25"/>
+</svg>

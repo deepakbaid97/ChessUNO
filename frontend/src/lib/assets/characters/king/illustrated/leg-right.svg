@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- King Right Leg & Heavy Armored Royal Sabaton -->
+  <!-- Knee Poleyn (Gold Lion Face with Shadow) -->
+  <circle cx="150" cy="216" r="9" fill="var(--king-metal-shadow,#cbd5e0)" stroke="var(--king-ink,#1a202c)" stroke-width="4.5"/>
+  <circle cx="150" cy="216" r="5" fill="var(--king-gold,#ecc94b)"/>
+
+  <!-- Ornate Heavy Greave (Shin Guard with Shadow) -->
+  <path d="M146 222l10 20-20 2-4-22h14Z" fill="var(--king-metal-shadow,#cbd5e0)" stroke="var(--king-ink,#1a202c)" stroke-width="4.5" stroke-linejoin="round"/>
+  <!-- Heavy Royal Sabaton Boot -->
+  <path d="M156 242l18 4c4 2 2 6-2 6h-34l2-10 16 0Z" fill="var(--king-metal-shadow,#cbd5e0)" stroke="var(--king-ink,#1a202c)" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Gold Sabaton Toe Flange -->
+  <path d="M174 246l-14-4-2 10 16-6Z" fill="var(--king-gold,#ecc94b)"/>
+</svg>

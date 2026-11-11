@@ -224,8 +224,8 @@ describe('BattleAnimationOverlay Component', () => {
     const { queryByTestId } = render(BattleAnimationOverlay);
 
     battleAnimationService.triggerBattle({
-      id: 'king-vs-knight',
-      attacker: { piece: 'King' as any, color: 'White' },
+      id: 'archer-vs-knight',
+      attacker: { piece: 'Archer' as any, color: 'White' },
       defender: { piece: 'Knight', color: 'Black' },
       from: 'e1',
       to: 'd5'
@@ -441,6 +441,57 @@ describe('BattleAnimationOverlay Component', () => {
 
     const defender = getByTestId('battle-defender');
     expect(defender.getAttribute('aria-label')).toContain('queen');
+    expect(defender.dataset.team).toBe('light');
+  });
+
+  it('renders King attacker against Pawn defender with strike style and KING DUEL tag', async () => {
+    const { getByTestId, getByText, getByRole } = render(BattleAnimationOverlay);
+
+    battleAnimationService.triggerBattle({
+      id: 'king-vs-pawn',
+      attacker: { piece: 'King', color: 'White' },
+      defender: { piece: 'Pawn', color: 'Black' },
+      from: 'e1',
+      to: 'e2',
+      attackStyle: 'strike'
+    });
+    await tick();
+
+    expect(getByText('KING DUEL')).toBeTruthy();
+
+    const attacker = getByTestId('battle-attacker');
+    expect(attacker.getAttribute('aria-label')).toContain('king');
+    expect(attacker.dataset.team).toBe('light');
+
+    const defender = getByTestId('battle-defender');
+    expect(defender.getAttribute('aria-label')).toContain('pawn');
+    expect(defender.dataset.team).toBe('dark');
+
+    const heading = getByRole('heading', { level: 2 });
+    expect(heading.textContent).toContain('White King strikes Black Pawn');
+  });
+
+  it('renders King attacker against King defender', async () => {
+    const { getByTestId, getByText } = render(BattleAnimationOverlay);
+
+    battleAnimationService.triggerBattle({
+      id: 'king-vs-king',
+      attacker: { piece: 'King', color: 'Black' },
+      defender: { piece: 'King', color: 'White' },
+      from: 'e8',
+      to: 'e7',
+      attackStyle: 'strike'
+    });
+    await tick();
+
+    expect(getByText('KING DUEL')).toBeTruthy();
+
+    const attacker = getByTestId('battle-attacker');
+    expect(attacker.getAttribute('aria-label')).toContain('king');
+    expect(attacker.dataset.team).toBe('dark');
+
+    const defender = getByTestId('battle-defender');
+    expect(defender.getAttribute('aria-label')).toContain('king');
     expect(defender.dataset.team).toBe('light');
   });
 });

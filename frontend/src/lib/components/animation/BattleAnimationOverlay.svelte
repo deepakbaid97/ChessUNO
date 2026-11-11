@@ -5,6 +5,7 @@
   import RookCharacter from '../characters/RookCharacter.svelte';
   import BishopCharacter from '../characters/BishopCharacter.svelte';
   import QueenCharacter from '../characters/QueenCharacter.svelte';
+  import KingCharacter from '../characters/KingCharacter.svelte';
   import {
     battleAnimationStore,
     battleAnimationService,
@@ -39,7 +40,9 @@
           ? 'spell'
           : currentEvent?.attacker.piece === 'Queen'
             ? 'slash'
-            : 'charge')) as AttackStyle;
+            : currentEvent?.attacker.piece === 'King'
+              ? 'strike'
+              : 'charge')) as AttackStyle;
 
   type CharacterAnimation = 'idle' | 'walk' | 'attack' | 'death';
   type CharacterExpression = 'neutral' | 'happy' | 'scared' | 'angry';
@@ -77,7 +80,9 @@
       ? ['#4fd1c5', '#805ad5', '#e6fffa', '#ecc94b', '#f687b3']
       : attackStyle === 'slash'
         ? ['#63b3ed', '#ffffff', '#e53e3e', '#ecc94b', '#bee3f8']
-        : ['#f3ce73', '#ffffff', '#f43f5e', '#fbbf24', '#ffedd5'];
+        : attackStyle === 'strike'
+          ? ['#f6e05e', '#ecc94b', '#ffffff', '#e53e3e', '#2b6cb0']
+          : ['#f3ce73', '#ffffff', '#f43f5e', '#fbbf24', '#ffedd5'];
     return Array.from({ length: 18 }, (_, i) => ({
       id: i,
       dx: (Math.random() - 0.45) * 160,
@@ -193,7 +198,9 @@
     <div class="battle-arena" class:shake={shakeActive} role="document" on:click|stopPropagation>
       <header class="battle-header">
         <span class="battle-tag">
-          {#if currentEvent.attacker.piece === 'Queen' || currentEvent.defender.piece === 'Queen'}
+          {#if currentEvent.attacker.piece === 'King' || currentEvent.defender.piece === 'King'}
+            KING DUEL
+          {:else if currentEvent.attacker.piece === 'Queen' || currentEvent.defender.piece === 'Queen'}
             QUEEN CLASH
           {:else if currentEvent.attacker.piece === 'Bishop' || currentEvent.defender.piece === 'Bishop'}
             BISHOP CLASH
@@ -251,6 +258,14 @@
               size={190}
               testId="battle-attacker"
             />
+          {:else if currentEvent.attacker.piece === 'King'}
+            <KingCharacter
+              team={attackerTeam}
+              animation={attackerAnimation}
+              expression={attackerExpression}
+              size={195}
+              testId="battle-attacker"
+            />
           {:else if currentEvent.attacker.piece === 'Pawn'}
             <PawnCharacter
               team={attackerTeam}
@@ -270,6 +285,11 @@
         <!-- Energy Slash Trail (Slash Attack Style) -->
         {#if attackStyle === 'slash' && (stagePhase === 'charge' || stagePhase === 'clash')}
           <div class="slash-trail" aria-hidden="true"></div>
+        {/if}
+
+        <!-- Royal Counterstrike Burst (Strike Attack Style) -->
+        {#if attackStyle === 'strike' && stagePhase === 'clash'}
+          <div class="royal-burst" aria-hidden="true"></div>
         {/if}
 
         <!-- Clash Center FX (Sparks, Flash, & Shockwave) -->
@@ -318,6 +338,14 @@
               animation={defenderAnimation}
               expression={defenderExpression}
               size={190}
+              testId="battle-defender"
+            />
+          {:else if currentEvent.defender.piece === 'King'}
+            <KingCharacter
+              team={defenderTeam}
+              animation={defenderAnimation}
+              expression={defenderExpression}
+              size={195}
               testId="battle-defender"
             />
           {:else if currentEvent.defender.piece === 'Pawn'}
@@ -553,6 +581,39 @@
     0% { transform: rotate(-45deg) scale(0.2); opacity: 0; }
     40% { transform: rotate(15deg) scale(1.25); opacity: 1; }
     100% { transform: rotate(45deg) scale(1.5) translateX(18px); opacity: 0; }
+  }
+
+  /* Powerful King Royal Counterstrike style */
+  .style-strike .slot-attacker.phase-charge {
+    transform: translateX(28px) translateY(4px) scale(0.97);
+    filter: drop-shadow(0 0 16px rgba(236, 201, 75, 0.7));
+  }
+
+  .style-strike .slot-attacker.phase-clash {
+    transform: translateX(84px) translateY(-2px) scale(1.12);
+    filter: drop-shadow(0 0 28px rgba(246, 224, 94, 0.95));
+  }
+
+  /* Royal Crest Counterstrike Shockwave */
+  .royal-burst {
+    position: absolute;
+    left: 48%;
+    top: 44%;
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    border: 4px solid #f6e05e;
+    background: radial-gradient(circle, rgba(246, 224, 94, 0.35) 0%, transparent 70%);
+    box-shadow: 0 0 24px #ecc94b;
+    transform: translate(-50%, -50%) scale(0.3);
+    animation: royalBurstExpand 0.32s ease-out forwards;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  @keyframes royalBurstExpand {
+    0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
   }
 
   /* Defender (Right) flipped facing left */

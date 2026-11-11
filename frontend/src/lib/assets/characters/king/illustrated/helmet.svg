@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- King Imperial Cross Crown -->
+  <!-- Inner Velvet Royal Cap -->
+  <path d="M92 56c0-16 16-26 36-26s36 10 36 26l-2 18H94l-2-18Z" fill="var(--king-cape,#2b6cb0)" stroke="var(--king-ink,#1a202c)" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M128 30c20 0 36 10 36 26l-2 18h-34V30Z" fill="var(--king-cape-shadow,#1a365d)" opacity=".5"/>
+
+  <!-- Golden Imperial Crown Arches -->
+  <!-- Left Arch -->
+  <path d="M84 72c2-28 20-44 44-46v8c-18 2-34 14-36 38H84Z" fill="var(--king-gold,#ecc94b)" stroke="var(--king-ink,#1a202c)" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Right Arch (with shadow) -->
+  <path d="M172 72c-2-28-20-44-44-46v8c18 2 34 14 36 38h8Z" fill="var(--king-gold-shadow,#b7791f)" stroke="var(--king-ink,#1a202c)" stroke-width="5" stroke-linejoin="round"/>
+
+  <!-- Iconic Chess Cross Pattée at Crown Peak -->
+  <!-- Cross Base Orb -->
+  <circle cx="128" cy="24" r="5" fill="var(--king-gold,#ecc94b)" stroke="var(--king-ink,#1a202c)" stroke-width="3"/>
+  <!-- Cross Arms -->
+  <path d="M124 18h8v-3l3 2 1-4-4-1v-4h-8v4l-4 1 1 4 3-2v3Z" fill="var(--king-gold,#ecc94b)" stroke="var(--king-ink,#1a202c)" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="128" cy="11" r="2" fill="var(--king-gem,#e53e3e)"/>
+
+  <!-- Golden Crown Battlement Spikes -->
+  <polygon points="90,72 96,52 108,62 102,72" fill="var(--king-gold,#ecc94b)" stroke="var(--king-ink,#1a202c)" stroke-width="4"/>
+  <polygon points="166,72 160,52 148,62 154,72" fill="var(--king-gold-shadow,#b7791f)" stroke="var(--king-ink,#1a202c)" stroke-width="4"/>
+  <polygon points="120,72 128,48 136,72" fill="var(--king-gold,#ecc94b)" stroke="var(--king-ink,#1a202c)" stroke-width="4.5"/>
+
+  <!-- Ermine Fur Trim at Crown Base (Fluffy white with black ermine spots) -->
+  <path d="M78 68c16-4 34-6 50-6s34 2 50 6l-3 18c-16-3-32-4-47-4s-31 1-47 4l-3-18Z" fill="var(--king-ermine,#edf2f7)" stroke="var(--king-ink,#1a202c)" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Ermine Spots / Tails -->
+  <polygon points="96,72 98,78 94,78" fill="var(--king-ink,#1a202c)"/>
+  <polygon points="128,70 130,76 126,76" fill="var(--king-ink,#1a202c)"/>
+  <polygon points="160,72 162,78 158,78" fill="var(--king-ink,#1a202c)"/>
+
+  <!-- Crown Base Gold Band -->
+  <path d="M80 82c16-3 32-4 48-4s32 1 48 4l-1 6c-16-3-32-4-47-4s-31 1-47 4l-1-6Z" fill="var(--king-gold,#ecc94b)" stroke="var(--king-ink,#1a202c)" stroke-width="3"/>
+  <!-- Embedded Sapphires on Band -->
+  <circle cx="106" cy="83" r="2.5" fill="var(--king-gem,#e53e3e)"/>
+  <circle cx="128" cy="82" r="3" fill="var(--king-gem,#e53e3e)"/>
+  <circle cx="150" cy="83" r="2.5" fill="var(--king-gem,#e53e3e)"/>
+</svg>

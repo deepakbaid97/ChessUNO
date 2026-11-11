@@ -120,6 +120,7 @@
     const square = event.detail.square;
 
     if (activeAbilityMode === 'swap') {
+      if (!storeState?.boardFen || !storeState?.assignedColor) return;
       const eligible = getEligibleSwapSquares(storeState.boardFen, storeState.assignedColor);
       if (!eligible.includes(square)) {
         const matrix = parseFenToMatrix(storeState.boardFen);
@@ -157,6 +158,7 @@
         dispatch('showToast', { text: 'Please select a captured piece from your reserves first.', type: 'error' });
         return;
       }
+      if (!storeState?.boardFen || !storeState?.assignedColor) return;
       const eligible = getEligibleRevivalSquares(storeState.boardFen, storeState.assignedColor, selectedRevivalPiece);
       if (!eligible.includes(square)) {
         dispatch('showToast', { text: 'Revival square must be an empty square in your half of the board.', type: 'error' });
@@ -224,7 +226,7 @@
 
   $: if (storeState?.lastMove && (storeState.lastMove.from !== prevLastMove?.from || storeState.lastMove.to !== prevLastMove?.to)) {
     prevLastMove = storeState.lastMove;
-    const actor = storeState.activePlayer === storeState.assignedColor ? (storeState.opponentName || 'Opponent') : 'You';
+    const actor = storeState?.activePlayer === storeState?.assignedColor ? (storeState?.opponentName || 'Opponent') : 'You';
     floatingMoveToast = {
       actor,
       from: storeState.lastMove.from.toUpperCase(),
@@ -344,19 +346,19 @@
     <!-- Opponent Info -->
     <div class="area-opponent">
       <PlayerInfo
-        name={storeState.opponentName}
+        name={storeState?.opponentName || 'Opponent'}
         color={opponentColor}
-        isCurrentTurn={storeState.activePlayer === opponentColor && !isGameOver}
-        isConnected={connState.signalR === 'Connected'}
+        isCurrentTurn={storeState?.activePlayer === opponentColor && !isGameOver}
+        isConnected={connState?.signalR === 'Connected'}
         reserves={opponentReserves}
         isOpponent={true}
-        isSpeaking={$voiceStore.isOpponentSpeaking}
+        isSpeaking={$voiceStore?.isOpponentSpeaking}
       />
     </div>
 
     <!-- Chessboard -->
     <div class="area-board">
-      {#if showMatchStartBanner && storeState.revision <= 1}
+      {#if showMatchStartBanner && (storeState?.revision ?? 0) <= 1}
         <div class="match-start-pill" aria-live="polite">
           <span class="start-dot"></span>
           <span>MATCH START • WHITE TO MOVE</span>
@@ -369,15 +371,15 @@
       {/if}
 
       <Chessboard
-        fen={storeState.boardFen}
-        perspective={storeState.assignedColor}
-        activePlayer={storeState.activePlayer}
+        fen={storeState?.boardFen || '8/8/8/8/8/8/8/8'}
+        perspective={storeState?.assignedColor || 'White'}
+        activePlayer={storeState?.activePlayer || 'White'}
         {isMyTurn}
         selectedSquare={displayedSelectedSquare}
         validDestinations={displayedValidDestinations}
-        lastMove={storeState.lastMove}
-        inCheck={storeState.inCheck}
-        isCheckmate={storeState.gameStatus === 'Checkmate'}
+        lastMove={storeState?.lastMove || null}
+        inCheck={!!storeState?.inCheck}
+        isCheckmate={storeState?.gameStatus === 'Checkmate'}
         {isSubmitting}
         mode={activeAbilityMode === 'none' ? 'normal' : activeAbilityMode}
         on:squareSelected={handleSquareSelected}
@@ -388,16 +390,16 @@
     <!-- Player Info + Resign -->
     <div class="area-player">
       <PlayerInfo
-        name={storeState.playerName}
-        color={storeState.assignedColor}
+        name={storeState?.playerName || 'Player'}
+        color={storeState?.assignedColor || 'White'}
         isCurrentTurn={isMyTurn}
-        isConnected={connState.signalR === 'Connected'}
+        isConnected={connState?.signalR === 'Connected'}
         reserves={myReserves}
         isOpponent={false}
       >
         <div slot="actions" class="player-actions-cluster">
           <PushToTalkControl
-            opponentName={storeState.opponentName || 'Opponent'}
+            opponentName={storeState?.opponentName || 'Opponent'}
             disabled={isGameOver}
             on:enableVoice={() => dispatch('enableVoice')}
             on:leaveVoice={() => dispatch('leaveVoice')}
@@ -422,15 +424,15 @@
     <aside class="area-command">
       <TurnCoachBanner
         {coachGuide}
-        inCheck={storeState.inCheck}
+        inCheck={!!storeState?.inCheck}
         {isGameOver}
-        activeCardName={storeState.activeCard?.name}
+        activeCardName={storeState?.activeCard?.name}
       />
 
       {#if activeAbilityMode !== 'none'}
         <CardTargetSelector
           mode={activeAbilityMode}
-          playerColor={storeState.assignedColor}
+          playerColor={storeState?.assignedColor || 'White'}
           reserves={myReserves}
           selectedPieceType={selectedRevivalPiece}
           {firstSwapSquare}
@@ -441,14 +443,14 @@
       {/if}
 
       <CardHand
-        activeCard={storeState.activeCard}
-        turnPhase={storeState.turnPhase}
+        activeCard={storeState?.activeCard || null}
+        turnPhase={storeState?.turnPhase || 'DrawPhase'}
         {isMyTurn}
-        remainingMoves={storeState.remainingMoves}
-        remainingRevivals={storeState.remainingRevivals}
-        canSwap={storeState.canSwap}
-        availableChoices={storeState.availableChoices || []}
-        remainingDeckCount={storeState.remainingDeckCount}
+        remainingMoves={storeState?.remainingMoves || 0}
+        remainingRevivals={storeState?.remainingRevivals || 0}
+        canSwap={!!storeState?.canSwap}
+        availableChoices={storeState?.availableChoices || []}
+        remainingDeckCount={storeState?.remainingDeckCount || 0}
         on:drawCard={() => dispatch('drawCard')}
         on:endTurn={() => dispatch('endTurn')}
         on:submitChoice={(e) => dispatch('submitChoice', e.detail)}
@@ -456,17 +458,20 @@
         on:activateRevival={handleActivateRevival}
       />
 
-      <GameHistory logs={storeState.logs} />
+      <GameHistory logs={storeState?.logs || []} />
     </aside>
   </div>
 
   <!-- Game Completion Overlay -->
   <GameOverModal
     isOpen={isGameOver}
-    winner={storeState.winner}
-    playerColor={storeState.assignedColor}
-    gameStatus={storeState.gameStatus}
-    totalMoves={storeState.revision}
+    winner={storeState?.winner || null}
+    playerColor={storeState?.assignedColor || 'White'}
+    gameStatus={storeState?.gameStatus || ''}
+    totalMoves={storeState?.revision || 0}
+    on:returnHome={() => dispatch('returnHome')}
+    on:playAgain={() => dispatch('playAgain')}
+  />
     on:returnHome={() => dispatch('returnHome')}
     on:playAgain={() => dispatch('playAgain')}
   />

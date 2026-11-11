@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- King Royal Plate Armor & Ermine Mantle -->
+  <!-- Sweeping Heavy Royal Velvet Cape (Hanging behind shoulders & flanks) -->
+  <path d="M68 134l-28 78c-4 12 6 22 18 18l36-10-18-86h-8Z" fill="var(--king-cape,#2b6cb0)" stroke="var(--king-ink,#1a202c)" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Cape Right Side (with shadow) -->
+  <path d="M188 134l28 78c4 12-6 22-18 18l-36-10 18-86h8Z" fill="var(--king-cape-shadow,#1a365d)" stroke="var(--king-ink,#1a202c)" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Gold Cape Border Hem -->
+  <path d="M42 214l18 14 36-8-4-8-32 6-18-4Z" fill="var(--king-gold,#ecc94b)"/>
+  <path d="M214 214l-18 14-36-8 4-8 32 6 18-4Z" fill="var(--king-gold,#ecc94b)"/>
+
+  <!-- Heavy Royal Breastplate Armor (Polished Gold / Steel) -->
+  <!-- Left Half -->
+  <path d="M92 136c-8 18-4 34 6 46h30v-46H92z" fill="var(--king-metal,#edf2f7)" stroke="var(--king-ink,#1a202c)" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Right Half (Shadow) -->
+  <path d="M164 136c8 18 4 34-6 46h-30v-46h36z" fill="var(--king-metal-shadow,#cbd5e0)" stroke="var(--king-ink,#1a202c)" stroke-width="6" stroke-linejoin="round"/>
+
+  <!-- Ermine Fur Collar / Mantle across Shoulders -->
+  <!-- Outer Fluffy Fur Collar Silhouette -->
+  <path d="M78 132c14 8 32 14 50 14s36-6 50-14c4 16-16 26-50 26s-54-10-50-26Z" fill="var(--king-ermine,#edf2f7)" stroke="var(--king-ink,#1a202c)" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Ermine Spots on Mantle -->
+  <polygon points="98,142 100,148 96,148" fill="var(--king-ink,#1a202c)"/>
+  <polygon points="128,144 130,150 126,150" fill="var(--king-ink,#1a202c)"/>
+  <polygon points="158,142 160,148 156,148" fill="var(--king-ink,#1a202c)"/>
+
+  <!-- Golden Pectoral Chain & Medallion -->
+  <path d="M94 134c10 14 22 20 34 20s24-6 34-20" stroke="var(--king-gold,#ecc94b)" stroke-width="4.5" stroke-linecap="round"/>
+  <!-- Imperial Sunburst / Lion Boss -->
+  <circle cx="128" cy="162" r="9" fill="var(--king-gold,#ecc94b)" stroke="var(--king-ink,#1a202c)" stroke-width="3"/>
+  <polygon points="128,154 132,160 138,162 132,164 128,170 124,164 118,162 124,160" fill="var(--king-gold-shadow,#b7791f)"/>
+  <circle cx="128" cy="162" r="3" fill="var(--king-gem,#e53e3e)"/>
+
+  <!-- Ornate Royal Belt & Buckle -->
+  <path d="M98 180h60l-3 16h-54l-3-16Z" fill="var(--king-gold,#ecc94b)" stroke="var(--king-ink,#1a202c)" stroke-width="5" stroke-linejoin="round"/>
+  <rect x="120" y="180" width="16" height="16" rx="2" fill="var(--king-metal,#edf2f7)" stroke="var(--king-ink,#1a202c)" stroke-width="3"/>
+  <circle cx="128" cy="188" r="2.5" fill="var(--king-gem,#e53e3e)"/>
+
+  <!-- Heavy Armored Battle Tassets -->
+  <polygon points="112,196 144,196 138,220 128,226 118,220" fill="var(--king-metal,#edf2f7)" stroke="var(--king-ink,#1a202c)" stroke-width="5" stroke-linejoin="round"/>
+  <polygon points="116,198 140,198 135,216 128,220 121,216" fill="var(--king-gold,#ecc94b)" stroke="var(--king-ink,#1a202c)" stroke-width="2.5"/>
+</svg>
