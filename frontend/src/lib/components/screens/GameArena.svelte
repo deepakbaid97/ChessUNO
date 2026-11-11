@@ -17,6 +17,8 @@
   import GameOverModal from '../game/GameOverModal.svelte';
   import CardRevealOverlay from '../animation/CardRevealOverlay.svelte';
   import { cardAnimationService } from '../../services/cardAnimationService';
+  import BattleAnimationOverlay from '../animation/BattleAnimationOverlay.svelte';
+  import { battleAnimationService, detectPawnCaptureEvent } from '../../services/battleAnimationService';
   import PushToTalkControl from '../game/PushToTalkControl.svelte';
   import TurnCoachBanner from '../game/TurnCoachBanner.svelte';
   import { computeCoachGuide } from '../../utils/coachGuide';
@@ -247,19 +249,43 @@
 
   onMount(() => {
     // If mounting into an already active card (e.g. page reload mid-game), record it so we don't replay
-    if (storeState.activeCard?.id) {
+    if (storeState?.activeCard?.id) {
       lastRevealedCardKey = `${storeState.activeCard.id}-${storeState.activeCard.value}-${storeState.revision}`;
       previousActiveCardId = storeState.activeCard.id;
       lastRevealedDrawCounter = storeState.drawEventCounter;
     }
+    previousBoardFen = storeState?.boardFen || '';
   });
+
+  let previousBoardFen: string = '';
+  let lastHandledBattleKey: string = '';
 
   onDestroy(() => {
     cardAnimationService.dismiss();
+    battleAnimationService.dismiss();
   });
 
   $: if (isGameOver) {
     cardAnimationService.dismiss();
+    battleAnimationService.dismiss();
+  }
+
+  // Authoritative Battle Animation Trigger:
+  // Detects accepted pawn-on-pawn captures and triggers central cinematic overlay
+  $: if (storeState?.boardFen && storeState?.lastMove?.from && storeState?.lastMove?.to) {
+    const moveKey = `${storeState.lastMove.from}-${storeState.lastMove.to}-${storeState.boardFen}`;
+    if (moveKey !== lastHandledBattleKey) {
+      if (previousBoardFen && previousBoardFen !== storeState.boardFen) {
+        const battleEvent = detectPawnCaptureEvent(previousBoardFen, storeState.boardFen, storeState.lastMove);
+        if (battleEvent) {
+          lastHandledBattleKey = moveKey;
+          battleAnimationService.triggerBattle(battleEvent, moveKey);
+        }
+      }
+      previousBoardFen = storeState.boardFen;
+    }
+  } else if (storeState?.boardFen && storeState.boardFen !== previousBoardFen) {
+    previousBoardFen = storeState.boardFen;
   }
 
   // Authoritative Card Reveal Trigger:
@@ -441,6 +467,9 @@
 
   <!-- Cinematic Card Reveal Animation Overlay -->
   <CardRevealOverlay />
+
+  <!-- Cinematic Battle Animation Overlay -->
+  <BattleAnimationOverlay />
 </div>
 
 <style>
