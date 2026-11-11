@@ -242,6 +242,8 @@
     return { x: r.left, y: r.top, width: r.width, height: r.height };
   }
 
+  let previousBoardFen: string = '';
+  let lastHandledMoveCounter: number = 0;
   let lastRevealedCardKey: string | null = null;
   let lastRevealedDrawCounter: number = 0;
   let previousActiveCardId: string | null = null;
@@ -255,42 +257,44 @@
       lastRevealedDrawCounter = storeState.drawEventCounter;
     }
     previousBoardFen = storeState?.boardFen || '';
+    lastHandledMoveCounter = storeState?.moveEventCounter || 0;
   });
-
-  let previousBoardFen: string = '';
-  let lastHandledBattleKey: string = '';
 
   onDestroy(() => {
     cardAnimationService.dismiss();
-    battleAnimationService.dismiss();
+    battleAnimationService.reset();
   });
 
   $: if (isGameOver) {
     cardAnimationService.dismiss();
-    battleAnimationService.dismiss();
+    battleAnimationService.reset();
   }
 
   // Authoritative Battle Animation Trigger:
-  // Detects accepted pawn-on-pawn captures and triggers central cinematic overlay
-  $: if (storeState?.boardFen && storeState?.lastMove?.from && storeState?.lastMove?.to) {
-    const moveKey = `${storeState.lastMove.from}-${storeState.lastMove.to}-${storeState.boardFen}`;
-    if (moveKey !== lastHandledBattleKey) {
-      if (previousBoardFen && previousBoardFen !== storeState.boardFen) {
-        const battleEvent = detectPawnCaptureEvent(previousBoardFen, storeState.boardFen, storeState.lastMove);
-        if (battleEvent) {
-          lastHandledBattleKey = moveKey;
-          battleAnimationService.triggerBattle(battleEvent, moveKey);
-        }
+  // Detects accepted pawn-on-pawn captures strictly when a new move is confirmed/accepted
+  $: if (storeState && storeState.moveEventCounter > lastHandledMoveCounter) {
+    const moveData = storeState.lastAcceptedMove;
+    const currentFen = storeState.boardFen;
+    lastHandledMoveCounter = storeState.moveEventCounter;
+
+    if (moveData && previousBoardFen && previousBoardFen !== currentFen) {
+      const battleEvent = detectPawnCaptureEvent(previousBoardFen, currentFen, {
+        from: moveData.from,
+        to: moveData.to
+      });
+      if (battleEvent) {
+        const moveKey = `pawn-battle-${storeState.revision}-${storeState.moveEventCounter}-${moveData.from}-${moveData.to}`;
+        battleAnimationService.triggerBattle(battleEvent, moveKey);
       }
-      previousBoardFen = storeState.boardFen;
     }
+    previousBoardFen = currentFen;
   } else if (storeState?.boardFen && storeState.boardFen !== previousBoardFen) {
     previousBoardFen = storeState.boardFen;
   }
 
   // Authoritative Card Reveal Trigger:
   // Detect fresh card draws reliably across turns for both local player and remote opponent
-  $: if (storeState.activeCard && storeState.activeCard.id) {
+  $: if (storeState?.activeCard?.id) {
     const cardKey = `${storeState.activeCard.id}-${storeState.activeCard.value}-${storeState.revision}`;
     const isNewDrawEvent = storeState.drawEventCounter > lastRevealedDrawCounter;
     const isNewCardArrival = previousActiveCardId === null;

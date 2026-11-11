@@ -50,66 +50,84 @@
     }));
   }
 
-  $: if (active && currentEvent) {
+  function runSequence() {
     clearAllTimeouts();
 
     if (prefersReducedMotion()) {
-      timeouts.push(setTimeout(() => handleDismiss(), 350));
-    } else {
-      // Step 1: Enter (0ms)
-      stagePhase = 'enter';
-      attackerAnimation = 'walk';
-      attackerExpression = 'neutral';
-      defenderAnimation = 'idle';
-      defenderExpression = 'neutral';
-      shakeActive = false;
-      flashActive = false;
-      sparks = [];
-
-      // Step 2: Charge & Anticipation (300ms)
-      timeouts.push(
-        setTimeout(() => {
-          stagePhase = 'charge';
-          attackerAnimation = 'walk';
-          attackerExpression = 'angry';
-          defenderExpression = 'scared';
-        }, 300)
-      );
-
-      // Step 3: Attack Strike & Impact (580ms)
-      timeouts.push(
-        setTimeout(() => {
-          stagePhase = 'clash';
-          attackerAnimation = 'attack';
-          attackerExpression = 'angry';
-          defenderExpression = 'scared';
-          shakeActive = true;
-          flashActive = true;
-          sparks = generateSparks();
-        }, 580)
-      );
-
-      // Step 4: Outcome - Defender falls, Attacker victorious (820ms)
-      timeouts.push(
-        setTimeout(() => {
-          stagePhase = 'reaction';
-          shakeActive = false;
-          flashActive = false;
-          attackerAnimation = 'idle';
-          attackerExpression = 'happy';
-          defenderAnimation = 'death';
-          defenderExpression = 'scared';
-        }, 820)
-      );
-
-      // Step 5: Auto dismiss (1420ms)
-      timeouts.push(
-        setTimeout(() => {
-          stagePhase = 'exit';
-          handleDismiss();
-        }, 1420)
-      );
+      timeouts.push(setTimeout(() => handleDismiss(), 300));
+      return;
     }
+
+    // Step 1: Enter (0ms)
+    stagePhase = 'enter';
+    attackerAnimation = 'walk';
+    attackerExpression = 'neutral';
+    defenderAnimation = 'idle';
+    defenderExpression = 'neutral';
+    shakeActive = false;
+    flashActive = false;
+    sparks = [];
+
+    // Step 2: Charge & Anticipation (300ms)
+    timeouts.push(
+      setTimeout(() => {
+        stagePhase = 'charge';
+        attackerAnimation = 'walk';
+        attackerExpression = 'angry';
+        defenderExpression = 'scared';
+      }, 300)
+    );
+
+    // Step 3: Attack Strike & Impact (580ms)
+    timeouts.push(
+      setTimeout(() => {
+        stagePhase = 'clash';
+        attackerAnimation = 'attack';
+        attackerExpression = 'angry';
+        defenderExpression = 'scared';
+        shakeActive = true;
+        flashActive = true;
+        sparks = generateSparks();
+      }, 580)
+    );
+
+    // Step 4: Outcome - Knockback, Defender Falls, Attacker Victorious (860ms)
+    timeouts.push(
+      setTimeout(() => {
+        stagePhase = 'reaction';
+        shakeActive = false;
+        flashActive = false;
+        attackerAnimation = 'idle';
+        attackerExpression = 'happy';
+        defenderAnimation = 'death';
+        defenderExpression = 'scared';
+      }, 860)
+    );
+
+    // Step 5: Readability Hold & Exit Transition (1500ms)
+    timeouts.push(
+      setTimeout(() => {
+        stagePhase = 'exit';
+      }, 1500)
+    );
+
+    // Step 6: Dismiss / Next Queue Event (1680ms)
+    timeouts.push(
+      setTimeout(() => {
+        handleDismiss();
+      }, 1680)
+    );
+  }
+
+  let lastActiveEventId: string | null = null;
+  $: if (active && currentEvent) {
+    if (currentEvent.id !== lastActiveEventId) {
+      lastActiveEventId = currentEvent.id;
+      runSequence();
+    }
+  } else {
+    lastActiveEventId = null;
+    clearAllTimeouts();
   }
 
   onDestroy(() => {
@@ -161,10 +179,11 @@
           />
         </div>
 
-        <!-- Clash Center FX (Sparks & Flash) -->
+        <!-- Clash Center FX (Sparks, Flash, & Shockwave) -->
         <div class="clash-origin" aria-hidden="true">
           {#if flashActive}
             <div class="clash-flash"></div>
+            <div class="clash-shockwave"></div>
           {/if}
           {#each sparks as s (s.id)}
             <div
@@ -301,47 +320,50 @@
   .combatant-slot {
     position: relative;
     z-index: 2;
-    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.32s ease, filter 0.32s ease;
   }
 
   /* Attacker (Left) movement states */
   .slot-attacker.phase-enter {
     transform: translateX(-50px);
-    opacity: 0.8;
+    opacity: 0.85;
   }
 
   .slot-attacker.phase-charge {
-    transform: translateX(30px);
+    transform: translateX(45px);
   }
 
   .slot-attacker.phase-clash {
-    transform: translateX(54px) scale(1.08);
+    transform: translateX(85px) scale(1.1);
   }
 
   .slot-attacker.phase-reaction {
-    transform: translateX(35px) scale(1.05);
+    transform: translateX(52px) scale(1.08);
   }
 
   /* Defender (Right) flipped facing left */
   .slot-defender {
     transform: scaleX(-1);
+    transform-origin: center bottom;
   }
 
   .slot-defender.phase-enter {
     transform: scaleX(-1) translateX(-50px);
-    opacity: 0.8;
+    opacity: 0.85;
   }
 
   .slot-defender.phase-charge {
-    transform: scaleX(-1) translateX(0);
+    transform: scaleX(-1) translateX(-10px);
   }
 
   .slot-defender.phase-clash {
-    transform: scaleX(-1) translateX(-30px);
+    transform: scaleX(-1) translateX(-55px) rotate(-16deg);
   }
 
   .slot-defender.phase-reaction {
-    transform: scaleX(-1) translateX(-55px) rotate(-8deg);
+    transform: scaleX(-1) translateX(-98px) translateY(24px) rotate(-38deg);
+    opacity: 0.2;
+    filter: blur(0.7px);
   }
 
   /* Clash point FX */
@@ -364,6 +386,19 @@
     border-radius: 50%;
     background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(243, 206, 115, 0.6) 45%, transparent 75%);
     animation: impactFlash 0.22s ease-out forwards;
+  }
+
+  .clash-shockwave {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    border: 3px solid rgba(243, 206, 115, 0.9);
+    box-shadow: 0 0 16px rgba(243, 206, 115, 0.8);
+    transform: translate(-50%, -50%);
+    animation: shockwaveExpand 0.35s ease-out forwards;
   }
 
   .spark-particle {
@@ -405,6 +440,11 @@
     100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
   }
 
+  @keyframes shockwaveExpand {
+    0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; border-width: 4px; }
+    100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; border-width: 1px; }
+  }
+
   @keyframes sparkFly {
     0% { transform: translate(0, 0) scale(1); opacity: 1; }
     100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
@@ -426,6 +466,42 @@
   @keyframes fadeOut {
     from { opacity: 1; }
     to { opacity: 0; }
+  }
+
+  @media (max-width: 640px) {
+    .battle-arena {
+      width: 95vw;
+    }
+
+    .combat-stage {
+      height: 200px;
+      padding: 0 10px;
+    }
+
+    .combatant-slot {
+      transform-origin: center bottom;
+      zoom: 0.82;
+    }
+
+    .battle-title {
+      font-size: 1.05rem;
+    }
+
+    .slot-attacker.phase-charge {
+      transform: translateX(30px);
+    }
+
+    .slot-attacker.phase-clash {
+      transform: translateX(54px) scale(1.08);
+    }
+
+    .slot-defender.phase-clash {
+      transform: scaleX(-1) translateX(-32px) rotate(-14deg);
+    }
+
+    .slot-defender.phase-reaction {
+      transform: scaleX(-1) translateX(-60px) translateY(18px) rotate(-32deg);
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {

@@ -36,6 +36,8 @@ export interface GameStoreState {
   availableChoices: string[];
   revision: number;
   drawEventCounter: number;
+  moveEventCounter: number;
+  lastAcceptedMove: MoveAcceptedData | null;
 
   // UI Interactive State
   selectedSquare: string | null;
@@ -73,6 +75,8 @@ export function createGameStore() {
     availableChoices: [],
     revision: 0,
     drawEventCounter: 0,
+    moveEventCounter: 0,
+    lastAcceptedMove: null,
     selectedSquare: null,
     validDestinations: [],
     lastMove: null,
@@ -183,6 +187,8 @@ export function createGameStore() {
         ...s,
         boardFen: data.boardFen,
         lastMove: { from: data.from, to: data.to },
+        lastAcceptedMove: data,
+        moveEventCounter: s.moveEventCounter + 1,
         selectedSquare: null,
         validDestinations: [],
         pendingPromotion: null

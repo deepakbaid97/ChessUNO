@@ -77,6 +77,28 @@ describe('battleAnimationService', () => {
       const fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
       expect(detectPawnCaptureEvent(fen, fen, null)).toBeNull();
       expect(detectPawnCaptureEvent('', fen, { from: 'e2', to: 'e4' })).toBeNull();
+      expect(detectPawnCaptureEvent(fen, fen, { from: 'e2', to: 'e4' })).toBeNull();
+    });
+
+    it('rejects stale lastMove when board state does not match the move', () => {
+      // Suppose lastMove was d4-e5 from previous turn, but current transition is a card revival or different move
+      const prevFen = 'rnbqkbnr/pppp1ppp/8/4P3/8/8/PPP1PPPP/RNBQKBNR b KQkq - 0 2';
+      // Black plays h7-h6, but stale lastMove is still d4-e5
+      const currentFen = 'rnbqkbnr/pppp1pp1/7p/4P3/8/8/PPP1PPPP/RNBQKBNR w KQkq - 0 3';
+      const staleMove = { from: 'd4', to: 'e5' };
+
+      const event = detectPawnCaptureEvent(prevFen, currentFen, staleMove);
+      expect(event).toBeNull();
+    });
+
+    it('rejects card-induced FEN changes that are not pawn captures', () => {
+      // e.g. Revive a pawn to an empty square
+      const prevFen = 'rnbqkbnr/pppp1ppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2';
+      const currentFen = 'rnbqkbnr/pppp1ppp/8/8/4P3/4P3/PPPP1PPP/RNBQKBNR w KQkq - 0 2';
+      const move = { from: 'e2', to: 'e3' }; // Fake or stale move
+
+      const event = detectPawnCaptureEvent(prevFen, currentFen, move);
+      expect(event).toBeNull();
     });
   });
 
@@ -129,14 +151,41 @@ describe('battleAnimationService', () => {
       expect(nextMoveTrigger).toBe(true);
     });
 
-    it('gracefully handles queueing or replacing active battle', () => {
-      battleAnimationService.triggerBattle(sampleEvent, 'key-1');
+    it('gracefully handles queueing overlapping battles without losing events', () => {
+      const firstTrigger = battleAnimationService.triggerBattle(sampleEvent, 'key-1');
+      expect(firstTrigger).toBe(true);
       expect(get(battleAnimationStore).currentEvent?.id).toBe('test-event-1');
 
-      // Next distinct battle interrupts/replaces previous or queues smoothly
-      const secondEvent = { ...sampleEvent, id: 'test-event-2' };
-      battleAnimationService.triggerBattle(secondEvent, 'key-2');
+      // Second battle triggers while first is still active: it should be queued
+      const secondEvent = { ...sampleEvent, id: 'test-event-2', from: 'c4', to: 'd5' };
+      const secondTrigger = battleAnimationService.triggerBattle(secondEvent, 'key-2');
+      expect(secondTrigger).toBe(true);
+
+      // The currently playing event should still be the first one
+      expect(get(battleAnimationStore).currentEvent?.id).toBe('test-event-1');
+
+      // Dismissing the first battle automatically advances the queue and starts the second battle
+      battleAnimationService.dismiss();
+      expect(get(battleAnimationStore).isActive).toBe(true);
       expect(get(battleAnimationStore).currentEvent?.id).toBe('test-event-2');
+
+      // Dismissing the second battle brings state back to idle
+      battleAnimationService.dismiss();
+      expect(get(battleAnimationStore).isActive).toBe(false);
+      expect(get(battleAnimationStore).currentEvent).toBeNull();
+    });
+
+    it('clears queue and state on reset', () => {
+      battleAnimationService.triggerBattle(sampleEvent, 'key-1');
+      const secondEvent = { ...sampleEvent, id: 'test-event-2', from: 'c4', to: 'd5' };
+      battleAnimationService.triggerBattle(secondEvent, 'key-2');
+
+      battleAnimationService.reset();
+
+      const state = get(battleAnimationStore);
+      expect(state.isActive).toBe(false);
+      expect(state.currentEvent).toBeNull();
+      expect(state.phase).toBe('idle');
     });
   });
 });

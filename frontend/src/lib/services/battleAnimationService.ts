@@ -10,6 +10,9 @@ export function detectPawnCaptureEvent(
   if (!prevFen || !currentFen || !lastMove || !lastMove.from || !lastMove.to) {
     return null;
   }
+  if (prevFen === currentFen) {
+    return null;
+  }
 
   const prevBoard = parseFenToMatrix(prevFen);
   const currentBoard = parseFenToMatrix(currentFen);
@@ -22,10 +25,25 @@ export function detectPawnCaptureEvent(
     return null;
   }
 
+  // Authoritative validation: 'from' square must be vacated in currentBoard
+  if (currentBoard[fromRow]?.[fromCol] !== null) {
+    return null;
+  }
+
+  // Authoritative validation: 'to' square in currentBoard must contain the moved piece's color
+  const destinationPiece = currentBoard[toRow]?.[toCol];
+  if (!destinationPiece || destinationPiece.color !== movedPiece.color) {
+    return null;
+  }
+
   const directCapturedPiece = prevBoard[toRow]?.[toCol];
 
   // Standard Pawn-on-Pawn Capture
-  if (directCapturedPiece && directCapturedPiece.type === 'Pawn') {
+  if (
+    directCapturedPiece &&
+    directCapturedPiece.type === 'Pawn' &&
+    directCapturedPiece.color !== movedPiece.color
+  ) {
     return {
       id: `pawn-capture-${lastMove.from}-${lastMove.to}-${Date.now()}`,
       attacker: { piece: 'Pawn', color: movedPiece.color },
@@ -42,18 +60,17 @@ export function detectPawnCaptureEvent(
     if (
       enPassantCapturedPiece &&
       enPassantCapturedPiece.type === 'Pawn' &&
-      enPassantCapturedPiece.color !== movedPiece.color
+      enPassantCapturedPiece.color !== movedPiece.color &&
+      currentBoard[fromRow]?.[toCol] === null
     ) {
-      if (!currentBoard[fromRow]?.[toCol]) {
-        return {
-          id: `pawn-en-passant-${lastMove.from}-${lastMove.to}-${Date.now()}`,
-          attacker: { piece: 'Pawn', color: movedPiece.color },
-          defender: { piece: 'Pawn', color: enPassantCapturedPiece.color },
-          from: lastMove.from,
-          to: lastMove.to,
-          isEnPassant: true
-        };
-      }
+      return {
+        id: `pawn-en-passant-${lastMove.from}-${lastMove.to}-${Date.now()}`,
+        attacker: { piece: 'Pawn', color: movedPiece.color },
+        defender: { piece: 'Pawn', color: enPassantCapturedPiece.color },
+        from: lastMove.from,
+        to: lastMove.to,
+        isEnPassant: true
+      };
     }
   }
 
@@ -70,26 +87,35 @@ const initialState: BattleAnimationState = {
 export const battleAnimationStore = writable<BattleAnimationState>(initialState);
 
 class BattleAnimationService {
-  private lastProcessedKey = '';
-  private sequenceCounter = 0;
+  private processedKeys = new Set<string>();
+  private queue: { event: BattleEvent; eventKey: string }[] = [];
+  private isCurrentlyActive = false;
 
   triggerBattle(event: BattleEvent, eventKey?: string): boolean {
     const key = eventKey || `${event.from}-${event.to}-${event.id}`;
-    if (key === this.lastProcessedKey) {
+    if (this.processedKeys.has(key)) {
       return false;
     }
 
-    this.lastProcessedKey = key;
-    this.sequenceCounter++;
+    this.processedKeys.add(key);
 
+    if (this.isCurrentlyActive) {
+      this.queue.push({ event, eventKey: key });
+      return true;
+    }
+
+    this.playEvent(event);
+    return true;
+  }
+
+  private playEvent(event: BattleEvent) {
+    this.isCurrentlyActive = true;
     battleAnimationStore.set({
       isActive: true,
       currentEvent: event,
       phase: 'enter',
       eventId: event.id
     });
-
-    return true;
   }
 
   setPhase(phase: BattlePhase) {
@@ -100,18 +126,30 @@ class BattleAnimationService {
   }
 
   dismiss() {
+    if (this.queue.length > 0) {
+      const next = this.queue.shift()!;
+      this.playEvent(next.event);
+    } else {
+      this.isCurrentlyActive = false;
+      battleAnimationStore.set({
+        isActive: false,
+        currentEvent: null,
+        phase: 'idle',
+        eventId: ''
+      });
+    }
+  }
+
+  reset() {
+    this.processedKeys.clear();
+    this.queue = [];
+    this.isCurrentlyActive = false;
     battleAnimationStore.set({
       isActive: false,
       currentEvent: null,
       phase: 'idle',
       eventId: ''
     });
-  }
-
-  reset() {
-    this.lastProcessedKey = '';
-    this.sequenceCounter = 0;
-    this.dismiss();
   }
 }
 

@@ -79,5 +79,66 @@ describe('BattleAnimationOverlay Component', () => {
 
     expect(queryByTestId('battle-animation-overlay')).toBeNull();
   });
+
+  it('progresses to queued event when skipping the active cinematic', async () => {
+    const { getByRole, getByTestId, queryByTestId } = render(BattleAnimationOverlay);
+
+    battleAnimationService.triggerBattle({
+      id: 'capture-first',
+      attacker: { piece: 'Pawn', color: 'White' },
+      defender: { piece: 'Pawn', color: 'Black' },
+      from: 'c4',
+      to: 'd5'
+    }, 'first-key');
+
+    // Queue a second event
+    battleAnimationService.triggerBattle({
+      id: 'capture-second',
+      attacker: { piece: 'Pawn', color: 'Black' },
+      defender: { piece: 'Pawn', color: 'White' },
+      from: 'f5',
+      to: 'g4'
+    }, 'second-key');
+
+    await tick();
+    expect(getByTestId('battle-attacker').dataset.team).toBe('light');
+
+    // Skip the first cinematic
+    const skipButton = getByRole('button', { name: /skip/i });
+    await fireEvent.click(skipButton);
+    await tick();
+
+    // Now the second cinematic should be active (Black attacking White -> team 'dark')
+    expect(getByTestId('battle-animation-overlay')).toBeTruthy();
+    expect(getByTestId('battle-attacker').dataset.team).toBe('dark');
+
+    // Skip the second cinematic
+    const skipButton2 = getByRole('button', { name: /skip/i });
+    await fireEvent.click(skipButton2);
+    await tick();
+
+    // Both done -> overlay dismissed
+    expect(queryByTestId('battle-animation-overlay')).toBeNull();
+  });
+
+  it('dismisses on Escape key press', async () => {
+    const { queryByTestId } = render(BattleAnimationOverlay);
+
+    battleAnimationService.triggerBattle({
+      id: 'capture-esc',
+      attacker: { piece: 'Pawn', color: 'White' },
+      defender: { piece: 'Pawn', color: 'Black' },
+      from: 'e4',
+      to: 'd5'
+    });
+    await tick();
+
+    expect(queryByTestId('battle-animation-overlay')).toBeTruthy();
+
+    await fireEvent.keyDown(window, { key: 'Escape' });
+    await tick();
+
+    expect(queryByTestId('battle-animation-overlay')).toBeNull();
+  });
 });
 

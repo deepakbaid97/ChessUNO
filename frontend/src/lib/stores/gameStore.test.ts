@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
 import { createGameStore } from './gameStore';
-import type { GameSnapshot, GameStateUpdate } from '../types/game';
+import type { GameSnapshot, GameStateUpdate, MoveAcceptedData } from '../types/game';
 
 describe('gameStore', () => {
   let store: ReturnType<typeof createGameStore>;
@@ -37,6 +37,8 @@ describe('gameStore', () => {
     const state = get(store);
     expect(state.gameId).toBe('');
     expect(state.revision).toBe(0);
+    expect(state.moveEventCounter).toBe(0);
+    expect(state.lastAcceptedMove).toBeNull();
     expect(state.selectedSquare).toBeNull();
   });
 
@@ -120,5 +122,45 @@ describe('gameStore', () => {
     expect(state.turnPhase).toBe('AwaitingChoice');
     expect(state.availableChoices).toEqual(['MOVE_1', 'REVIVE_UP_TO_TWO']);
   });
-});
 
+  it('increments moveEventCounter only on explicit moveAccepted events', () => {
+    store.applySnapshot(dummySnapshot);
+    expect(get(store).moveEventCounter).toBe(0);
+
+    const moveData: MoveAcceptedData = {
+      player: 'Alice',
+      from: 'e2',
+      to: 'e4',
+      boardFen: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1'
+    };
+
+    store.onMoveAccepted(moveData);
+    const afterMove = get(store);
+    expect(afterMove.moveEventCounter).toBe(1);
+    expect(afterMove.lastAcceptedMove).toEqual(moveData);
+    expect(afterMove.lastMove).toEqual({ from: 'e2', to: 'e4' });
+
+    // Snapshot/reconnect does not increment moveEventCounter
+    store.applySnapshot(dummySnapshot);
+    expect(get(store).moveEventCounter).toBe(1);
+
+    // Card/game update does not increment moveEventCounter
+    store.applyUpdate({
+      boardFen: 'another-fen',
+      activePlayer: 'White',
+      turnPhase: 'ActionPhase',
+      remainingMoves: 1,
+      revision: 3
+    });
+    expect(get(store).moveEventCounter).toBe(1);
+
+    // Second move increments moveEventCounter
+    store.onMoveAccepted({
+      player: 'Bob',
+      from: 'e7',
+      to: 'e5',
+      boardFen: 'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6 0 2'
+    });
+    expect(get(store).moveEventCounter).toBe(2);
+  });
+});
