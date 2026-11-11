@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Queen Head Base & Flowing Regal Hair -->
+  <!-- Back Cascading Hair (Deep royal locks falling behind shoulders) -->
+  <path d="M84 92c-6 24-8 54 4 78 8 16 22 22 22 22s-10-18-8-36c2-18 6-40 6-64h-24Z" fill="var(--queen-hair,#2d3748)" stroke="var(--queen-ink,#1a202c)" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M172 92c6 24 8 54-4 78-8 16-22 22-22 22s10-18 8-36c-2-18-6-40-6-64h24Z" fill="var(--queen-hair-shadow,#171923)" stroke="var(--queen-ink,#1a202c)" stroke-width="5" stroke-linejoin="round"/>
+
+  <!-- Elegant Face Skin Oval -->
+  <path d="M96 90c0-20 14-34 32-34s32 14 32 34c0 24-12 44-32 44s-32-20-32-44Z" fill="var(--queen-skin,#fbd38d)" stroke="var(--queen-ink,#1a202c)" stroke-width="5.5"/>
+  <!-- Delicate Cheek & Chin Shadow -->
+  <path d="M106 112c6 10 14 16 22 16s16-6 22-16c-6 4-14 6-22 6s-16-2-22-6Z" fill="var(--queen-skin-shadow,#dd6b20)" opacity=".35"/>
+
+  <!-- Front Hair Strands & Side Parting framing face -->
+  <path d="M94 72c10 14 10 32 10 44-4-12-2-30 6-36-8 0-14-4-16-8Z" fill="var(--queen-hair,#2d3748)"/>
+  <path d="M162 72c-10 14-10 32-10 44 4-12 2-30-6-36 8 0 14-4 16-8Z" fill="var(--queen-hair,#2d3748)"/>
+
+  <!-- Royal Choker / Gorget at Throat -->
+  <path d="M112 128h32l-4 8h-24l-4-8Z" fill="var(--queen-gold,#ecc94b)" stroke="var(--queen-ink,#1a202c)" stroke-width="3.5" stroke-linejoin="round"/>
+  <circle cx="128" cy="132" r="2" fill="var(--queen-gem,#e53e3e)"/>
+</svg>

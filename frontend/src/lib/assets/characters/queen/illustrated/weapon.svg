@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Queen Royal Blade (Exquisite, Deadly Energy Rapier / Royal Longsword) -->
+  <!-- Pommel (Faceted Ruby Crystal & Gold Finial) -->
+  <polygon points="196,218 204,212 212,218 204,226" fill="var(--queen-gem,#e53e3e)" stroke="var(--queen-ink,#1a202c)" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="204" cy="218" r="2" fill="#ffffff"/>
+
+  <!-- Grip / Handle (Gold wire-wrapped black leather) -->
+  <line x1="202" y1="212" x2="194" y2="182" stroke="var(--queen-ink,#1a202c)" stroke-width="8" stroke-linecap="round"/>
+  <line x1="202" y1="204" x2="198" y2="200" stroke="var(--queen-gold,#ecc94b)" stroke-width="2.5"/>
+  <line x1="199" y1="194" x2="195" y2="190" stroke="var(--queen-gold,#ecc94b)" stroke-width="2.5"/>
+
+  <!-- Ornate Golden Crossguard / Basket Hilt -->
+  <path d="M174 180c14 4 28 0 42-12l4 6c-16 14-32 18-48 12l2-6Z" fill="var(--queen-gold,#ecc94b)" stroke="var(--queen-ink,#1a202c)" stroke-width="4.5" stroke-linejoin="round"/>
+  <!-- Central Guard Gem -->
+  <circle cx="193" cy="180" r="3.5" fill="var(--queen-gem,#e53e3e)" stroke="var(--queen-ink,#1a202c)" stroke-width="2"/>
+
+  <!-- Sleek Deadly Steel Blade (Extending straight up-right into ready guard) -->
+  <!-- Blade Silhouette -->
+  <polygon points="192,176 195,178 226,52 223,44 218,48 190,174" fill="var(--queen-metal,#edf2f7)" stroke="var(--queen-ink,#1a202c)" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Blade Metallic Half-Shadow -->
+  <polygon points="192,176 195,178 226,52 223,44 191,176" fill="var(--queen-metal-shadow,#cbd5e0)"/>
+
+  <!-- Energy Fuller / Luminous Center Groove -->
+  <line x1="192" y1="172" x2="220" y2="58" stroke="var(--queen-energy,#63b3ed)" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="192" y1="172" x2="220" y2="58" stroke="#ffffff" stroke-width="1.2" stroke-linecap="round"/>
+
+  <!-- Blade Tip Gleam Sparkle -->
+  <polygon points="223,44 227,38 231,44 227,50" fill="#ffffff" opacity=".95"/>
+  <circle cx="227" cy="44" r="5" fill="var(--queen-energy,#63b3ed)" opacity=".35"/>
+  <!-- Energy Spark Motes on Blade -->
+  <circle cx="212" cy="92" r="2" fill="#ffffff"/>
+  <circle cx="204" cy="126" r="1.5" fill="var(--queen-energy,#63b3ed)"/>
+</svg>

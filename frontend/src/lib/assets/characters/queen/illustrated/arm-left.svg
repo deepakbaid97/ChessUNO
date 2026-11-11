@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Queen Left Arm & Royal Pauldron (Poised on hip in commanding stance) -->
+  <!-- Sculpted Layered Pauldron (Shoulder Plate) -->
+  <path d="M96 132c-12-6-24-2-28 8-4 12 2 24 16 28l16-10-4-26Z" fill="var(--queen-metal,#edf2f7)" stroke="var(--queen-ink,#1a202c)" stroke-width="5.5" stroke-linejoin="round"/>
+  <!-- Pauldron Gold Rim -->
+  <path d="M72 136c-4 8 2 18 12 22l6-4c-8-4-12-10-8-16l-10-2Z" fill="var(--queen-gold,#ecc94b)"/>
+  <circle cx="82" cy="146" r="3" fill="var(--queen-gem,#e53e3e)"/>
+
+  <!-- Upper Arm & Forearm tucked to hip -->
+  <path d="M74 156l-14 26c-3 6 0 14 6 16l18-8 10-18-20-16Z" fill="var(--queen-metal-shadow,#cbd5e0)" stroke="var(--queen-ink,#1a202c)" stroke-width="5.5" stroke-linejoin="round"/>
+
+  <!-- Armored Gauntlet resting on hip -->
+  <path d="M80 186l14-6c4-2 8 0 10 4 2 4 0 8-4 10l-14 6c-4 2-8 0-10-4-2-4 0-8 4-10Z" fill="var(--queen-gold,#ecc94b)" stroke="var(--queen-ink,#1a202c)" stroke-width="4.5" stroke-linejoin="round"/>
+  <!-- Knuckle Studs -->
+  <circle cx="86" cy="190" r="2.2" fill="var(--queen-metal,#edf2f7)"/>
+  <circle cx="92" cy="188" r="2.2" fill="var(--queen-metal,#edf2f7)"/>
+</svg>

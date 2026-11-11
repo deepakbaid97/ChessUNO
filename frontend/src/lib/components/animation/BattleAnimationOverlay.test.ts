@@ -224,10 +224,10 @@ describe('BattleAnimationOverlay Component', () => {
     const { queryByTestId } = render(BattleAnimationOverlay);
 
     battleAnimationService.triggerBattle({
-      id: 'queen-vs-knight',
-      attacker: { piece: 'Queen' as any, color: 'White' },
+      id: 'king-vs-knight',
+      attacker: { piece: 'King' as any, color: 'White' },
       defender: { piece: 'Knight', color: 'Black' },
-      from: 'd1',
+      from: 'e1',
       to: 'd5'
     });
     await tick();
@@ -390,6 +390,57 @@ describe('BattleAnimationOverlay Component', () => {
 
     const defender = getByTestId('battle-defender');
     expect(defender.getAttribute('aria-label')).toContain('bishop');
+    expect(defender.dataset.team).toBe('light');
+  });
+
+  it('renders Queen attacker against Pawn defender with slash style and QUEEN CLASH tag', async () => {
+    const { getByTestId, getByText, getByRole } = render(BattleAnimationOverlay);
+
+    battleAnimationService.triggerBattle({
+      id: 'queen-vs-pawn',
+      attacker: { piece: 'Queen', color: 'White' },
+      defender: { piece: 'Pawn', color: 'Black' },
+      from: 'd1',
+      to: 'd7',
+      attackStyle: 'slash'
+    });
+    await tick();
+
+    expect(getByText('QUEEN CLASH')).toBeTruthy();
+
+    const attacker = getByTestId('battle-attacker');
+    expect(attacker.getAttribute('aria-label')).toContain('queen');
+    expect(attacker.dataset.team).toBe('light');
+
+    const defender = getByTestId('battle-defender');
+    expect(defender.getAttribute('aria-label')).toContain('pawn');
+    expect(defender.dataset.team).toBe('dark');
+
+    const heading = getByRole('heading', { level: 2 });
+    expect(heading.textContent).toContain('White Queen strikes Black Pawn');
+  });
+
+  it('renders Queen attacker against Queen defender', async () => {
+    const { getByTestId, getByText } = render(BattleAnimationOverlay);
+
+    battleAnimationService.triggerBattle({
+      id: 'queen-vs-queen',
+      attacker: { piece: 'Queen', color: 'Black' },
+      defender: { piece: 'Queen', color: 'White' },
+      from: 'd8',
+      to: 'd1',
+      attackStyle: 'slash'
+    });
+    await tick();
+
+    expect(getByText('QUEEN CLASH')).toBeTruthy();
+
+    const attacker = getByTestId('battle-attacker');
+    expect(attacker.getAttribute('aria-label')).toContain('queen');
+    expect(attacker.dataset.team).toBe('dark');
+
+    const defender = getByTestId('battle-defender');
+    expect(defender.getAttribute('aria-label')).toContain('queen');
     expect(defender.dataset.team).toBe('light');
   });
 });

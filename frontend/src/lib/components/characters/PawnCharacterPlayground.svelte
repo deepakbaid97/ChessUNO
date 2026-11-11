@@ -37,6 +37,8 @@
       <a href="/rook-playground" class="nav-sublink">Rook Lab</a>
       <span class="nav-divider">|</span>
       <a href="/bishop-playground" class="nav-sublink">Bishop Lab</a>
+      <span class="nav-divider">|</span>
+      <a href="/queen-playground" class="nav-sublink">Queen Lab</a>
     </div>
     <span>Character Lab / Pawn Prototype</span>
   </header>

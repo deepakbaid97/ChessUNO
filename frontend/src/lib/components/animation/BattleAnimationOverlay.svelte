@@ -4,6 +4,7 @@
   import KnightCharacter from '../characters/KnightCharacter.svelte';
   import RookCharacter from '../characters/RookCharacter.svelte';
   import BishopCharacter from '../characters/BishopCharacter.svelte';
+  import QueenCharacter from '../characters/QueenCharacter.svelte';
   import {
     battleAnimationStore,
     battleAnimationService,
@@ -36,7 +37,9 @@
         ? 'smash'
         : currentEvent?.attacker.piece === 'Bishop'
           ? 'spell'
-          : 'charge')) as AttackStyle;
+          : currentEvent?.attacker.piece === 'Queen'
+            ? 'slash'
+            : 'charge')) as AttackStyle;
 
   type CharacterAnimation = 'idle' | 'walk' | 'attack' | 'death';
   type CharacterExpression = 'neutral' | 'happy' | 'scared' | 'angry';
@@ -72,7 +75,9 @@
   function generateSparks() {
     const colors = attackStyle === 'spell'
       ? ['#4fd1c5', '#805ad5', '#e6fffa', '#ecc94b', '#f687b3']
-      : ['#f3ce73', '#ffffff', '#f43f5e', '#fbbf24', '#ffedd5'];
+      : attackStyle === 'slash'
+        ? ['#63b3ed', '#ffffff', '#e53e3e', '#ecc94b', '#bee3f8']
+        : ['#f3ce73', '#ffffff', '#f43f5e', '#fbbf24', '#ffedd5'];
     return Array.from({ length: 18 }, (_, i) => ({
       id: i,
       dx: (Math.random() - 0.45) * 160,
@@ -188,7 +193,9 @@
     <div class="battle-arena" class:shake={shakeActive} role="document" on:click|stopPropagation>
       <header class="battle-header">
         <span class="battle-tag">
-          {#if currentEvent.attacker.piece === 'Bishop' || currentEvent.defender.piece === 'Bishop'}
+          {#if currentEvent.attacker.piece === 'Queen' || currentEvent.defender.piece === 'Queen'}
+            QUEEN CLASH
+          {:else if currentEvent.attacker.piece === 'Bishop' || currentEvent.defender.piece === 'Bishop'}
             BISHOP CLASH
           {:else if currentEvent.attacker.piece === 'Rook' || currentEvent.defender.piece === 'Rook'}
             ROOK CLASH
@@ -236,6 +243,14 @@
               size={185}
               testId="battle-attacker"
             />
+          {:else if currentEvent.attacker.piece === 'Queen'}
+            <QueenCharacter
+              team={attackerTeam}
+              animation={attackerAnimation}
+              expression={attackerExpression}
+              size={190}
+              testId="battle-attacker"
+            />
           {:else if currentEvent.attacker.piece === 'Pawn'}
             <PawnCharacter
               team={attackerTeam}
@@ -250,6 +265,11 @@
         <!-- Arcane Beam Projectile (Spell Attack Style) -->
         {#if attackStyle === 'spell' && (stagePhase === 'charge' || stagePhase === 'clash')}
           <div class="spell-beam" aria-hidden="true"></div>
+        {/if}
+
+        <!-- Energy Slash Trail (Slash Attack Style) -->
+        {#if attackStyle === 'slash' && (stagePhase === 'charge' || stagePhase === 'clash')}
+          <div class="slash-trail" aria-hidden="true"></div>
         {/if}
 
         <!-- Clash Center FX (Sparks, Flash, & Shockwave) -->
@@ -290,6 +310,14 @@
               animation={defenderAnimation}
               expression={defenderExpression}
               size={185}
+              testId="battle-defender"
+            />
+          {:else if currentEvent.defender.piece === 'Queen'}
+            <QueenCharacter
+              team={defenderTeam}
+              animation={defenderAnimation}
+              expression={defenderExpression}
+              size={190}
               testId="battle-defender"
             />
           {:else if currentEvent.defender.piece === 'Pawn'}
@@ -489,6 +517,42 @@
     0% { transform: scaleX(0.1); opacity: 0; }
     50% { transform: scaleX(1.15) translateY(-2px); opacity: 1; }
     100% { transform: scaleX(1.35) translateX(24px); opacity: 0; }
+  }
+
+  /* Elegant Queen energy slash attack style (Rapid coiled dash & sword sweep) */
+  .style-slash .slot-attacker.phase-charge {
+    transform: translateX(36px) translateY(2px) scale(0.98);
+    filter: drop-shadow(0 0 14px rgba(99, 179, 237, 0.65));
+  }
+
+  .style-slash .slot-attacker.phase-clash {
+    transform: translateX(86px) translateY(-2px) scale(1.14);
+    filter: drop-shadow(0 0 26px rgba(99, 179, 237, 0.95));
+  }
+
+  /* Crescent Energy Slash Trail */
+  .slash-trail {
+    position: absolute;
+    left: 44%;
+    top: 40%;
+    width: 130px;
+    height: 54px;
+    border-radius: 50%;
+    border: 4px solid #63b3ed;
+    border-top-color: #ffffff;
+    border-right-color: transparent;
+    border-bottom-color: transparent;
+    box-shadow: 0 0 20px #63b3ed, 0 0 8px #ffffff;
+    transform: rotate(-35deg) scale(0.3);
+    animation: slashArc 0.28s ease-out forwards;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  @keyframes slashArc {
+    0% { transform: rotate(-45deg) scale(0.2); opacity: 0; }
+    40% { transform: rotate(15deg) scale(1.25); opacity: 1; }
+    100% { transform: rotate(45deg) scale(1.5) translateX(18px); opacity: 0; }
   }
 
   /* Defender (Right) flipped facing left */
