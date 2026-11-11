@@ -94,4 +94,101 @@ describe('WebRtcService', () => {
 
     expect(closeSpy).toHaveBeenCalled();
   });
+
+  it('validates voice-status protocol message', () => {
+    const validVoiceMsg: P2PMessage = {
+      id: 'voice-1',
+      version: PROTOCOL_VERSION,
+      type: 'voice-status',
+      sender: 'Alice',
+      payload: { speaking: true, voiceActive: true },
+      timestamp: Date.now()
+    };
+    expect(WebRtcService.isValidMessage(validVoiceMsg)).toBe(true);
+  });
+
+  it('handles push-to-talk state toggling and track enablement', async () => {
+    const service = new WebRtcService(vi.fn(), vi.fn(), vi.fn());
+    const mockTrack = { enabled: false, stop: vi.fn() };
+    const mockStream = {
+      getAudioTracks: vi.fn(() => [mockTrack]),
+      getTracks: vi.fn(() => [mockTrack])
+    };
+
+    (service as any).localAudioStream = mockStream;
+    const sendTypedSpy = vi.spyOn(service, 'sendTypedMessage').mockReturnValue(true);
+
+    // Press PTT: track enabled becomes true
+    const resultActive = service.setPushToTalk(true, 'Alice');
+    expect(mockTrack.enabled).toBe(true);
+    expect(sendTypedSpy).toHaveBeenCalledWith('voice-status', 'Alice', {
+      speaking: true,
+      voiceActive: true
+    });
+    expect(resultActive).toBe(true);
+
+    // Release PTT: track enabled becomes false
+    service.setPushToTalk(false, 'Alice');
+    expect(mockTrack.enabled).toBe(false);
+    expect(sendTypedSpy).toHaveBeenCalledWith('voice-status', 'Alice', {
+      speaking: false,
+      voiceActive: true
+    });
+  });
+
+  it('dispatches voice-status callback when received over data channel', () => {
+    const service = new WebRtcService(vi.fn(), vi.fn(), vi.fn());
+    const voiceStatusCb = vi.fn();
+    service.setOnVoiceStatus(voiceStatusCb);
+
+    // Simulate incoming data channel message
+    const mockChannel: any = {};
+    (service as any).setDataChannel(mockChannel);
+
+    const payload = {
+      id: 'msg-voice-1',
+      version: PROTOCOL_VERSION,
+      type: 'voice-status',
+      sender: 'Bob',
+      payload: { speaking: true, voiceActive: true },
+      timestamp: Date.now()
+    };
+
+    mockChannel.onmessage({ data: JSON.stringify(payload) });
+    expect(voiceStatusCb).toHaveBeenCalledWith('Bob', { speaking: true, voiceActive: true });
+  });
+
+  it('mutes opponent remote audio', () => {
+    const service = new WebRtcService(vi.fn(), vi.fn(), vi.fn());
+    const mockAudio: any = { muted: false };
+    (service as any).remoteAudioElement = mockAudio;
+
+    service.muteOpponent(true);
+    expect(mockAudio.muted).toBe(true);
+
+    service.muteOpponent(false);
+    expect(mockAudio.muted).toBe(false);
+  });
+
+  it('closes audio cleanly on closeAudio and close', () => {
+    const service = new WebRtcService(vi.fn(), vi.fn(), vi.fn());
+    const stopFn = vi.fn();
+    const mockTrack = { stop: stopFn };
+    const mockStream = {
+      getAudioTracks: vi.fn(() => [mockTrack]),
+      getTracks: vi.fn(() => [mockTrack])
+    };
+    const replaceTrackFn = vi.fn(async () => {});
+    const pauseFn = vi.fn();
+
+    (service as any).localAudioStream = mockStream;
+    (service as any).audioSender = { replaceTrack: replaceTrackFn };
+    (service as any).remoteAudioElement = { pause: pauseFn, srcObject: {} };
+
+    service.closeAudio();
+    expect(stopFn).toHaveBeenCalled();
+    expect(replaceTrackFn).toHaveBeenCalledWith(null);
+    expect(pauseFn).toHaveBeenCalled();
+    expect((service as any).localAudioStream).toBeNull();
+  });
 });

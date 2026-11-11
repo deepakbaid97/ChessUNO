@@ -4,7 +4,12 @@ export interface RtcConfig {
 
 export const PROTOCOL_VERSION = '1.0';
 
-export type P2PMessageType = 'ping' | 'pong' | 'cursor' | 'chat';
+export type P2PMessageType = 'ping' | 'pong' | 'cursor' | 'chat' | 'voice-status';
+
+export interface VoiceStatusPayload {
+  speaking: boolean;
+  voiceActive: boolean;
+}
 
 export interface P2PMessage<T = any> {
   id: string;
@@ -20,6 +25,15 @@ export class WebRtcService {
   private dataChannel: RTCDataChannel | null = null;
   private pendingCandidates: RTCIceCandidateInit[] = [];
   private connectionTimeoutTimer: any = null;
+
+  // Voice Chat / Audio Properties
+  private localAudioStream: MediaStream | null = null;
+  private remoteAudioStream: MediaStream | null = null;
+  private audioTransceiver: RTCRtpTransceiver | null = null;
+  private audioSender: RTCRtpSender | null = null;
+  private remoteAudioElement: HTMLAudioElement | null = null;
+  private onRemoteStreamCallback?: (stream: MediaStream | null) => void;
+  private onVoiceStatusCallback?: (sender: string, payload: VoiceStatusPayload) => void;
 
   private onSignalNeeded: (signalType: string, payload: string) => void;
   private onDataMessage: (data: string) => void;
@@ -43,6 +57,14 @@ export class WebRtcService {
       typeof obj.type === 'string' &&
       typeof obj.sender === 'string'
     );
+  }
+
+  setOnRemoteStream(cb: (stream: MediaStream | null) => void): void {
+    this.onRemoteStreamCallback = cb;
+  }
+
+  setOnVoiceStatus(cb: (sender: string, payload: VoiceStatusPayload) => void): void {
+    this.onVoiceStatusCallback = cb;
   }
 
   getQueuedCandidatesCount(): number {
@@ -71,6 +93,32 @@ export class WebRtcService {
     if (typeof RTCPeerConnection !== 'undefined') {
       this.peerConnection = new RTCPeerConnection(iceConfig);
 
+      // Pre-add audio transceiver so SDP offer/answer negotiates audio upfront
+      if (typeof this.peerConnection.addTransceiver === 'function') {
+        try {
+          this.audioTransceiver = this.peerConnection.addTransceiver('audio', {
+            direction: 'sendrecv'
+          });
+          this.audioSender = this.audioTransceiver.sender;
+        } catch (err) {
+          console.warn('[WebRTC] Audio transceiver setup warning:', err);
+        }
+      }
+
+      // If local audio stream was already obtained before peer connection was created
+      if (this.localAudioStream) {
+        const audioTrack = this.localAudioStream.getAudioTracks()[0];
+        if (audioTrack) {
+          if (this.audioSender && typeof this.audioSender.replaceTrack === 'function') {
+            this.audioSender.replaceTrack(audioTrack).catch(err => {
+              console.warn('[WebRTC] replaceTrack warning:', err);
+            });
+          } else if (typeof this.peerConnection.addTrack === 'function') {
+            this.audioSender = this.peerConnection.addTrack(audioTrack, this.localAudioStream);
+          }
+        }
+      }
+
       this.peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
           this.onSignalNeeded('candidate', JSON.stringify(event.candidate));
@@ -89,6 +137,14 @@ export class WebRtcService {
 
       this.peerConnection.ondatachannel = (event) => {
         this.setDataChannel(event.channel);
+      };
+
+      this.peerConnection.ontrack = (event) => {
+        if (event.streams && event.streams[0]) {
+          this.remoteAudioStream = event.streams[0];
+          this.attachRemoteAudio(this.remoteAudioStream);
+          this.onRemoteStreamCallback?.(this.remoteAudioStream);
+        }
       };
     }
 
@@ -186,6 +242,12 @@ export class WebRtcService {
       console.log('[WebRTC] DataChannel closed');
     };
     this.dataChannel.onmessage = (event) => {
+      try {
+        const parsed = typeof event.data === 'string' ? JSON.parse(event.data) : null;
+        if (parsed && parsed.type === 'voice-status' && parsed.payload) {
+          this.onVoiceStatusCallback?.(parsed.sender, parsed.payload);
+        }
+      } catch {}
       this.onDataMessage(event.data);
     };
   }
@@ -222,12 +284,104 @@ export class WebRtcService {
     return this.sendTypedMessage('chat', sender, { text });
   }
 
+  // ==========================================
+  // Audio & Push-to-Talk Implementation
+  // ==========================================
+
+  async enableMicrophone(): Promise<boolean> {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      throw new Error('Microphone access is not supported by your browser.');
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+
+      this.localAudioStream = stream;
+      const audioTrack = stream.getAudioTracks()[0];
+      if (audioTrack) {
+        // Start muted by default — Push-to-Talk enables it while pressed
+        audioTrack.enabled = false;
+
+        if (this.audioSender && typeof this.audioSender.replaceTrack === 'function') {
+          await this.audioSender.replaceTrack(audioTrack);
+        } else if (this.peerConnection && typeof this.peerConnection.addTrack === 'function') {
+          this.audioSender = this.peerConnection.addTrack(audioTrack, stream);
+        }
+      }
+      return true;
+    } catch (err: any) {
+      console.error('[WebRTC Audio] getUserMedia error:', err);
+      throw err;
+    }
+  }
+
+  setPushToTalk(speaking: boolean, sender: string): boolean {
+    if (this.localAudioStream) {
+      const tracks = this.localAudioStream.getAudioTracks();
+      for (const track of tracks) {
+        track.enabled = speaking;
+      }
+    }
+
+    return this.sendTypedMessage<VoiceStatusPayload>('voice-status', sender, {
+      speaking,
+      voiceActive: !!this.localAudioStream
+    });
+  }
+
+  private attachRemoteAudio(stream: MediaStream): void {
+    if (typeof Audio !== 'undefined') {
+      if (!this.remoteAudioElement) {
+        this.remoteAudioElement = new Audio();
+        this.remoteAudioElement.autoplay = true;
+        (this.remoteAudioElement as any).playsInline = true;
+      }
+      this.remoteAudioElement.srcObject = stream;
+      this.remoteAudioElement.play().catch(err => {
+        console.warn('[WebRTC Audio] Remote audio playback handled warning:', err);
+      });
+    }
+  }
+
+  muteOpponent(muted: boolean): void {
+    if (this.remoteAudioElement) {
+      this.remoteAudioElement.muted = muted;
+    }
+  }
+
+  closeAudio(): void {
+    if (this.localAudioStream) {
+      this.localAudioStream.getTracks().forEach(track => track.stop());
+      this.localAudioStream = null;
+    }
+    if (this.audioSender && typeof this.audioSender.replaceTrack === 'function') {
+      try {
+        this.audioSender.replaceTrack(null).catch(() => {});
+      } catch {}
+      this.audioSender = null;
+    }
+    if (this.remoteAudioElement) {
+      this.remoteAudioElement.pause();
+      this.remoteAudioElement.srcObject = null;
+      this.remoteAudioElement = null;
+    }
+    this.remoteAudioStream = null;
+  }
+
   close(): void {
     this.clearConnectionTimeout();
+    this.closeAudio();
     this.pendingCandidates = [];
     this.dataChannel?.close();
     this.peerConnection?.close();
     this.dataChannel = null;
     this.peerConnection = null;
+    this.audioTransceiver = null;
   }
 }

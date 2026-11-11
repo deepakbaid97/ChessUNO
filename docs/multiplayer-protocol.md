@@ -56,7 +56,12 @@ The WebRTC DataChannel (`chess-uno-p2p`) transmits non-authoritative JSON messag
 ```typescript
 export const PROTOCOL_VERSION = '1.0';
 
-export type P2PMessageType = 'ping' | 'pong' | 'cursor' | 'chat';
+export type P2PMessageType = 'ping' | 'pong' | 'cursor' | 'chat' | 'voice-status';
+
+export interface VoiceStatusPayload {
+  speaking: boolean;
+  voiceActive: boolean;
+}
 
 export interface P2PMessage<T = any> {
   id: string;
@@ -68,6 +73,11 @@ export interface P2PMessage<T = any> {
 }
 ```
 
-### Reliability & Candidate Queuing
+### Reliability, Candidate Queuing & Voice Chat
 1. **Candidate Queuing**: ICE candidates arriving before `setRemoteDescription` are queued and drained safely after remote description installation, avoiding browser `InvalidStateError`.
 2. **Negotiation Timeout & Fallback**: If peer connection does not connect within 12 seconds, WebRTC transitions to fallback mode and the UI notifies the user that communication is routed via SignalR.
+3. **WebRTC Push-to-Talk Voice Chat**:
+   - Initial SDP offers and answers include an audio transceiver (`direction: 'sendrecv'`) pre-negotiated upfront.
+   - Microphone capture is opt-in via `navigator.mediaDevices.getUserMedia(...)`.
+   - Audio tracks are muted by default (`track.enabled = false`) and actively unmuted only while the Push-to-Talk button or keyboard key (`Space` or `V`) is held down.
+   - P2P message `voice-status` synchronizes speaking wave indicators and opponent mute status across peers in real time without SDP renegotiation glare.

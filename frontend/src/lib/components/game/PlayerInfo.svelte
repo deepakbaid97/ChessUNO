@@ -8,6 +8,7 @@
   export let isConnected: boolean = true;
   export let reserves: string[] = [];
   export let isOpponent: boolean = false;
+  export let isSpeaking: boolean = false;
 
   $: initials = name ? name.substring(0, 2).toUpperCase() : '??';
   $: isWhite = color === 'White';
@@ -21,6 +22,7 @@
   class="player-info"
   class:opponent={isOpponent}
   class:active-turn={isCurrentTurn}
+  class:speaking={isSpeaking}
   data-testid={isOpponent ? 'opponent-info' : 'player-info'}
 >
   <div class="player-identity">
@@ -105,6 +107,17 @@
     background-color: rgba(255, 255, 255, 0.05);
     box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.2), 0 0 12px rgba(255, 255, 255, 0.1);
     animation: opponentTurnBreath 2.8s infinite ease-in-out;
+  }
+
+  .player-info.speaking .avatar-badge {
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.8);
+    border-color: #10b981 !important;
+    animation: speakingPulse 1.2s infinite ease-in-out;
+  }
+
+  @keyframes speakingPulse {
+    0%, 100% { box-shadow: 0 0 6px rgba(16, 185, 129, 0.6); }
+    50% { box-shadow: 0 0 16px rgba(16, 185, 129, 1); }
   }
 
   @keyframes opponentTurnBreath {

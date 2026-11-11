@@ -17,6 +17,8 @@
   import GameOverModal from '../game/GameOverModal.svelte';
   import CardRevealOverlay from '../animation/CardRevealOverlay.svelte';
   import { cardAnimationService } from '../../services/cardAnimationService';
+  import PushToTalkControl from '../game/PushToTalkControl.svelte';
+  import { voiceStore } from '../../stores/voiceStore';
 
   export let isSubmitting: boolean = false;
 
@@ -31,6 +33,11 @@
     resign: void;
     returnHome: void;
     playAgain: void;
+    enableVoice: void;
+    leaveVoice: void;
+    pushToTalkStart: void;
+    pushToTalkEnd: void;
+    toggleMuteOpponent: void;
   }>();
 
   // Active target mode for Reverse / Revival
@@ -411,6 +418,7 @@
         isConnected={connState.signalR === 'Connected'}
         reserves={opponentReserves}
         isOpponent={true}
+        isSpeaking={$voiceStore.isOpponentSpeaking}
       />
     </div>
 
@@ -455,15 +463,25 @@
         reserves={myReserves}
         isOpponent={false}
       >
-        <button
-          slot="actions"
-          class="btn btn-danger btn-resign"
-          on:click={handleResign}
-          disabled={isGameOver}
-          data-testid="btn-resign"
-        >
-          Resign
-        </button>
+        <div slot="actions" class="player-actions-cluster">
+          <PushToTalkControl
+            opponentName={storeState.opponentName || 'Opponent'}
+            disabled={isGameOver}
+            on:enableVoice={() => dispatch('enableVoice')}
+            on:leaveVoice={() => dispatch('leaveVoice')}
+            on:pushToTalkStart={() => dispatch('pushToTalkStart')}
+            on:pushToTalkEnd={() => dispatch('pushToTalkEnd')}
+            on:toggleMuteOpponent={() => dispatch('toggleMuteOpponent')}
+          />
+          <button
+            class="btn btn-danger btn-resign"
+            on:click={handleResign}
+            disabled={isGameOver}
+            data-testid="btn-resign"
+          >
+            Resign
+          </button>
+        </div>
       </PlayerInfo>
     </div>
 
@@ -753,6 +771,12 @@
     font-size: 0.8rem;
     color: var(--text-muted);
     line-height: 1.35;
+  }
+
+  .player-actions-cluster {
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .btn-resign {

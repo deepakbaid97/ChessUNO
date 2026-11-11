@@ -7,6 +7,7 @@
   import { WebRtcService } from './lib/services/webrtcService';
   import { gameStore } from './lib/stores/gameStore';
   import { connectionStore } from './lib/stores/connectionStore';
+  import { voiceStore } from './lib/stores/voiceStore';
   import type { PlayerColor, PieceType } from './lib/types/game';
 
   import HomeScreen from './lib/components/screens/HomeScreen.svelte';
@@ -99,6 +100,11 @@
         gameStore.log(`[WebRTC] ICE state changed to: ${iceState}`);
       }
     );
+
+    webrtcService.setOnVoiceStatus((sender, payload) => {
+      voiceStore.setOpponentSpeaking(payload.speaking);
+      voiceStore.setOpponentVoiceActive(payload.voiceActive);
+    });
 
     // Setup SignalR Callbacks
     signalRService.onGameStateSnapshot((snapshot) => {
@@ -261,6 +267,7 @@
   });
 
   onDestroy(async () => {
+    voiceStore.reset();
     webrtcService?.close();
     await signalRService.disconnect();
   });
@@ -476,6 +483,7 @@
 
   async function handleReturnHome() {
     sessionStorage.removeItem('chess_uno_session');
+    voiceStore.reset();
     webrtcService?.close();
     await signalRService.disconnect();
     gameStore.reset();
@@ -484,6 +492,43 @@
     currentView = 'LOBBY';
     // Clear URL query parameters
     window.history.pushState({}, '', window.location.pathname);
+  }
+
+  async function handleEnableVoice() {
+    try {
+      voiceStore.setError(null);
+      await webrtcService.enableMicrophone();
+      voiceStore.setVoiceEnabled(true);
+      voiceStore.setMicActive(true);
+      showToast('Voice connected! Hold Space or V to speak.', 'success');
+      webrtcService.setPushToTalk(false, storeState.playerName || storeState.assignedColor);
+    } catch (err: any) {
+      const msg = err.name === 'NotAllowedError'
+        ? 'Microphone permission denied.'
+        : err.message || 'Could not access microphone.';
+      voiceStore.setError(msg);
+      showToast(msg, 'error');
+    }
+  }
+
+  function handleLeaveVoice() {
+    webrtcService.closeAudio();
+    voiceStore.reset();
+    showToast('Disconnected from voice chat.', 'info');
+  }
+
+  function handlePushToTalkStart() {
+    webrtcService.setPushToTalk(true, storeState.playerName || storeState.assignedColor);
+  }
+
+  function handlePushToTalkEnd() {
+    webrtcService.setPushToTalk(false, storeState.playerName || storeState.assignedColor);
+  }
+
+  function handleToggleMuteOpponent() {
+    const isMuted = get(voiceStore).isOpponentMuted;
+    webrtcService.muteOpponent(!isMuted);
+    voiceStore.toggleOpponentMuted();
   }
 </script>
 
@@ -571,6 +616,11 @@
         on:resign={handleResign}
         on:returnHome={handleReturnHome}
         on:playAgain={handleReturnHome}
+        on:enableVoice={handleEnableVoice}
+        on:leaveVoice={handleLeaveVoice}
+        on:pushToTalkStart={handlePushToTalkStart}
+        on:pushToTalkEnd={handlePushToTalkEnd}
+        on:toggleMuteOpponent={handleToggleMuteOpponent}
       />
     {/if}
   </main>
