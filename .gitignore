@@ -30,3 +30,5 @@ appsettings*.local.json
 *.pfx
 *.crt
 
+
+.fake

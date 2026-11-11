@@ -8,7 +8,10 @@
   import { gameStore } from './lib/stores/gameStore';
   import { connectionStore } from './lib/stores/connectionStore';
   import { voiceStore } from './lib/stores/voiceStore';
-  import type { PlayerColor, PieceType } from './lib/types/game';
+  import { toastStore, showToast } from './lib/stores/toastStore';
+  import { setupSignalRListeners } from './lib/services/sessionCoordinator';
+  import * as gameActions from './lib/services/gameActions';
+  import type { PieceType } from './lib/types/game';
 
   import HomeScreen from './lib/components/screens/HomeScreen.svelte';
   import WaitingRoom from './lib/components/screens/WaitingRoom.svelte';
@@ -28,29 +31,6 @@
   let isSubmitting = false;
   let isRestoringSession = false;
   let errorMessage = '';
-
-  // Toasts
-  interface ToastMessage {
-    id: number;
-    text: string;
-    type: 'info' | 'error' | 'success';
-  }
-  let toasts: ToastMessage[] = [];
-  let toastCounter = 0;
-
-  function showToast(text: string, type: 'info' | 'error' | 'success' = 'info') {
-    const id = ++toastCounter;
-    toasts = [...toasts, { id, text, type }];
-    setTimeout(() => {
-      toasts = toasts.filter(t => t.id !== id);
-    }, 4000);
-  }
-
-  function generateActionId(): string {
-    return typeof crypto !== 'undefined' && crypto.randomUUID
-      ? crypto.randomUUID()
-      : `act-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-  }
 
   $: storeState = $gameStore;
   $: connState = $connectionStore;
@@ -138,116 +118,16 @@
       }
     });
 
-    // Setup SignalR Callbacks
-    signalRService.onGameStateSnapshot((snapshot) => {
-      gameStore.applySnapshot(snapshot);
-      connectionStore.setSignalR('Connected');
-      syncWebRtcSession();
-    });
-
-    signalRService.onPlayerDisconnected((data) => {
-      console.log('[SignalR Event] onPlayerDisconnected received:', data);
-      showToast(`${data.playerName} (${data.color}) disconnected. Waiting for reconnection...`, 'error');
-      connectionStore.setWebRtc('Disconnected');
-      voiceStore.setOpponentSpeaking(false);
-      voiceStore.setOpponentVoiceActive(false);
-      webrtcService?.resetOpponentVoiceStatus();
-    });
-
-    signalRService.onActionRejected(async (data) => {
-      console.warn('[SignalR Event] onActionRejected received:', data);
-      isSubmitting = false;
-      gameStore.clearSelection();
-
-      if (data.reason === 'REVISION_MISMATCH') {
-        showToast('Game state out of sync. Refreshing board...', 'error');
-        if (storeState.gameId && storeState.playerToken) {
-          await signalRService.joinGameRoom(storeState.gameId, storeState.playerToken);
-        }
-      } else if (data.reason === 'NOT_YOUR_TURN') {
-        showToast('It is not your turn!', 'error');
-      } else if (data.reason === 'ILLEGAL_MOVE') {
-        showToast('Illegal chess move rejected by authoritative referee.', 'error');
-      } else if (data.reason === 'SESSION_TERMINAL') {
-        showToast('Match has concluded.', 'info');
-      } else {
-        showToast(`Action rejected: ${data.reason}`, 'error');
+    // Setup SignalR Callbacks via Session Coordinator
+    setupSignalRListeners({
+      signalRService,
+      getWebRtcService: () => webrtcService,
+      onNavigateToGame: () => {
+        if (currentView === 'WAITING') currentView = 'GAME';
+      },
+      onClearSubmitting: () => {
+        isSubmitting = false;
       }
-    });
-
-    signalRService.onGameStateUpdated((update) => {
-      gameStore.applyUpdate(update);
-      if (currentView === 'WAITING') {
-        currentView = 'GAME';
-      }
-    });
-
-    signalRService.onMoveAccepted((data) => {
-      gameStore.onMoveAccepted(data);
-      isSubmitting = false;
-    });
-
-    signalRService.onCardDrawn((data) => {
-      gameStore.onCardDrawn(data);
-      showToast(`${data.player} drew ${data.cardName}`, 'info');
-    });
-
-    signalRService.onPlayerConnected((data) => {
-      console.log('[SignalR Event] onPlayerConnected received:', data);
-      gameStore.onPlayerConnected(data);
-      showToast(`${data.playerName} joined as ${data.color}!`, 'success');
-
-      currentView = 'GAME';
-      const isWhite = get(gameStore).assignedColor === 'White';
-      syncWebRtcSession(isWhite);
-    });
-
-    signalRService.onPieceRevived((data) => {
-      gameStore.log(`${data.player} revived ${data.piece} to ${data.targetSquare}`);
-      showToast(`${data.player} revived ${data.piece} to ${data.targetSquare}`, 'info');
-    });
-
-    signalRService.onPiecesSwapped((data) => {
-      gameStore.log(`${data.player} swapped pieces on ${data.square1} and ${data.square2}`);
-      showToast(`${data.player} swapped ${data.square1} and ${data.square2}`, 'info');
-    });
-
-    signalRService.onEffectChosen((data) => {
-      gameStore.onEffectChosen(data);
-      showToast(`${data.player} chose ability: ${data.choice}`, 'info');
-    });
-
-    signalRService.onReceiveSignal(async (signalType, payload) => {
-      if (signalType === 'voice-status') {
-        try {
-          const parsed = JSON.parse(payload);
-          if (parsed && parsed.payload) {
-            webrtcService?.handleVoiceStatus(parsed.sender, parsed.payload, parsed.epoch);
-          }
-        } catch {}
-        return;
-      }
-      await webrtcService.handleSignal(signalType, payload);
-    });
-
-    signalRService.onReconnecting(() => {
-      connectionStore.setSignalR('Reconnecting');
-      connectionStore.incrementReconnect();
-      showToast('Connection interrupted. Reconnecting to game...', 'error');
-    });
-
-    signalRService.onReconnected(() => {
-      connectionStore.setSignalR('Connected');
-      connectionStore.resetReconnect();
-      showToast('Reconnected to game session.', 'success');
-      // Re-fetch authoritative legal moves/snapshot
-      if (storeState.gameId && storeState.playerToken) {
-        signalRService.joinGameRoom(storeState.gameId, storeState.playerToken);
-      }
-    });
-
-    signalRService.onClose(() => {
-      connectionStore.setSignalR('Disconnected');
     });
 
     // Check saved session in sessionStorage first (e.g., page refresh during match)
@@ -269,21 +149,25 @@
     if (savedSession && savedSession.gameId && savedSession.playerToken) {
       isRestoringSession = true;
       gameStore.setPlayerSession(savedSession);
-      signalRService.connect().then(async () => {
-        connectionStore.setSignalR('Connected');
-        const joined = await signalRService.joinGameRoom(savedSession.gameId, savedSession.playerToken);
-        if (joined) {
-          currentView = 'GAME';
-          syncWebRtcSession();
-          showToast('Reconnected to active match.', 'success');
-        } else {
+      signalRService
+        .connect()
+        .then(async () => {
+          connectionStore.setSignalR('Connected');
+          const joined = await signalRService.joinGameRoom(savedSession.gameId, savedSession.playerToken);
+          if (joined) {
+            currentView = 'GAME';
+            syncWebRtcSession();
+            showToast('Reconnected to active match.', 'success');
+          } else {
+            sessionStorage.removeItem('chess_uno_session');
+          }
+        })
+        .catch(() => {
           sessionStorage.removeItem('chess_uno_session');
-        }
-      }).catch(() => {
-        sessionStorage.removeItem('chess_uno_session');
-      }).finally(() => {
-        isRestoringSession = false;
-      });
+        })
+        .finally(() => {
+          isRestoringSession = false;
+        });
     } else if (tokenQuery) {
       directJoinToken = tokenQuery;
       currentView = 'JOIN';
@@ -317,14 +201,17 @@
         invitationToken: res.invitationToken
       });
 
-      sessionStorage.setItem('chess_uno_session', JSON.stringify({
-        gameId: res.gameId,
-        playerToken: res.playerToken,
-        assignedColor: res.assignedColor,
-        playerName: event.detail.playerName,
-        invitationUrl: effectiveInviteUrl,
-        invitationToken: res.invitationToken
-      }));
+      sessionStorage.setItem(
+        'chess_uno_session',
+        JSON.stringify({
+          gameId: res.gameId,
+          playerToken: res.playerToken,
+          assignedColor: res.assignedColor,
+          playerName: event.detail.playerName,
+          invitationUrl: effectiveInviteUrl,
+          invitationToken: res.invitationToken
+        })
+      );
 
       await signalRService.connect();
       connectionStore.setSignalR('Connected');
@@ -353,14 +240,17 @@
         invitationToken: event.detail.invitationToken
       });
 
-      sessionStorage.setItem('chess_uno_session', JSON.stringify({
-        gameId: res.gameId,
-        playerToken: res.playerToken,
-        assignedColor: res.assignedColor,
-        playerName: event.detail.playerName,
-        invitationUrl: res.invitationUrl,
-        invitationToken: res.invitationToken
-      }));
+      sessionStorage.setItem(
+        'chess_uno_session',
+        JSON.stringify({
+          gameId: res.gameId,
+          playerToken: res.playerToken,
+          assignedColor: res.assignedColor,
+          playerName: event.detail.playerName,
+          invitationUrl: res.invitationUrl,
+          invitationToken: res.invitationToken
+        })
+      );
 
       await signalRService.connect();
       connectionStore.setSignalR('Connected');
@@ -379,136 +269,39 @@
   }
 
   async function handleProposeMove(event: CustomEvent<{ from: string; to: string; promotion?: PieceType }>) {
-    console.log('[handleProposeMove] Proposing move:', event.detail);
     if (isSubmitting) return;
     isSubmitting = true;
-
-    try {
-      const actionId = generateActionId();
-      const success = await signalRService.submitMove(
-        storeState.gameId,
-        storeState.playerToken,
-        event.detail.from,
-        event.detail.to,
-        event.detail.promotion,
-        actionId,
-        storeState.revision
-      );
-      console.log('[handleProposeMove] submitMove result:', success);
-
-      if (!success) {
-        isSubmitting = false;
-        gameStore.clearSelection();
-        showToast('Move rejected by authoritative referee.', 'error');
-      }
-    } catch (err: any) {
-      console.error('[handleProposeMove] Error:', err);
-      isSubmitting = false;
-      gameStore.clearSelection();
-      showToast(`Move failed: ${err.message}`, 'error');
-    }
+    const ok = await gameActions.proposeMove(
+      signalRService,
+      event.detail.from,
+      event.detail.to,
+      event.detail.promotion
+    );
+    if (!ok) isSubmitting = false;
   }
 
   async function handleDrawCard() {
-    console.log('[handleDrawCard] Invoking DrawCard on hub with gameId:', storeState.gameId);
-    try {
-      const actionId = generateActionId();
-      const success = await signalRService.drawCard(
-        storeState.gameId,
-        storeState.playerToken,
-        actionId,
-        storeState.revision
-      );
-      console.log('[handleDrawCard] Result:', success);
-      if (!success) {
-        showToast('Unable to draw card on server.', 'error');
-      }
-    } catch (err: any) {
-      console.error('[handleDrawCard] Threw:', err);
-      showToast(`Draw failed: ${err.message}`, 'error');
-    }
+    await gameActions.drawCard(signalRService);
   }
 
   async function handleSubmitChoice(event: CustomEvent<{ choice: string }>) {
-    try {
-      const actionId = generateActionId();
-      const success = await signalRService.submitChoice(
-        storeState.gameId,
-        storeState.playerToken,
-        event.detail.choice,
-        actionId,
-        storeState.revision
-      );
-      if (!success) {
-        showToast('Choice rejected by server.', 'error');
-      }
-    } catch (err: any) {
-      showToast(`Choice failed: ${err.message}`, 'error');
-    }
+    await gameActions.submitChoice(signalRService, event.detail.choice);
   }
 
   async function handleEndTurn() {
-    try {
-      const actionId = generateActionId();
-      const success = await signalRService.endTurn(
-        storeState.gameId,
-        storeState.playerToken,
-        actionId,
-        storeState.revision
-      );
-      if (!success) {
-        showToast('Cannot end turn at this time.', 'error');
-      }
-    } catch (err: any) {
-      showToast(`End turn failed: ${err.message}`, 'error');
-    }
+    await gameActions.endTurn(signalRService);
   }
 
   async function handleSubmitSwap(event: CustomEvent<{ sq1: string; sq2: string }>) {
-    try {
-      const actionId = generateActionId();
-      const success = await signalRService.submitSwap(
-        storeState.gameId,
-        storeState.playerToken,
-        event.detail.sq1,
-        event.detail.sq2,
-        actionId,
-        storeState.revision
-      );
-      if (!success) {
-        showToast('Swap rejected by server. Ensure friendly non-king pieces are selected.', 'error');
-      }
-    } catch (err: any) {
-      showToast(`Swap failed: ${err.message}`, 'error');
-    }
+    await gameActions.submitSwap(signalRService, event.detail.sq1, event.detail.sq2);
   }
 
   async function handleSubmitRevival(event: CustomEvent<{ pieceType: string; targetSquare: string }>) {
-    try {
-      const actionId = generateActionId();
-      const success = await signalRService.submitRevival(
-        storeState.gameId,
-        storeState.playerToken,
-        event.detail.pieceType,
-        event.detail.targetSquare,
-        actionId,
-        storeState.revision
-      );
-      if (!success) {
-        showToast('Revival rejected. Target square must be empty and on your half of the board.', 'error');
-      }
-    } catch (err: any) {
-      showToast(`Revival failed: ${err.message}`, 'error');
-    }
+    await gameActions.submitRevival(signalRService, event.detail.pieceType, event.detail.targetSquare);
   }
 
   async function handleResign() {
-    try {
-      await signalRService.resign(storeState.gameId, storeState.playerToken);
-      showToast('You resigned the match.', 'info');
-    } catch (err: any) {
-      showToast(`Resign failed: ${err.message}`, 'error');
-    }
+    await gameActions.resignMatch(signalRService);
   }
 
   async function handleReturnHome() {
@@ -520,7 +313,6 @@
     connectionStore.setSignalR('Disconnected');
     connectionStore.setWebRtc('Disconnected');
     currentView = 'LOBBY';
-    // Clear URL query parameters
     window.history.pushState({}, '', window.location.pathname);
   }
 
@@ -533,9 +325,10 @@
       voiceStore.setMicActive(true);
       showToast('Voice connected! Hold Space or V to speak.', 'success');
     } catch (err: any) {
-      const msg = err.name === 'NotAllowedError'
-        ? 'Microphone permission denied.'
-        : err.message || 'Could not access microphone.';
+      const msg =
+        err.name === 'NotAllowedError'
+          ? 'Microphone permission denied.'
+          : err.message || 'Could not access microphone.';
       voiceStore.setError(msg);
       showToast(msg, 'error');
     }
@@ -658,7 +451,7 @@
 
   <!-- Notification Toasts -->
   <div class="toast-container" data-testid="toast-container">
-    {#each toasts as toast (toast.id)}
+    {#each $toastStore as toast (toast.id)}
       <div class="toast toast-{toast.type}">
         {toast.text}
       </div>

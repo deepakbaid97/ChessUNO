@@ -3,7 +3,7 @@
 **Date**: November 2026  
 **Auditor**: Antigravity Pair Programming Agent  
 **Verdict**: **READY FOR PHASE 6**  
-**Total Automated Tests**: 277 Passing (163 Backend .NET + 107 Frontend Vitest + 7 Playwright Dual-Browser E2E Tests)
+**Total Automated Tests**: 288 Passing (163 Backend .NET + 118 Frontend Vitest + 7 Playwright Dual-Browser E2E Tests)
 
 ---
 
@@ -78,6 +78,23 @@ All requirements have been developed and verified using strict **Test-Driven Dev
    - Fixed an asynchronous race condition in `handleEnableVoice()` ensuring initial mute state is applied before the PTT UI control mounts.
    - Dual-browser Playwright test verifies bidirectional audio transmission and asserts strict 0 energy on release (`smoothingTimeConstant = 0`).
 
+### 2.5. Frontend Architecture Modularization
+1. **WebRTC Service Decoupling**:
+   - `AudioTrackManager` (`audioTrackManager.ts`): Encapsulates local/remote streams, microphone tracks, transceivers/senders, PTT muting, and receiver track binding.
+   - `AutoplayRecoveryManager` (`autoplayRecovery.ts`): Encapsulates browser autoplay policy listeners, tap-to-enable notifications, and playback unlock logic.
+   - `iceConfig.ts`: Encapsulates default STUN configurations, environment parsing, and schema validation.
+   - Reduced `webrtcService.ts` from 910+ lines down to ~550 lines as a clean coordinator facade.
+2. **Session Coordination & Game Actions**:
+   - `sessionCoordinator.ts`: Encapsulates SignalR snapshot updates, player connections/disconnects, action rejection recovery, and WebRTC synchronization.
+   - `gameActions.ts`: Pure action dispatch helpers (`proposeMove`, `drawCard`, `submitChoice`, `submitSwap`, `submitRevival`, `resignMatch`, `generateActionId`).
+   - `toastStore.ts`: Global reactive toast notifications store, decoupled from top-level Svelte root.
+   - Reduced `App.svelte` from 732 lines down to 365 lines (50% reduction).
+3. **Screen & Component Decomposition**:
+   - `TurnCoachBanner.svelte`: Dedicated component encapsulating live tactical coach badge, status highlights, and scoped styles.
+   - `coachGuide.ts`: Pure functional state calculator for coach badge, tone, headline, and instruction.
+   - `cardDisplayUtils.ts`: Pure animation and symbol utilities extracted from `CardRevealOverlay.svelte`.
+   - Reduced `GameArena.svelte` from 824 lines down to 584 lines.
+
 ---
 
 ## 3. Test Verification Matrix
@@ -88,9 +105,9 @@ All requirements have been developed and verified using strict **Test-Driven Dev
 | `CardEngine.Tests` | 47 | 47 | 0 | Deck management, card effect registry, turn transitions, seeded reproducible shuffles |
 | `Config.Tests` | 10 | 10 | 0 | JSON configuration schema validation, card definitions |
 | `Api.Tests` | 59 | 59 | 0 | SignalR Hub, PostgreSQL persistence, process restart recovery, HMAC key security, snapshot sanitization, action idempotency, atomic mutations, test isolation, secret scanning |
-| `frontend` (Vitest) | 107 | 107 | 0 | Svelte stores, Chessboard, CardHand action buttons, WebRTC lifecycle, candidate queuing, microphone lifecycle, PTT controls, voice status, remote playback, autoplay recovery, ICE server validation, two-peer integration suite, receiver track recovery on rejoin |
+| `frontend` (Vitest) | 118 | 118 | 0 | Svelte stores, Chessboard, CardHand action buttons, WebRTC lifecycle, candidate queuing, microphone lifecycle, PTT controls, voice status, remote playback, autoplay recovery, ICE server validation, two-peer integration suite, receiver track recovery on rejoin, toast notifications, coach guide calculations |
 | `frontend` (Playwright E2E) | 7 | 7 | 0 | Dual-browser multiplayer match, Wild special card choice & move, out-of-turn rejection, disconnect/reconnect recovery, real WebRTC voice chat & PTT transmission with AudioContext frequency energy verification, bidirectional transmission after rejoin |
-| **Total Automated Tests** | **277** | **277** | **0** | **100% Pass Rate** |
+| **Total Automated Tests** | **288** | **288** | **0** | **100% Pass Rate** |
 
 ---
 
