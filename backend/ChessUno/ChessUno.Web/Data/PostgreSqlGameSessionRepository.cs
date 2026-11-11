@@ -305,6 +305,11 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
 
                 return (session, opponent);
             }
+            catch (DbUpdateConcurrencyException)
+            {
+                RestoreSessionInPlace(session, previousSnapshotJson);
+                return null;
+            }
             catch
             {
                 RestoreSessionInPlace(session, previousSnapshotJson);
@@ -362,6 +367,11 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
                     await tx.RollbackAsync();
                     return false;
                 }
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                RestoreSessionInPlace(session, previousSnapshotJson);
+                return false;
             }
             catch
             {
@@ -437,6 +447,11 @@ public class PostgreSqlGameSessionRepository : IGameSessionRepository
                 await tx.CommitAsync();
 
                 return true;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                RestoreSessionInPlace(session, previousSnapshotJson);
+                return false;
             }
             catch
             {
