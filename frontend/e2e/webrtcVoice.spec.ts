@@ -107,12 +107,29 @@ test.describe('WebRTC Push-to-Talk Voice Two-Browser E2E Test', () => {
 
     const getAudioEnergy = async (page: any) => {
       return await page.evaluate(async () => {
-        const ctx = (window as any).__audioCtx as AudioContext;
-        if (ctx && ctx.state === 'suspended') {
+        const el = document.getElementById('chessuno-remote-audio') as HTMLAudioElement | null;
+        if (!el || !el.srcObject) return 0;
+
+        let ctx = (window as any).__audioCtx as AudioContext;
+        if (!ctx) {
+          ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+          (window as any).__audioCtx = ctx;
+        }
+        if (ctx.state === 'suspended') {
           await ctx.resume();
         }
-        const analyser = (window as any).__analyser as AnalyserNode;
-        if (!analyser) return 0;
+
+        let analyser = (window as any).__analyser as AnalyserNode;
+        if (!analyser || (window as any).__attachedStream !== el.srcObject) {
+          const source = ctx.createMediaStreamSource(el.srcObject as MediaStream);
+          analyser = ctx.createAnalyser();
+          analyser.fftSize = 256;
+          analyser.smoothingTimeConstant = 0;
+          source.connect(analyser);
+          (window as any).__analyser = analyser;
+          (window as any).__attachedStream = el.srcObject;
+        }
+
         const data = new Uint8Array(analyser.frequencyBinCount);
         analyser.getByteFrequencyData(data);
         let max = 0;
@@ -124,7 +141,7 @@ test.describe('WebRTC Push-to-Talk Voice Two-Browser E2E Test', () => {
     };
 
     // 8. Push-to-Talk Transmission across at least 10 consecutive cycles
-    // Verifying real AudioContext frequency energy transmission & UI synchronization
+    // Verifying real AudioContext frequency energy transmission (> 0 on transmit, 0 on release) & UI synchronization
     for (let cycle = 1; cycle <= 10; cycle++) {
       // Alice transmits to Bob via keyboard 'v'
       await pageA.keyboard.down('KeyV');
@@ -138,6 +155,8 @@ test.describe('WebRTC Push-to-Talk Voice Two-Browser E2E Test', () => {
       await pageA.keyboard.up('KeyV');
       await expect(pttBtnA).not.toHaveClass(/transmitting/, { timeout: 3000 });
       await expect(pageB.locator('.opponent-voice-status')).not.toHaveClass(/speaking/, { timeout: 3000 });
+      // Bob's audio analyser energy returns to 0 on release
+      await expect.poll(async () => await getAudioEnergy(pageB), { timeout: 3000 }).toBe(0);
 
       // Bob transmits to Alice via Space key
       await pageB.keyboard.down('Space');
@@ -150,6 +169,8 @@ test.describe('WebRTC Push-to-Talk Voice Two-Browser E2E Test', () => {
       await pageB.keyboard.up('Space');
       await expect(pttBtnB).not.toHaveClass(/transmitting/, { timeout: 3000 });
       await expect(pageA.locator('.opponent-voice-status')).not.toHaveClass(/speaking/, { timeout: 3000 });
+      // Alice's audio analyser energy returns to 0 on release
+      await expect.poll(async () => await getAudioEnergy(pageA), { timeout: 3000 }).toBe(0);
     }
 
     // 9. Test Pointer Events: mouse hold on PTT button transmits real audio
@@ -164,6 +185,7 @@ test.describe('WebRTC Push-to-Talk Voice Two-Browser E2E Test', () => {
       await pageA.mouse.up();
       await expect(pttBtnA).not.toHaveClass(/transmitting/, { timeout: 3000 });
       await expect(pageB.locator('.opponent-voice-status')).not.toHaveClass(/speaking/, { timeout: 3000 });
+      await expect.poll(async () => await getAudioEnergy(pageB), { timeout: 3000 }).toBe(0);
     }
 
     // 10. Alice leaves voice
@@ -173,16 +195,31 @@ test.describe('WebRTC Push-to-Talk Voice Two-Browser E2E Test', () => {
 
     // 11. Alice rejoins voice without reloading
     await pageA.getByTestId('btn-enable-voice').click();
-    await expect(pageA.getByTestId('btn-push-to-talk')).toBeVisible({ timeout: 5000 });
+    const pttBtnARejoin = pageA.getByTestId('btn-push-to-talk');
+    await expect(pttBtnARejoin).toBeVisible({ timeout: 5000 });
 
-    // Verify real audio transmission resumes after leaving and rejoining
+    // 12. Verify bidirectional real audio transmission after Alice rejoins:
+    // Direction 1: Alice transmits -> Bob receives real audio energy
     await pageA.keyboard.down('KeyV');
-    await expect(pageA.getByTestId('btn-push-to-talk')).toHaveClass(/transmitting/, { timeout: 3000 });
+    await expect(pttBtnARejoin).toHaveClass(/transmitting/, { timeout: 3000 });
     await expect(pageB.locator('.opponent-voice-status')).toHaveClass(/speaking/, { timeout: 3000 });
-    await expect.poll(async () => await getAudioEnergy(pageB), { timeout: 3000 }).toBeGreaterThan(0);
+    await expect.poll(async () => await getAudioEnergy(pageB), { timeout: 5000 }).toBeGreaterThan(0);
 
     await pageA.keyboard.up('KeyV');
-    await expect(pageA.getByTestId('btn-push-to-talk')).not.toHaveClass(/transmitting/, { timeout: 3000 });
+    await expect(pttBtnARejoin).not.toHaveClass(/transmitting/, { timeout: 3000 });
+    await expect(pageB.locator('.opponent-voice-status')).not.toHaveClass(/speaking/, { timeout: 3000 });
+    await expect.poll(async () => await getAudioEnergy(pageB), { timeout: 5000 }).toBe(0);
+
+    // Direction 2: Bob transmits -> Alice (rejoined peer) receives real audio energy
+    await pageB.keyboard.down('Space');
+    await expect(pttBtnB).toHaveClass(/transmitting/, { timeout: 3000 });
+    await expect(pageA.locator('.opponent-voice-status')).toHaveClass(/speaking/, { timeout: 3000 });
+    await expect.poll(async () => await getAudioEnergy(pageA), { timeout: 5000 }).toBeGreaterThan(0);
+
+    await pageB.keyboard.up('Space');
+    await expect(pttBtnB).not.toHaveClass(/transmitting/, { timeout: 3000 });
+    await expect(pageA.locator('.opponent-voice-status')).not.toHaveClass(/speaking/, { timeout: 3000 });
+    await expect.poll(async () => await getAudioEnergy(pageA), { timeout: 5000 }).toBe(0);
 
     await contextA.close();
     await contextB.close();

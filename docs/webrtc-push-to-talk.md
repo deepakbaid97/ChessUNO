@@ -114,6 +114,7 @@ Located in `frontend/src/lib/services/webrtcService.test.ts` and `frontend/src/l
 | **B5** | Leaving voice stops all local tracks | Pass |
 | **B6** | Rejoining voice obtains fresh stream and re-attaches sender | Pass |
 | **B7** | Existing audio sender receives replacement track via `replaceTrack()` without SDP renegotiation | Pass |
+| **B8** | Rejoining voice restores remote receiver track to audio element without renegotiation | Pass |
 | **C1** | First press enables microphone track | Pass |
 | **C2** | Release disables microphone track | Pass |
 | **C3** | Repeated press/release cycles work 25 consecutive times without degradation | Pass |
@@ -164,7 +165,9 @@ Located in `frontend/src/lib/services/webrtcIntegration.test.ts`.
 Located in `frontend/e2e/webrtcVoice.spec.ts`.
 - Launches two real Chromium browser contexts with fake media stream devices (`--use-fake-ui-for-media-stream`, `--use-fake-device-for-media-stream`) and microphone permissions.
 - Alice (Host / White) and Bob (Guest / Black) join a real match, establish WebRTC peer connection, enable voice, transmit audio via PTT (`KeyV`, `Space`, pointer click/hold), leave voice, and rejoin voice seamlessly.
-- **Browser-Level Audio Energy Verification:** Connects Web Audio `AudioContext` and `AnalyserNode` (`fftSize = 256`) to the live remote audio stream in each browser context.
-- **Physical Audio Verification:** Asserts `maxFrequencyEnergy > 0` during active PTT transmissions (audio tone arriving from the remote browser peer over WebRTC RTP) and `0` when idle across 10 consecutive cycles.
-- Verifies real audio transmission re-engages and produces energy > 0 after leaving and rejoining voice chat without browser reload.
+- **Browser-Level Audio Energy Verification:** Connects Web Audio `AudioContext` and `AnalyserNode` (`fftSize = 256`, `smoothingTimeConstant = 0`) to the live remote audio stream in each browser context.
+- **Physical Audio Verification:** Asserts `maxFrequencyEnergy > 0` during active PTT transmissions (audio tone arriving from the remote browser peer over WebRTC RTP) and strict `0` when idle across 10 consecutive cycles and pointer hold/release.
+- **Bidirectional Rejoin Verification:** After Alice leaves voice and rejoins, the test asserts audio transmission in **both directions** without browser reload:
+  1. Direction 1: Alice transmits -> Bob receives real audio energy (`> 0`), then Alice releases -> Bob's energy returns to `0`.
+  2. Direction 2: Bob transmits -> Alice (the rejoined peer) receives real audio energy (`> 0`), then Bob releases -> Alice's energy returns to `0`.
 

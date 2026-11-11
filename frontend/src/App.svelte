@@ -528,10 +528,10 @@
     try {
       voiceStore.setError(null);
       await webrtcService.enableMicrophone();
+      webrtcService.setPushToTalk(false, storeState.playerName || storeState.assignedColor);
       voiceStore.setVoiceEnabled(true);
       voiceStore.setMicActive(true);
       showToast('Voice connected! Hold Space or V to speak.', 'success');
-      webrtcService.setPushToTalk(false, storeState.playerName || storeState.assignedColor);
     } catch (err: any) {
       const msg = err.name === 'NotAllowedError'
         ? 'Microphone permission denied.'

@@ -84,6 +84,19 @@ describe('WebRtcService', () => {
       }
     };
 
+    (globalThis as any).MediaStream = class {
+      private tracks: any[];
+      constructor(tracks: any[] = []) {
+        this.tracks = tracks;
+      }
+      getAudioTracks() {
+        return this.tracks.filter((t: any) => t.kind === 'audio');
+      }
+      getTracks() {
+        return this.tracks;
+      }
+    };
+
     mockNavigator = {
       mediaDevices: {
         getUserMedia: vi.fn()
@@ -425,6 +438,60 @@ describe('WebRtcService', () => {
 
       await service.enableMicrophone();
       expect(replaceTrackSpy).toHaveBeenCalledWith(track);
+    });
+
+    it('B8: Rejoining voice restores remote receiver track to audio element without renegotiation', async () => {
+      const service = new WebRtcService(vi.fn(), vi.fn(), vi.fn());
+      service.initializePeerConnection();
+      const pc: any = service.getPeerConnection();
+
+      const mockRemoteTrack = {
+        id: 'remote-receiver-track-1',
+        kind: 'audio',
+        readyState: 'live',
+        enabled: true,
+        onunmute: null,
+        onmute: null,
+        onended: null
+      };
+
+      pc.getReceivers = vi.fn(() => [
+        { track: mockRemoteTrack }
+      ]);
+
+      const mockAudioEl: any = {
+        play: vi.fn().mockResolvedValue(undefined),
+        pause: vi.fn(),
+        srcObject: null,
+        muted: false,
+        volume: 1.0
+      };
+      service.setAudioElement(mockAudioEl);
+
+      // Initial track arrival attaches stream
+      (service as any).checkReceiversForRemoteTrack();
+      expect(service.getRemoteAudioStream()).not.toBeNull();
+      expect(mockAudioEl.srcObject).not.toBeNull();
+
+      // User leaves voice
+      service.closeAudio();
+      expect(service.getRemoteAudioStream()).toBeNull();
+      expect(mockAudioEl.srcObject).toBeNull();
+
+      // User rejoins voice
+      const micTrack = { id: 'mic-track-1', readyState: 'live', stop: vi.fn() };
+      mockNavigator.mediaDevices.getUserMedia.mockResolvedValueOnce({
+        getAudioTracks: () => [micTrack],
+        getTracks: () => [micTrack]
+      });
+
+      await service.enableMicrophone();
+
+      // Remote receiver track and audio element must be automatically restored!
+      expect(service.getRemoteAudioStream()).not.toBeNull();
+      expect(service.getRemoteAudioStream()?.getAudioTracks()[0].id).toBe('remote-receiver-track-1');
+      expect(mockAudioEl.srcObject).toBe(service.getRemoteAudioStream());
+      expect(mockAudioEl.play).toHaveBeenCalled();
     });
   });
 

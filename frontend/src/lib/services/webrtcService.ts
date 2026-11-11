@@ -781,6 +781,7 @@ export class WebRtcService {
         const track = liveTracks[0];
         track.enabled = false; // Always start muted until PTT is held
         await this.attachLocalTrackToSender(track);
+        this.checkReceiversForRemoteTrack();
         this.unlockAudio();
         return true;
       }
@@ -818,6 +819,7 @@ export class WebRtcService {
         await this.attachLocalTrackToSender(audioTrack);
       }
 
+      this.checkReceiversForRemoteTrack();
       this.unlockAudio();
       return true;
     } catch (err: any) {
@@ -908,20 +910,20 @@ export class WebRtcService {
   }
 
   private attachRemoteAudio(stream: MediaStream): void {
-    if (typeof document !== 'undefined') {
-      if (!this.remoteAudioElement) {
-        let el = document.getElementById('chessuno-remote-audio') as HTMLAudioElement | null;
-        if (!el) {
-          el = document.createElement('audio');
-          el.id = 'chessuno-remote-audio';
-          el.autoplay = true;
-          (el as any).playsInline = true;
-          el.style.display = 'none';
-          document.body.appendChild(el);
-        }
-        this.remoteAudioElement = el;
+    if (!this.remoteAudioElement && typeof document !== 'undefined') {
+      let el = document.getElementById('chessuno-remote-audio') as HTMLAudioElement | null;
+      if (!el) {
+        el = document.createElement('audio');
+        el.id = 'chessuno-remote-audio';
+        el.autoplay = true;
+        (el as any).playsInline = true;
+        el.style.display = 'none';
+        document.body.appendChild(el);
       }
+      this.remoteAudioElement = el;
+    }
 
+    if (this.remoteAudioElement) {
       this.remoteAudioElement.muted = this.isOpponentAudioMuted;
       this.remoteAudioElement.srcObject = stream;
       this.remoteAudioElement.volume = 1.0;
