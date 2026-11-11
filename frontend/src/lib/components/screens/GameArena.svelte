@@ -5,7 +5,8 @@
     parseFenToMatrix,
     getSquareIndex,
     getEligibleSwapSquares,
-    getEligibleRevivalSquares
+    getEligibleRevivalSquares,
+    isKingInCheck
   } from '../../utils/boardUtils';
   import { gameStore } from '../../stores/gameStore';
   import { connectionStore } from '../../stores/connectionStore';
@@ -161,7 +162,22 @@
       if (!storeState?.boardFen || !storeState?.assignedColor) return;
       const eligible = getEligibleRevivalSquares(storeState.boardFen, storeState.assignedColor, selectedRevivalPiece);
       if (!eligible.includes(square)) {
-        dispatch('showToast', { text: 'Revival square must be an empty square in your half of the board.', type: 'error' });
+        const matrix = parseFenToMatrix(storeState.boardFen);
+        const { row, col } = getSquareIndex(square);
+        const piece = matrix[row]?.[col];
+        const rank = 8 - row;
+        const inOwnHalf = storeState.assignedColor === 'White' ? rank <= 4 : rank >= 5;
+        if (piece) {
+          dispatch('showToast', { text: `Square ${square} is already occupied.`, type: 'error' });
+        } else if (!inOwnHalf) {
+          dispatch('showToast', { text: 'Revival square must be on your half of the board.', type: 'error' });
+        } else if (selectedRevivalPiece === 'Pawn' && (rank === 1 || rank === 8)) {
+          dispatch('showToast', { text: 'Pawns cannot be revived on rank 1 or 8.', type: 'error' });
+        } else if (isKingInCheck(storeState.assignedColor, matrix)) {
+          dispatch('showToast', { text: `Revival on square '${square}' leaves your King in check.`, type: 'error' });
+        } else {
+          dispatch('showToast', { text: 'Revival square is not eligible.', type: 'error' });
+        }
         return;
       }
       dispatch('submitRevival', {
@@ -583,6 +599,8 @@
   .area-player {
     grid-area: player;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .area-command {
@@ -597,15 +615,21 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-shrink: 0;
   }
 
   .btn-resign {
     padding: 5px 10px;
     font-size: 0.75rem;
+    white-space: nowrap;
   }
 
   /* Single-Screen Mobile Viewport Layout */
   @media (max-width: 900px) {
+    .game-arena {
+      padding: 6px 8px;
+    }
+
     .arena-layout {
       grid-template-columns: 1fr;
       grid-template-areas:
@@ -617,11 +641,36 @@
       max-width: 100%;
       margin: 0 auto;
       width: 100%;
+      box-sizing: border-box;
     }
 
     .area-command {
       gap: 6px;
       min-width: 0;
+    }
+
+    .player-actions-cluster {
+      gap: 4px;
+    }
+
+    .btn-resign {
+      padding: 3px 6px;
+      font-size: 0.7rem;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .game-arena {
+      padding: 4px 6px;
+    }
+
+    .player-actions-cluster {
+      gap: 3px;
+    }
+
+    .btn-resign {
+      padding: 3px 5px;
+      font-size: 0.66rem;
     }
   }
 </style>

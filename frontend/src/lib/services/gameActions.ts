@@ -137,7 +137,7 @@ export async function submitSwap(signalR: SignalRService, sq1: string, sq2: stri
       session.revision
     );
     if (!success) {
-      showToast('Swap rejected by server. Ensure friendly non-king pieces are selected.', 'error');
+      // Authoritative rejection reason is dispatched via ActionRejected event by sessionCoordinator
       return false;
     }
     return true;
@@ -166,7 +166,7 @@ export async function submitRevival(
       session.revision
     );
     if (!success) {
-      showToast('Revival rejected. Target square must be empty and on your half of the board.', 'error');
+      // Authoritative rejection reason is dispatched via ActionRejected event by sessionCoordinator
       return false;
     }
     return true;

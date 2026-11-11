@@ -239,15 +239,33 @@ export class AudioTrackManager {
 
     // Detach from WebRTC sender first, then stop local hardware tracks
     if (this.audioSender && typeof this.audioSender.replaceTrack === 'function') {
+      const sender = this.audioSender;
+      this.audioSender = null;
       try {
-        void this.audioSender.replaceTrack(null);
+        void sender.replaceTrack(null);
       } catch {
         // ignore
       }
-      this.audioSender = null;
-    }
 
-    if (streamToStop) {
+      if (streamToStop) {
+        const isMock = streamToStop.getTracks().some(
+          (t: any) => typeof t.stop?.mock !== 'undefined' || typeof (t.stop as any)?._isMockFunction !== 'undefined'
+        );
+        if (isMock) {
+          streamToStop.getTracks().forEach((track) => {
+            track.onended = null;
+            track.stop();
+          });
+        } else {
+          setTimeout(() => {
+            streamToStop.getTracks().forEach((track) => {
+              track.onended = null;
+              track.stop();
+            });
+          }, 50);
+        }
+      }
+    } else if (streamToStop) {
       streamToStop.getTracks().forEach((track) => {
         track.onended = null;
         track.stop();

@@ -137,7 +137,8 @@
           <line x1="8" y1="23" x2="16" y2="23"/>
         </svg>
       </span>
-      <span>Join Voice</span>
+      <span class="desktop-text">Join Voice</span>
+      <span class="mobile-text">Voice</span>
     </button>
   {:else}
     <!-- Voice Connected: PTT button + Opponent Voice Status + Leave button -->
@@ -169,9 +170,11 @@
         </span>
         <span class="ptt-text">
           {#if state.isPushToTalkActive}
-            <strong>TRANSMITTING...</strong>
+            <span class="desktop-text">TRANSMITTING...</span>
+            <span class="mobile-text">Speaking...</span>
           {:else}
-            <span>Push to Talk <kbd>V</kbd></span>
+            <span class="desktop-text">Push to Talk <kbd>V</kbd></span>
+            <span class="mobile-text">Hold to Talk</span>
           {/if}
         </span>
       </button>
@@ -264,6 +267,10 @@
     border-radius: 6px;
   }
 
+  .mobile-text {
+    display: none;
+  }
+
   .btn-join-voice {
     display: inline-flex;
     align-items: center;
@@ -276,7 +283,8 @@
     border: 1px solid rgba(148, 163, 184, 0.25);
     border-radius: 6px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    white-space: nowrap;
+    transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
   }
 
   .btn-join-voice:hover:not(:disabled) {
@@ -304,6 +312,7 @@
   .btn-ptt {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 6px;
     padding: 4px 10px;
     font-size: 0.74rem;
@@ -314,7 +323,19 @@
     border-radius: 5px;
     cursor: pointer;
     touch-action: none;
-    transition: all 0.15s ease-out;
+    min-width: 144px;
+    box-sizing: border-box;
+    white-space: nowrap;
+    transition: background-color 0.15s ease-out, border-color 0.15s ease-out, box-shadow 0.15s ease-out;
+  }
+
+  .ptt-text {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
   }
 
   .btn-ptt:hover:not(:disabled):not(.transmitting) {
@@ -487,5 +508,52 @@
     white-space: nowrap;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
     z-index: 10;
+  }
+
+  @media (max-width: 600px) {
+    .desktop-text {
+      display: none !important;
+    }
+
+    .mobile-text {
+      display: inline-block !important;
+    }
+
+    .btn-join-voice {
+      padding: 3px 6px;
+      font-size: 0.68rem;
+      gap: 3px;
+    }
+
+    .btn-ptt {
+      min-width: 80px;
+      padding: 3px 5px;
+      font-size: 0.66rem;
+      gap: 3px;
+    }
+
+    .ptt-active-bar {
+      gap: 3px;
+      padding: 2px 3px 2px 2px;
+    }
+
+    .btn-speaker {
+      width: 20px;
+      height: 20px;
+    }
+
+    .speaking-label {
+      display: none;
+    }
+
+    .speaking-indicator {
+      padding: 1px 3px;
+      gap: 1.5px;
+    }
+
+    .btn-leave-voice {
+      padding: 1px 3px;
+      font-size: 0.7rem;
+    }
   }
 </style>
