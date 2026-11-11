@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Bishop Ceremonial Mitre (Tall Pointed Cleft Headdress) -->
+  <!-- Mitre Back Infulae (Flowing liturgical ribbons hanging behind) -->
+  <path d="M104 68l-18 42c-2 6 2 12 8 10l12-4-8-36 6-12Z" fill="var(--bishop-stole,#edf2f7)" stroke="var(--bishop-ink,#211e2f)" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M152 68l18 42c2 6-2 12-8 10l-12-4 8-36-6-12Z" fill="var(--bishop-stole-shadow,#cbd5e0)" stroke="var(--bishop-ink,#211e2f)" stroke-width="4.5" stroke-linejoin="round"/>
+
+  <!-- Mitre Crown Left Half -->
+  <path d="M84 72l32-54c4-7 11-6 12 2l-6 56H84l6-4Z" fill="var(--bishop-robe,#6b46c1)" stroke="var(--bishop-ink,#211e2f)" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Mitre Crown Right Half (with shadow) -->
+  <path d="M172 72l-32-54c-4-7-11-6-12 2l6 56h38l-6-4Z" fill="var(--bishop-robe-shadow,#44337a)" stroke="var(--bishop-ink,#211e2f)" stroke-width="6" stroke-linejoin="round"/>
+
+  <!-- Iconic Mitre Cleft at the Top Peak -->
+  <path d="M122 20l6 14 6-14" stroke="var(--bishop-ink,#211e2f)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Center Gold Vertical Stole / Pillar of the Mitre -->
+  <path d="M122 26h12v46h-12z" fill="var(--bishop-gold,#ecc94b)" stroke="var(--bishop-ink,#211e2f)" stroke-width="4.5" stroke-linejoin="round"/>
+
+  <!-- Base Embroidered Circlet / Headband -->
+  <path d="M80 66c14-4 32-6 48-6s34 2 48 6l-4 16c-14-3-30-4-44-4s-30 1-44 4l-4-16Z" fill="var(--bishop-gold,#ecc94b)" stroke="var(--bishop-ink,#211e2f)" stroke-width="5.5" stroke-linejoin="round"/>
+  <path d="M84 74h88v4H84z" fill="var(--bishop-gold-shadow,#b7791f)"/>
+
+  <!-- Central Arcane Gem / Celestial Star on Mitre -->
+  <polygon points="128,40 134,48 128,56 122,48" fill="var(--bishop-magic,#4fd1c5)" stroke="var(--bishop-ink,#211e2f)" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="128" cy="48" r="2.5" fill="var(--bishop-magic-bright,#e6fffa)"/>
+
+  <!-- Mystical Runes on Mitre Flanks -->
+  <circle cx="106" cy="52" r="3" fill="var(--bishop-gold,#ecc94b)" stroke="var(--bishop-ink,#211e2f)" stroke-width="2"/>
+  <circle cx="150" cy="52" r="3" fill="var(--bishop-gold,#ecc94b)" stroke="var(--bishop-ink,#211e2f)" stroke-width="2"/>
+</svg>
+

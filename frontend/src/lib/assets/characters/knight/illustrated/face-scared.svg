@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Knight Scared Expression: Comic Panic & Shock -->
+  <!-- Panicked High-Arched Eyebrows -->
+  <path d="M96 98c8-8 18-6 24 2M136 100c6-8 16-10 24-2" stroke="var(--knight-ink,#25203b)" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- Wide Startled Eyes -->
+  <ellipse cx="112" cy="118" rx="13" ry="14" fill="#ffffff" stroke="var(--knight-ink,#25203b)" stroke-width="5"/>
+  <ellipse cx="144" cy="118" rx="13" ry="14" fill="#ffffff" stroke="var(--knight-ink,#25203b)" stroke-width="5"/>
+
+  <!-- Tiny Pinpoint Pupils -->
+  <circle cx="114" cy="119" r="4.5" fill="var(--knight-ink,#25203b)"/>
+  <circle cx="142" cy="119" r="4.5" fill="var(--knight-ink,#25203b)"/>
+  <circle cx="112" cy="117" r="1.5" fill="#ffffff"/>
+  <circle cx="140" cy="117" r="1.5" fill="#ffffff"/>
+
+  <!-- Cold Sweat Drops on Brow -->
+  <path d="M166 102c3-4 6-4 7 0 2 6-4 10-6 10s-4-4-1-10Z" fill="#7ed4f7" stroke="var(--knight-ink,#25203b)" stroke-width="2"/>
+
+  <!-- Shivering Wavy Scared Mouth -->
+  <path d="M114 142c4-4 8 2 12-2s8 2 12-2c3 4 2 10-2 12-8 3-14 3-20 0-4-2-4-6-2-8Z" fill="#882233" stroke="var(--knight-ink,#25203b)" stroke-width="4.5" stroke-linejoin="round"/>
+</svg>
+

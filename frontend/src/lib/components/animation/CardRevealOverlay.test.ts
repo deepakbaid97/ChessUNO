@@ -46,6 +46,59 @@ describe('CardRevealOverlay Component', () => {
     expect(getByText('NUMBER')).toBeTruthy();
   });
 
+  it('pops and renders Card 0 with 0 symbol and pass turn description instead of skipping', async () => {
+    const zeroCard: CardModel = {
+      id: 'card-0',
+      name: '0 Card',
+      category: 'NUMBER',
+      description: 'Pass turn without making any chess moves.',
+      effectKey: 'PASS_TURN_EFFECT',
+      value: 0
+    };
+
+    const { getByTestId, getByText, getAllByText } = render(CardRevealOverlay);
+
+    cardAnimationService.triggerCardReveal(zeroCard, {
+      drawerColor: 'White',
+      isLocalPlayer: true
+    });
+
+    await vi.advanceTimersByTimeAsync(20);
+
+    const overlay = getByTestId('card-reveal-overlay');
+    expect(overlay).toBeTruthy();
+    expect(getByText('0 Card')).toBeTruthy();
+    expect(getByText('Pass turn without making any chess moves.')).toBeTruthy();
+    // Symbol '0' appears in corner-index and center-emblem
+    expect(getAllByText('0').length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('pops and renders Draw Two card with +2 symbol and revival styling', async () => {
+    const drawTwoCard: CardModel = {
+      id: 'card-draw-two',
+      name: 'Draw Two (+2)',
+      category: 'ACTION',
+      description: 'Revive up to 2 captured friendly pieces.',
+      effectKey: 'REVIVE_UP_TO_TWO',
+      value: null
+    };
+
+    const { getByTestId, getByText, getAllByText } = render(CardRevealOverlay);
+
+    cardAnimationService.triggerCardReveal(drawTwoCard, {
+      drawerColor: 'Black',
+      isLocalPlayer: false
+    });
+
+    await vi.advanceTimersByTimeAsync(20);
+
+    const overlay = getByTestId('card-reveal-overlay');
+    expect(overlay).toBeTruthy();
+    expect(getByText('Draw Two (+2)')).toBeTruthy();
+    expect(getByText('Revive up to 2 captured friendly pieces.')).toBeTruthy();
+    expect(getAllByText('+2').length).toBeGreaterThanOrEqual(1);
+  });
+
   it('dismisses immediately on user tap/skip', async () => {
     const { getByTestId, queryByTestId } = render(CardRevealOverlay);
 

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <path d="M79 130c9-15 25-23 49-23s40 8 49 23l13 88H66l13-88Z" fill="var(--pawn-cloth,#4d92c8)" stroke="var(--pawn-ink,#2b2440)" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M128 109c-21 0-38 7-49 21l12 42c12-8 25-12 37-12s26 4 37 12l12-42c-11-14-28-21-49-21Z" fill="var(--pawn-cloth-light,#78b9e5)"/>
+  <path d="M93 128c7-9 19-14 35-14s28 5 35 14l-4 52H97l-4-52Z" fill="var(--pawn-metal,#e4ecf2)" stroke="var(--pawn-ink,#2b2440)" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M105 140h46M105 154h46" stroke="var(--pawn-metal-shadow,#a7bbc8)" stroke-width="5" stroke-linecap="round"/>
+  <path d="m128 136 11 10-4 19h-14l-4-19 11-10Z" fill="var(--pawn-gold,#f3c95f)" stroke="var(--pawn-ink,#2b2440)" stroke-width="4"/>
+  <path d="M71 176h114v15H71z" fill="var(--pawn-belt,#50384a)" stroke="var(--pawn-ink,#2b2440)" stroke-width="6"/>
+  <rect x="116" y="169" width="24" height="28" rx="5" fill="var(--pawn-gold,#f3c95f)" stroke="var(--pawn-ink,#2b2440)" stroke-width="5"/>
+  <path d="M77 191h102l-9 27h-25l-17-16-17 16H86l-9-27Z" fill="var(--pawn-cloth-shadow,#2f679d)" stroke="var(--pawn-ink,#2b2440)" stroke-width="6" stroke-linejoin="round"/>
+</svg>

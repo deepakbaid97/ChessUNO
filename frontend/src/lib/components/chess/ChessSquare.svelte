@@ -15,6 +15,8 @@
   export let showCoordinateFile: boolean = false;
   export let slideOffset: { deltaX: number; deltaY: number } | null = null;
   export let isCaptureImpact: boolean = false;
+  export let isRevivalTarget: boolean = false;
+  export let isSwapTarget: boolean = false;
 
   const dispatch = createEventDispatcher<{
     select: { square: string };
@@ -40,7 +42,8 @@
   class:dark={isDark}
   class:light={!isDark}
   class:selected={isSelected}
-  class:swap-target={isDestination && !!piece && !isCapture}
+  class:swap-target={isSwapTarget || (isDestination && !!piece && !isCapture)}
+  class:revival-target={isRevivalTarget}
   class:last-move={isLastMove}
   class:in-check={isInCheck}
   on:click={handleClick}
@@ -115,8 +118,37 @@
   }
 
   .square.swap-target {
-    background-color: rgba(78, 222, 163, 0.24) !important;
-    box-shadow: inset 0 0 0 2px var(--accent-green);
+    background-color: rgba(245, 158, 11, 0.22) !important;
+    box-shadow: inset 0 0 0 2px var(--accent-gold);
+    animation: swapSquarePulse 1.35s ease-in-out infinite alternate;
+  }
+
+  @keyframes swapSquarePulse {
+    0% {
+      background-color: rgba(245, 158, 11, 0.14) !important;
+      box-shadow: inset 0 0 0 1.5px rgba(245, 158, 11, 0.5), 0 0 4px rgba(245, 158, 11, 0.2);
+    }
+    100% {
+      background-color: rgba(245, 158, 11, 0.3) !important;
+      box-shadow: inset 0 0 0 2.5px var(--accent-gold-bright), 0 0 16px rgba(245, 158, 11, 0.65);
+    }
+  }
+
+  .square.revival-target {
+    background-color: rgba(78, 222, 163, 0.22) !important;
+    box-shadow: inset 0 0 0 2px var(--accent-green), 0 0 12px rgba(78, 222, 163, 0.4);
+    animation: revivalSquarePulse 1.35s ease-in-out infinite alternate;
+  }
+
+  @keyframes revivalSquarePulse {
+    0% {
+      background-color: rgba(78, 222, 163, 0.14) !important;
+      box-shadow: inset 0 0 0 1.5px rgba(78, 222, 163, 0.5), 0 0 4px rgba(78, 222, 163, 0.2);
+    }
+    100% {
+      background-color: rgba(78, 222, 163, 0.3) !important;
+      box-shadow: inset 0 0 0 2.5px var(--accent-green), 0 0 16px rgba(78, 222, 163, 0.65);
+    }
   }
 
   .square.last-move:not(.selected) {
@@ -325,6 +357,15 @@
   @media (max-width: 600px) {
     .coordinate {
       font-size: 0.52rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .square.revival-target,
+    .square.swap-target,
+    .square.in-check,
+    .capture-ring {
+      animation: none !important;
     }
   }
 </style>

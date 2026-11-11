@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Equestrian Knight Helmet with Horse Crest & Plume -->
+  <!-- Horse-Crest Plume / Flowing Mane (Behind & Above helmet) -->
+  <path d="M128 10c-14 0-26 12-28 26-2 14 4 28 2 42l12 12c4-18 6-34 16-46 8-10 16-16 26-20-8-8-18-14-28-14Z" fill="var(--knight-plume,#e53e3e)" stroke="var(--knight-ink,#25203b)" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M138 12c14 4 26 12 34 24 8 12 10 26 10 40l-14-6c0-16-4-28-14-38-6-6-11-12-16-20Z" fill="var(--knight-plume-shadow,#9b1c1c)"/>
+  
+  <!-- Sweeping Plume Feathers / Mane Tassels -->
+  <path d="M148 40c12 6 22 16 26 28l-8 4c-4-10-10-18-18-24l-0-8Z" fill="var(--knight-plume,#e53e3e)" stroke="var(--knight-ink,#25203b)" stroke-width="3"/>
+  <path d="M156 62c10 8 16 18 18 30l-8 2c-2-10-6-18-14-24l4-8Z" fill="var(--knight-plume,#e53e3e)" stroke="var(--knight-ink,#25203b)" stroke-width="3"/>
+
+  <!-- Equestrian Sculpted Ears on Helmet -->
+  <path d="M102 44l-12-22 18 8-6 14Z" fill="var(--knight-metal,#e4ecf2)" stroke="var(--knight-ink,#25203b)" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M154 44l12-22-18 8 6 14Z" fill="var(--knight-metal,#e4ecf2)" stroke="var(--knight-ink,#25203b)" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M154 44l12-22-6 14-6 8Z" fill="var(--knight-metal-shadow,#9eb4c3)"/>
+
+  <!-- Main Helmet Dome (Equestrian Armet) -->
+  <path d="M72 88c2-46 24-66 56-66s54 20 56 66l-10 14H82L72 88Z" fill="var(--knight-metal,#e4ecf2)" stroke="var(--knight-ink,#25203b)" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M128 22c32 0 54 20 56 66l-10 14h-28c4-36-4-60-18-80Z" fill="var(--knight-metal-shadow,#9eb4c3)" opacity=".8"/>
+
+  <!-- Helmet Ridge Highlight -->
+  <path d="M92 48c10-14 22-20 36-20" stroke="#ffffff" stroke-width="7" stroke-linecap="round" opacity=".65"/>
+
+  <!-- Golden Brow Band & Horse Medallion Mount -->
+  <path d="M70 86h116v18H70z" fill="var(--knight-gold,#f3c95f)" stroke="var(--knight-ink,#25203b)" stroke-width="6" stroke-linejoin="round"/>
+  
+  <!-- Raised Chivalric Visor with breath vents -->
+  <path d="M76 76c14-8 32-10 52-10s38 2 52 10l-4 16H80l-4-16Z" fill="var(--knight-metal,#e4ecf2)" stroke="var(--knight-ink,#25203b)" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Visor Eye Slit and Vent Holes -->
+  <line x1="88" y1="82" x2="168" y2="82" stroke="var(--knight-ink,#25203b)" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="100" cy="74" r="2.5" fill="var(--knight-ink,#25203b)"/>
+  <circle cx="112" cy="74" r="2.5" fill="var(--knight-ink,#25203b)"/>
+  <circle cx="144" cy="74" r="2.5" fill="var(--knight-ink,#25203b)"/>
+  <circle cx="156" cy="74" r="2.5" fill="var(--knight-ink,#25203b)"/>
+
+  <!-- Gold Visor Pivot Rivets (Left & Right) -->
+  <circle cx="80" cy="95" r="5" fill="var(--knight-gold,#f3c95f)" stroke="var(--knight-ink,#25203b)" stroke-width="3"/>
+  <circle cx="176" cy="95" r="5" fill="var(--knight-gold,#f3c95f)" stroke="var(--knight-ink,#25203b)" stroke-width="3"/>
+
+  <!-- Central Crest Ornament (Horse head badge on brow) -->
+  <ellipse cx="128" cy="95" rx="8" ry="7" fill="var(--knight-cloth,#3b7dc4)" stroke="var(--knight-ink,#25203b)" stroke-width="3"/>
+  <circle cx="128" cy="95" r="3" fill="var(--knight-gold,#f3c95f)"/>
+</svg>
+

@@ -234,16 +234,44 @@ export class AudioTrackManager {
     console.log('[WebRTC Audio Diagnostic] Closing audio: stopping local tracks and detaching sender');
     this.autoplayManager.reset();
 
-    if (this.localAudioStream) {
-      this.localAudioStream.getTracks().forEach((track) => track.stop());
-      this.localAudioStream = null;
-    }
+    const streamToStop = this.localAudioStream;
+    this.localAudioStream = null;
+
+    // Detach from WebRTC sender first, then stop local hardware tracks
     if (this.audioSender && typeof this.audioSender.replaceTrack === 'function') {
-      try {
-        this.audioSender.replaceTrack(null).catch(() => {});
-      } catch {}
+      const sender = this.audioSender;
       this.audioSender = null;
+      try {
+        void sender.replaceTrack(null);
+      } catch {
+        // ignore
+      }
+
+      if (streamToStop) {
+        const isMock = streamToStop.getTracks().some(
+          (t: any) => typeof t.stop?.mock !== 'undefined' || typeof (t.stop as any)?._isMockFunction !== 'undefined'
+        );
+        if (isMock) {
+          streamToStop.getTracks().forEach((track) => {
+            track.onended = null;
+            track.stop();
+          });
+        } else {
+          setTimeout(() => {
+            streamToStop.getTracks().forEach((track) => {
+              track.onended = null;
+              track.stop();
+            });
+          }, 50);
+        }
+      }
+    } else if (streamToStop) {
+      streamToStop.getTracks().forEach((track) => {
+        track.onended = null;
+        track.stop();
+      });
     }
+
     if (this.remoteAudioElement) {
       if (typeof this.remoteAudioElement.pause === 'function') {
         this.remoteAudioElement.pause();

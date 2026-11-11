@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- King Neutral Face: Dignified, Calm Sovereign Authority -->
+  <!-- Thick, Dignified Graying Eyebrows -->
+  <path d="M104 85c5-4 15-4 20 0" stroke="var(--king-hair,#4a5568)" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M132 85c5-4 15-4 20 0" stroke="var(--king-hair,#4a5568)" stroke-width="4.5" stroke-linecap="round"/>
+
+  <!-- Left Eye: Steady, Wise, Commanding -->
+  <ellipse cx="114" cy="95" rx="5" ry="5.5" fill="var(--king-ink,#1a202c)"/>
+  <circle cx="113" cy="94" r="2" fill="var(--king-energy,#f6e05e)"/>
+  <circle cx="112" cy="93" r="1.2" fill="#ffffff"/>
+
+  <!-- Right Eye: Steady, Wise -->
+  <ellipse cx="142" cy="95" rx="5" ry="5.5" fill="var(--king-ink,#1a202c)"/>
+  <circle cx="143" cy="94" r="2" fill="var(--king-energy,#f6e05e)"/>
+  <circle cx="144" cy="93" r="1.2" fill="#ffffff"/>
+
+  <!-- Strong Royal Nose -->
+  <path d="M128 92l-2 14 6 0" stroke="var(--king-skin-shadow,#dd6b20)" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Calm Royal Smile below Mustache -->
+  <path d="M120 120c4 3 12 3 16 0" stroke="var(--king-ink,#1a202c)" stroke-width="3" stroke-linecap="round"/>
+</svg>
+

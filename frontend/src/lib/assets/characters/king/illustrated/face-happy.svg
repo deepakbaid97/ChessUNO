@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- King Happy Face: Hearty Benevolent Laughter & Triumph -->
+  <!-- Lifted Joyful Eyebrows -->
+  <path d="M104 82c5-5 14-5 18-1" stroke="var(--king-hair,#4a5568)" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M134 82c5-5 14-5 18-1" stroke="var(--king-hair,#4a5568)" stroke-width="4.5" stroke-linecap="round"/>
+
+  <!-- Left Eye: Hearty Crinkled Crescent Smile -->
+  <path d="M106 95c3-6 13-6 16 0" stroke="var(--king-ink,#1a202c)" stroke-width="4.5" stroke-linecap="round"/>
+  <!-- Right Eye: Hearty Crinkled Crescent Smile -->
+  <path d="M134 95c3-6 13-6 16 0" stroke="var(--king-ink,#1a202c)" stroke-width="4.5" stroke-linecap="round"/>
+
+  <!-- Warm Royal Blush on Cheeks -->
+  <ellipse cx="104" cy="104" rx="5" ry="3" fill="#feb2b2" opacity=".6"/>
+  <ellipse cx="152" cy="104" rx="5" ry="3" fill="#feb2b2" opacity=".6"/>
+
+  <!-- Nose -->
+  <path d="M128 92l-2 14 6 0" stroke="var(--king-skin-shadow,#dd6b20)" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Boisterous Jovial Laugh below Mustache -->
+  <path d="M118 118c3 8 17 8 20 0" stroke="var(--king-ink,#1a202c)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M120 118c3 6 13 6 16 0" fill="#ffffff"/>
+</svg>
+

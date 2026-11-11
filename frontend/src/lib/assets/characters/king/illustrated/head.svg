@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- King Head Base, Royal Beard & Hair -->
+  <!-- Regal Hair Flowing behind Neck -->
+  <path d="M86 92c-6 20-6 44 2 64 6 12 18 18 18 18s-8-14-6-28c2-14 4-32 4-54h-18Z" fill="var(--king-hair,#4a5568)" stroke="var(--king-ink,#1a202c)" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M170 92c6 20 6 44-2 64-6 12-18 18-18 18s8-14 6-28c-2-14-4-32-4-54h18Z" fill="var(--king-hair-shadow,#2d3748)" stroke="var(--king-ink,#1a202c)" stroke-width="5" stroke-linejoin="round"/>
+
+  <!-- Face Skin Oval -->
+  <path d="M96 90c0-18 14-32 32-32s32 14 32 32c0 24-14 42-32 42s-32-18-32-42Z" fill="var(--king-skin,#fbd38d)" stroke="var(--king-ink,#1a202c)" stroke-width="5.5"/>
+
+  <!-- Majestic Sculpted Royal Beard (Chin & Cheeks) -->
+  <path d="M94 104c6 26 18 42 34 42s28-16 34-42c-4 12-14 24-34 24s-30-12-34-24Z" fill="var(--king-hair,#4a5568)" stroke="var(--king-ink,#1a202c)" stroke-width="4.5" stroke-linejoin="round"/>
+  <path d="M112 136c4 10 10 14 16 14s12-4 16-14c-4 4-10 6-16 6s-12-2-16-6Z" fill="var(--king-hair-shadow,#2d3748)"/>
+
+  <!-- Groomed Royal Mustache -->
+  <path d="M128 116c-6-6-16-6-24-2-4 2-4 8 2 8 8 0 16-4 22-6 6 2 14 6 22 6 6 0 6-6 2-8-8-4-18-4-24 2Z" fill="var(--king-hair,#4a5568)" stroke="var(--king-ink,#1a202c)" stroke-width="4" stroke-linejoin="round"/>
+</svg>
+

@@ -30,6 +30,7 @@
   $: state = $cardRevealStore;
   $: card = state.card;
   $: effectConfig = state.effectConfig;
+  $: cardCategory = ((card?.category || (card as any)?.type || 'ACTION') as string).toUpperCase();
 
   function stopAllAnimations() {
     for (const a of activeAnimations) {
@@ -368,14 +369,14 @@
         <!-- Card Front (Revealed Face Up) -->
         <div
           class="card-face card-front"
-          class:number-card={card.category.toUpperCase() === 'NUMBER'}
-          class:action-card={card.category.toUpperCase() === 'ACTION'}
-          class:wild-card={card.category.toUpperCase() === 'WILD'}
+          class:number-card={cardCategory === 'NUMBER'}
+          class:action-card={cardCategory === 'ACTION'}
+          class:wild-card={cardCategory === 'WILD'}
           style="--accent-border: {effectConfig?.accentColor || '#f59e0b'}; --accent-glow: {effectConfig?.glowColor || 'rgba(245, 158, 11, 0.4)'};"
         >
           <div class="card-inner">
             <div class="card-header">
-              <span class="category-pill">{card.category.toUpperCase()}</span>
+              <span class="category-pill">{cardCategory}</span>
               <span class="corner-index">{getCardSymbol(card)}</span>
             </div>
 

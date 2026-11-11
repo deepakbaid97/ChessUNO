@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Rook Happy Expression: Warm, Hearty, Protective Giant Grin -->
+  <!-- Arched Kind Eyebrows -->
+  <path d="M96 104c8-4 18-4 24 1M136 105c6-5 16-5 24-1" stroke="var(--rook-ink,#211e2f)" stroke-width="6.5" stroke-linecap="round"/>
+
+  <!-- Beaming Crinkled Joy Eyes -->
+  <path d="M102 124c3-8 10-12 18-12s16 4 18 12" stroke="var(--rook-ink,#211e2f)" stroke-width="6.5" stroke-linecap="round"/>
+  <path d="M138 124c3-8 10-12 18-12s16 4 18 12" stroke="var(--rook-ink,#211e2f)" stroke-width="6.5" stroke-linecap="round"/>
+  <!-- Highlight crescent glints -->
+  <path d="M105 123c3-5 9-8 15-8" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+  <path d="M141 123c3-5 9-8 15-8" stroke="#ffffff" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+
+  <!-- Warm Cheek Flush -->
+  <ellipse cx="94" cy="132" rx="7" ry="5" fill="#f87171" opacity=".4"/>
+  <ellipse cx="162" cy="132" rx="7" ry="5" fill="#f87171" opacity=".4"/>
+
+  <!-- Broad Dependable Grin -->
+  <path d="M110 136h36c0 14-8 22-18 22s-18-8-18-22Z" fill="#ffffff" stroke="var(--rook-ink,#211e2f)" stroke-width="5.5" stroke-linejoin="round"/>
+  <line x1="128" y1="138" x2="128" y2="155" stroke="var(--rook-ink,#211e2f)" stroke-width="3" stroke-linecap="round"/>
+  <!-- Smile creases -->
+  <path d="M106 136c-2 3-2 6 0 9M150 136c2 3 2 6 0 9" stroke="var(--rook-ink,#211e2f)" stroke-width="3.5" stroke-linecap="round"/>
+</svg>
+

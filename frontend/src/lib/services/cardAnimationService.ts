@@ -45,7 +45,7 @@ export function getCardEffectConfig(card: CardModel): CardEffectConfig {
     };
   }
 
-  if (id.includes('skip')) {
+  if (id.includes('skip') || effectKey.includes('SKIP')) {
     return {
       accentColor: '#ef4444',
       glowColor: 'rgba(239, 68, 68, 0.7)',
@@ -53,6 +53,18 @@ export function getCardEffectConfig(card: CardModel): CardEffectConfig {
       shockwaveColor: '#ef4444',
       flashColor: 'rgba(239, 68, 68, 0.55)',
       burstType: 'skip'
+    };
+  }
+
+  // Card 0 / Pass Turn Theme
+  if (id === 'card-0' || card.value === 0 || effectKey.includes('PASS')) {
+    return {
+      accentColor: '#94a3b8',
+      glowColor: 'rgba(148, 163, 184, 0.7)',
+      particleColors: ['#94a3b8', '#cbd5e1', '#64748b', '#ffffff', '#e2e8f0'],
+      shockwaveColor: '#64748b',
+      flashColor: 'rgba(148, 163, 184, 0.55)',
+      burstType: 'number'
     };
   }
 

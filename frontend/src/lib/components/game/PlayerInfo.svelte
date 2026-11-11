@@ -9,6 +9,7 @@
   export let reserves: string[] = [];
   export let isOpponent: boolean = false;
   export let isSpeaking: boolean = false;
+  export let hasActiveRevivals: boolean = false;
 
   $: initials = name ? name.substring(0, 2).toUpperCase() : '??';
   $: isWhite = color === 'White';
@@ -53,7 +54,11 @@
 
   <div class="player-right">
     {#if reserves.length > 0}
-      <div class="reserves-strip" title="Captured friendly pieces available for revival">
+      <div
+        class="reserves-strip"
+        class:attention-pulse={isCurrentTurn && !isOpponent && hasActiveRevivals}
+        title="Captured friendly pieces available for revival"
+      >
         <span class="reserves-label">Reserve ({reserves.length}):</span>
         <div class="reserves-icons">
           {#each reserves.slice(0, 6) as piece}
@@ -62,7 +67,10 @@
             </span>
           {/each}
           {#if reserves.length > 6}
-            <span class="reserve-more">+{reserves.length - 6}</span>
+            <span class="reserve-more desktop-more">+{reserves.length - 6}</span>
+          {/if}
+          {#if reserves.length > 3}
+            <span class="reserve-more mobile-more">+{reserves.length - 3}</span>
           {/if}
         </div>
       </div>
@@ -81,6 +89,8 @@
     background-color: var(--bg-surface);
     border: 1px solid var(--border-color);
     border-radius: 8px;
+    max-width: 100%;
+    box-sizing: border-box;
     transition: border-color 0.25s ease, background-color 0.25s ease, box-shadow 0.25s ease;
   }
 
@@ -262,7 +272,8 @@
     display: flex;
     align-items: center;
     gap: 10px;
-    flex-shrink: 0;
+    flex-shrink: 1;
+    min-width: 0;
   }
 
   .reserves-strip {
@@ -273,6 +284,30 @@
     border: 1px solid var(--border-subtle);
     border-radius: 5px;
     padding: 3px 8px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .reserves-strip.attention-pulse {
+    border-color: var(--accent-green);
+    box-shadow: 0 0 0 1.5px var(--accent-green), 0 0 10px rgba(78, 222, 163, 0.45);
+    animation: reservesStripPulse 1.4s ease-in-out infinite alternate;
+  }
+
+  @keyframes reservesStripPulse {
+    0% {
+      border-color: rgba(78, 222, 163, 0.5);
+      box-shadow: 0 0 0 1px rgba(78, 222, 163, 0.3), 0 0 6px rgba(78, 222, 163, 0.2);
+    }
+    100% {
+      border-color: var(--accent-green);
+      box-shadow: 0 0 0 2px var(--accent-green), 0 0 14px rgba(78, 222, 163, 0.6);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .reserves-strip.attention-pulse {
+      animation: none !important;
+    }
   }
 
   .reserves-label {
@@ -298,9 +333,14 @@
     font-family: var(--font-mono);
   }
 
+  .mobile-more {
+    display: none;
+  }
+
   @media (max-width: 900px) {
     .player-info {
-      padding: 5px 10px;
+      padding: 5px 8px;
+      gap: 8px;
     }
 
     .avatar-badge {
@@ -311,6 +351,7 @@
 
     .player-name {
       font-size: 0.8rem;
+      max-width: 90px;
     }
 
     .sub-line {
@@ -319,6 +360,69 @@
 
     .reserves-label {
       display: none;
+    }
+
+    .player-right {
+      gap: 6px;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .player-info {
+      padding: 4px 6px;
+      gap: 4px;
+    }
+
+    .player-identity {
+      gap: 6px;
+      flex-shrink: 1;
+      min-width: 0;
+    }
+
+    .avatar-badge {
+      width: 24px;
+      height: 24px;
+      font-size: 0.68rem;
+    }
+
+    .player-name {
+      font-size: 0.75rem;
+      max-width: 60px;
+    }
+
+    .color-badge {
+      font-size: 0.55rem;
+      padding: 0 3px;
+    }
+
+    .sub-line {
+      font-size: 0.6rem;
+    }
+
+    .reserves-strip {
+      padding: 2px 4px;
+      gap: 2px;
+    }
+
+    .reserve-mini:nth-child(n+4) {
+      display: none;
+    }
+
+    .reserve-mini :global(.piece-container) {
+      width: 14px !important;
+      height: 14px !important;
+    }
+
+    .desktop-more {
+      display: none !important;
+    }
+
+    .mobile-more {
+      display: inline-block !important;
+    }
+
+    .player-right {
+      gap: 4px;
     }
   }
 </style>

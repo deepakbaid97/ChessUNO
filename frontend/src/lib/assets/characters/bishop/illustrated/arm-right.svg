@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Bishop Right Arm (Gripping the Mystical Staff) -->
+  <!-- Upper Arm & Flowing Wide Sleeve -->
+  <path d="M174 142l26 22c4 4 4 10 0 14l-20 20c-6 4-14 2-18-4l-8-36 20-16Z" fill="var(--bishop-cowl,#805ad5)" stroke="var(--bishop-ink,#211e2f)" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Sleeve Inner Shadow -->
+  <path d="M192 158l8 6-18 20-8-6 18-20Z" fill="var(--bishop-robe-shadow,#44337a)"/>
+
+  <!-- Gold Sleeve Cuff Border -->
+  <path d="M198 162l-20 20 4 8 20-20-4-8Z" fill="var(--bishop-gold,#ecc94b)" stroke="var(--bishop-ink,#211e2f)" stroke-width="4.5" stroke-linejoin="round"/>
+
+  <!-- Hand Gripping Staff -->
+  <path d="M194 186c-4 0-10 4-12 10 0 6 6 10 12 8l10-4c4-2 4-8 0-10l-10-4Z" fill="var(--bishop-skin,#fbd38d)" stroke="var(--bishop-ink,#211e2f)" stroke-width="4.5" stroke-linejoin="round"/>
+  <!-- Knuckles detail -->
+  <circle cx="196" cy="192" r="3" fill="var(--bishop-skin-shadow,#dd6b20)"/>
+  <circle cx="202" cy="190" r="3" fill="var(--bishop-skin-shadow,#dd6b20)"/>
+</svg>
+

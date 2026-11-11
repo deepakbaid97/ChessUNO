@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Rook Scared Expression: Startled Shock & Crumbling Composure -->
+  <!-- Panicked Slanted Eyebrows -->
+  <path d="M96 100c8-6 18-4 24 4M136 104c6-8 16-10 24-4" stroke="var(--rook-ink,#211e2f)" stroke-width="6.5" stroke-linecap="round"/>
+
+  <!-- Wide Startled Eyes -->
+  <ellipse cx="112" cy="120" rx="13" ry="14" fill="#ffffff" stroke="var(--rook-ink,#211e2f)" stroke-width="5"/>
+  <ellipse cx="144" cy="120" rx="13" ry="14" fill="#ffffff" stroke="var(--rook-ink,#211e2f)" stroke-width="5"/>
+
+  <!-- Pinpoint Trembling Pupils -->
+  <circle cx="114" cy="120" r="4.5" fill="var(--rook-ink,#211e2f)"/>
+  <circle cx="142" cy="120" r="4.5" fill="var(--rook-ink,#211e2f)"/>
+  <circle cx="112" cy="118" r="1.5" fill="#ffffff"/>
+  <circle cx="140" cy="118" r="1.5" fill="#ffffff"/>
+
+  <!-- Cold Sweat Droplet on Stone Brow -->
+  <path d="M168 102c3-4 6-4 7 0 2 6-4 10-6 10s-4-4-1-10Z" fill="#38bdf8" stroke="var(--rook-ink,#211e2f)" stroke-width="2"/>
+
+  <!-- Small stone stress crack on forehead -->
+  <path d="M128 104l-3 6 4 4-2 6" stroke="var(--rook-ink,#211e2f)" stroke-width="2.5" stroke-linecap="round" opacity=".6"/>
+
+  <!-- Shivering Wavy Panicked Mouth -->
+  <path d="M112 142c5-3 9 3 14-1s9 3 14-1c3 4 1 10-3 12-8 3-14 3-20 0-4-2-4-6-2-10Z" fill="#7f1d1d" stroke="var(--rook-ink,#211e2f)" stroke-width="4.5" stroke-linejoin="round"/>
+</svg>
+

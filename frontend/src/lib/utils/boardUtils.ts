@@ -123,11 +123,140 @@ export function isCaptureMove(from: string, to: string, board: (BoardPiece | nul
   return board[row] && board[row][col] !== null;
 }
 
-export function isCheckSquare(square: string, inCheck: boolean, activeColor: PlayerColor, board: (BoardPiece | null)[][]): boolean {
+export function isKingInCheck(kingColor: PlayerColor, board: (BoardPiece | null)[][]): boolean {
+  let kingRow = -1;
+  let kingCol = -1;
+
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const piece = board[r]?.[c];
+      if (piece && piece.type === 'King' && piece.color === kingColor) {
+        kingRow = r;
+        kingCol = c;
+        break;
+      }
+    }
+    if (kingRow !== -1) break;
+  }
+
+  if (kingRow === -1) return false;
+
+  const enemyColor: PlayerColor = kingColor === 'White' ? 'Black' : 'White';
+
+  // 1. Enemy Pawns
+  // row 0 is Rank 8 (Black), row 7 is Rank 1 (White).
+  // Black pawns move down (+1 row) and capture diagonally (+1 row, ±1 col).
+  // White pawns move up (-1 row) and capture diagonally (-1 row, ±1 col).
+  const pawnRow = kingColor === 'White' ? kingRow - 1 : kingRow + 1;
+  if (pawnRow >= 0 && pawnRow < 8) {
+    for (const pawnCol of [kingCol - 1, kingCol + 1]) {
+      if (pawnCol >= 0 && pawnCol < 8) {
+        const p = board[pawnRow]?.[pawnCol];
+        if (p && p.color === enemyColor && p.type === 'Pawn') {
+          return true;
+        }
+      }
+    }
+  }
+
+  // 2. Enemy Knights
+  const knightMoves = [
+    [-2, -1], [-2, 1], [-1, -2], [-1, 2],
+    [1, -2], [1, 2], [2, -1], [2, 1]
+  ];
+  for (const [dr, dc] of knightMoves) {
+    const nr = kingRow + dr;
+    const nc = kingCol + dc;
+    if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+      const p = board[nr]?.[nc];
+      if (p && p.color === enemyColor && p.type === 'Knight') {
+        return true;
+      }
+    }
+  }
+
+  // 3. Enemy Sliders: Orthogonal (Rook, Queen)
+  const orthogonalDirs = [
+    [-1, 0], [1, 0], [0, -1], [0, 1]
+  ];
+  for (const [dr, dc] of orthogonalDirs) {
+    let nr = kingRow + dr;
+    let nc = kingCol + dc;
+    while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+      const p = board[nr]?.[nc];
+      if (p) {
+        if (p.color === enemyColor && (p.type === 'Rook' || p.type === 'Queen')) {
+          return true;
+        }
+        break; // blocked by intervening piece
+      }
+      nr += dr;
+      nc += dc;
+    }
+  }
+
+  // 4. Enemy Sliders: Diagonal (Bishop, Queen)
+  const diagonalDirs = [
+    [-1, -1], [-1, 1], [1, -1], [1, 1]
+  ];
+  for (const [dr, dc] of diagonalDirs) {
+    let nr = kingRow + dr;
+    let nc = kingCol + dc;
+    while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+      const p = board[nr]?.[nc];
+      if (p) {
+        if (p.color === enemyColor && (p.type === 'Bishop' || p.type === 'Queen')) {
+          return true;
+        }
+        break; // blocked by intervening piece
+      }
+      nr += dr;
+      nc += dc;
+    }
+  }
+
+  // 5. Enemy King (adjacent squares)
+  for (let dr = -1; dr <= 1; dr++) {
+    for (let dc = -1; dc <= 1; dc++) {
+      if (dr === 0 && dc === 0) continue;
+      const nr = kingRow + dr;
+      const nc = kingCol + dc;
+      if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8) {
+        const p = board[nr]?.[nc];
+        if (p && p.color === enemyColor && p.type === 'King') {
+          return true;
+        }
+      }
+    }
+  }
+
+  return false;
+}
+
+export function isCheckSquare(
+  square: string,
+  inCheck: boolean,
+  activeColor: PlayerColor,
+  board: (BoardPiece | null)[][]
+): boolean {
   if (!inCheck) return false;
   const { row, col } = getSquareIndex(square);
   const piece = board[row] ? board[row][col] : null;
-  return piece !== null && piece.type === 'King' && piece.color === activeColor;
+  if (!piece || piece.type !== 'King') return false;
+
+  // Determine directly whether this specific King is under attack on the board
+  if (isKingInCheck(piece.color, board)) {
+    return true;
+  }
+
+  // If the opponent King is under attack, this King is definitely NOT in check
+  const opponentColor: PlayerColor = piece.color === 'White' ? 'Black' : 'White';
+  if (isKingInCheck(opponentColor, board)) {
+    return false;
+  }
+
+  // Fallback if board analysis cannot determine attack lines directly (e.g. synthetic test mocks)
+  return piece.color === activeColor;
 }
 
 export function getEligibleSwapSquares(fen: string, color: PlayerColor): string[] {
@@ -147,6 +276,9 @@ export function getEligibleSwapSquares(fen: string, color: PlayerColor): string[
 export function getEligibleRevivalSquares(fen: string, color: PlayerColor, pieceType?: string | null): string[] {
   const matrix = parseFenToMatrix(fen);
   const eligible: string[] = [];
+  const inCheck = isKingInCheck(color, matrix);
+  const testPieceType: PieceType = (pieceType as PieceType) || 'Pawn';
+
   for (let r = 0; r < 8; r++) {
     const rank = 8 - r;
     const inOwnHalf = color === 'White' ? rank <= 4 : rank >= 5;
@@ -156,6 +288,14 @@ export function getEligibleRevivalSquares(fen: string, color: PlayerColor, piece
     for (let c = 0; c < 8; c++) {
       const piece = matrix[r][c];
       if (!piece) {
+        if (inCheck) {
+          matrix[r][c] = { type: testPieceType, color, char: color === 'White' ? 'P' : 'p' };
+          const leavesKingInCheck = isKingInCheck(color, matrix);
+          matrix[r][c] = null;
+          if (leavesKingInCheck) {
+            continue;
+          }
+        }
         eligible.push(formatSquare(c, r));
       }
     }

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Queen Right Leg & Armored Sabaton Boot -->
+  <!-- Knee Poleyn (Gold Trimmed Round Knee Cap with Shadow) -->
+  <circle cx="148" cy="214" r="8" fill="var(--queen-metal-shadow,#cbd5e0)" stroke="var(--queen-ink,#1a202c)" stroke-width="4.5"/>
+  <circle cx="148" cy="214" r="4" fill="var(--queen-gold,#ecc94b)"/>
+
+  <!-- Sleek Armored Greave (Shin Guard with Shadow) -->
+  <path d="M144 220l10 20-18 2-6-22h14Z" fill="var(--queen-metal-shadow,#cbd5e0)" stroke="var(--queen-ink,#1a202c)" stroke-width="4.5" stroke-linejoin="round"/>
+  <!-- Pointed Royal Sabaton Boot -->
+  <path d="M154 240l16 4c4 2 2 6-2 6h-30l2-10 14 0Z" fill="var(--queen-metal-shadow,#cbd5e0)" stroke="var(--queen-ink,#1a202c)" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Gold Toe Cap -->
+  <path d="M170 244l-12-3-2 9 14-6Z" fill="var(--queen-gold,#ecc94b)"/>
+</svg>
+

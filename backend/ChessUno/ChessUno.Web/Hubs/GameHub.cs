@@ -156,6 +156,7 @@ public class GameHub : Hub
         }
 
         string cardName = "";
+        ChessUno.Core.Cards.CardInstance? drawnCard = null;
         var result = await _sessionRepository.ExecuteActionAtomicallyAsync(
             gameId,
             actionId,
@@ -170,6 +171,7 @@ public class GameHub : Hub
                 try
                 {
                     var drawn = s.EngineController.DrawCard(player.Color);
+                    drawnCard = drawn;
                     cardName = drawn.Name;
                     s.Status = SessionStatus.InProgress;
                     if (_chessEngine.IsTerminalState(s.EngineController.ChessState.Status))
@@ -199,7 +201,16 @@ public class GameHub : Hub
             {
                 Player = player.Color.ToString(),
                 CardName = cardName,
-                RemainingDeckCount = session.EngineController.DeckManager.RemainingCount
+                RemainingDeckCount = session.EngineController.DeckManager.RemainingCount,
+                Card = drawnCard != null ? new
+                {
+                    id = drawnCard.Id,
+                    name = drawnCard.Name,
+                    category = drawnCard.Category,
+                    description = drawnCard.Description,
+                    effectKey = drawnCard.EffectKey,
+                    value = drawnCard.Value
+                } : null
             });
 
             await BroadcastCommittedStateUpdate(session);

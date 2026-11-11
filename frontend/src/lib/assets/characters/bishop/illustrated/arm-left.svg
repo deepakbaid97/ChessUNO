@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Bishop Left Arm (Spellcasting Gesture with Levitating Arcane Orb) -->
+  <!-- Flowing Bell Sleeve (Upper & Forearm) -->
+  <path d="M82 142l-28 22c-4 3-4 8 0 12l22 18c6 4 14 0 16-6l10-34-20-12Z" fill="var(--bishop-cowl,#805ad5)" stroke="var(--bishop-ink,#211e2f)" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Gold Sleeve Cuff Trim -->
+  <path d="M52 162l22 18-4 8-22-18 4-8Z" fill="var(--bishop-gold,#ecc94b)" stroke="var(--bishop-ink,#211e2f)" stroke-width="4.5" stroke-linejoin="round"/>
+
+  <!-- Cupped Hand (Fingers arched holding magic) -->
+  <path d="M48 166c-4 2-10 6-12 12 0 4 4 6 8 4l12-8-8-8Z" fill="var(--bishop-skin,#fbd38d)" stroke="var(--bishop-ink,#211e2f)" stroke-width="4.5" stroke-linejoin="round"/>
+  <ellipse cx="44" cy="174" rx="4" ry="3" fill="var(--bishop-skin-shadow,#dd6b20)"/>
+
+  <!-- Levitating Arcane Orb (Pulsing Mana Sphere) -->
+  <!-- Outer Aura Glow -->
+  <circle cx="38" cy="154" r="18" fill="var(--bishop-magic,#4fd1c5)" opacity=".22"/>
+  <!-- Orbiting Rune Ring (Tilted elliptical ring) -->
+  <ellipse cx="38" cy="154" rx="20" ry="7" transform="rotate(-25 38 154)" stroke="var(--bishop-magic,#4fd1c5)" stroke-width="2.5" stroke-dasharray="4 3" opacity=".85"/>
+
+  <!-- Main Radiant Orb Sphere -->
+  <circle cx="38" cy="154" r="12" fill="var(--bishop-magic,#4fd1c5)" stroke="var(--bishop-ink,#211e2f)" stroke-width="3"/>
+  <circle cx="35" cy="150" r="7" fill="var(--bishop-magic-bright,#e6fffa)" opacity=".9"/>
+  <circle cx="33" cy="148" r="3" fill="#ffffff"/>
+
+  <!-- Sparkles / Floating Motes of Magic -->
+  <circle cx="20" cy="144" r="2.5" fill="var(--bishop-magic-bright,#e6fffa)"/>
+  <circle cx="56" cy="146" r="2" fill="var(--bishop-magic,#4fd1c5)"/>
+  <circle cx="42" cy="134" r="1.8" fill="var(--bishop-magic-bright,#e6fffa)"/>
+</svg>
+

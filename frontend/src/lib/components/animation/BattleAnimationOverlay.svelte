@@ -1,0 +1,791 @@
+<script lang="ts">
+  import { onDestroy } from 'svelte';
+  import PawnCharacter from '../characters/PawnCharacter.svelte';
+  import KnightCharacter from '../characters/KnightCharacter.svelte';
+  import RookCharacter from '../characters/RookCharacter.svelte';
+  import BishopCharacter from '../characters/BishopCharacter.svelte';
+  import QueenCharacter from '../characters/QueenCharacter.svelte';
+  import KingCharacter from '../characters/KingCharacter.svelte';
+  import {
+    battleAnimationStore,
+    battleAnimationService,
+    isSupportedBattlePiece
+  } from '../../services/battleAnimationService';
+  import { prefersReducedMotion } from '../../utils/cardDisplayUtils';
+  import type { AttackStyle } from '../../types/battle';
+
+  $: state = $battleAnimationStore;
+  $: active = state.isActive;
+  $: currentEvent = state.currentEvent;
+
+  $: isSupportedMatchup = !!(
+    currentEvent &&
+    isSupportedBattlePiece(currentEvent.attacker.piece) &&
+    isSupportedBattlePiece(currentEvent.defender.piece) &&
+    currentEvent.defender.piece !== 'King'
+  );
+
+  $: if (active && currentEvent && !isSupportedMatchup) {
+    // Unsupported pieces never render substitutes; safely skip cinematic
+    handleDismiss();
+  }
+
+  $: attackerTeam = currentEvent?.attacker.color === 'White' ? 'light' : 'dark';
+  $: defenderTeam = currentEvent?.defender.color === 'White' ? 'light' : 'dark';
+  $: attackStyle = (currentEvent?.attackStyle ||
+    (currentEvent?.attacker.piece === 'Knight'
+      ? 'leap'
+      : currentEvent?.attacker.piece === 'Rook'
+        ? 'smash'
+        : currentEvent?.attacker.piece === 'Bishop'
+          ? 'spell'
+          : currentEvent?.attacker.piece === 'Queen'
+            ? 'slash'
+            : currentEvent?.attacker.piece === 'King'
+              ? 'strike'
+              : 'charge')) as AttackStyle;
+
+  type CharacterAnimation = 'idle' | 'walk' | 'attack' | 'death';
+  type CharacterExpression = 'neutral' | 'happy' | 'scared' | 'angry';
+
+  let attackerAnimation: CharacterAnimation = 'walk';
+  let attackerExpression: CharacterExpression = 'neutral';
+  let defenderAnimation: CharacterAnimation = 'idle';
+  let defenderExpression: CharacterExpression = 'neutral';
+
+  let stagePhase: 'enter' | 'charge' | 'clash' | 'reaction' | 'exit' = 'enter';
+  let shakeActive = false;
+  let flashActive = false;
+  let sparks: { id: number; dx: number; dy: number; color: string; size: number }[] = [];
+
+  let timeouts: ReturnType<typeof setTimeout>[] = [];
+
+  function clearAllTimeouts() {
+    timeouts.forEach(t => clearTimeout(t));
+    timeouts = [];
+  }
+
+  function handleDismiss() {
+    clearAllTimeouts();
+    battleAnimationService.dismiss();
+  }
+
+  function handleKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape' || e.key === ' ') {
+      handleDismiss();
+    }
+  }
+
+  function generateSparks() {
+    const colors = attackStyle === 'spell'
+      ? ['#4fd1c5', '#805ad5', '#e6fffa', '#ecc94b', '#f687b3']
+      : attackStyle === 'slash'
+        ? ['#63b3ed', '#ffffff', '#e53e3e', '#ecc94b', '#bee3f8']
+        : attackStyle === 'strike'
+          ? ['#f6e05e', '#ecc94b', '#ffffff', '#e53e3e', '#2b6cb0']
+          : ['#f3ce73', '#ffffff', '#f43f5e', '#fbbf24', '#ffedd5'];
+    return Array.from({ length: 18 }, (_, i) => ({
+      id: i,
+      dx: (Math.random() - 0.45) * 160,
+      dy: (Math.random() - 0.7) * 140,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      size: Math.random() * 6 + 4
+    }));
+  }
+
+  function runSequence() {
+    clearAllTimeouts();
+
+    if (prefersReducedMotion()) {
+      timeouts.push(setTimeout(() => handleDismiss(), 300));
+      return;
+    }
+
+    // Step 1: Enter (0ms)
+    stagePhase = 'enter';
+    attackerAnimation = 'walk';
+    attackerExpression = 'neutral';
+    defenderAnimation = 'idle';
+    defenderExpression = 'neutral';
+    shakeActive = false;
+    flashActive = false;
+    sparks = [];
+
+    // Step 2: Charge & Anticipation (300ms)
+    timeouts.push(
+      setTimeout(() => {
+        stagePhase = 'charge';
+        attackerAnimation = 'walk';
+        attackerExpression = 'angry';
+        defenderExpression = 'scared';
+      }, 300)
+    );
+
+    // Step 3: Attack Strike & Impact (580ms)
+    timeouts.push(
+      setTimeout(() => {
+        stagePhase = 'clash';
+        attackerAnimation = 'attack';
+        attackerExpression = 'angry';
+        defenderExpression = 'scared';
+        shakeActive = true;
+        flashActive = true;
+        sparks = generateSparks();
+      }, 580)
+    );
+
+    // Step 4: Outcome - Knockback, Defender Falls, Attacker Victorious (860ms)
+    timeouts.push(
+      setTimeout(() => {
+        stagePhase = 'reaction';
+        shakeActive = false;
+        flashActive = false;
+        attackerAnimation = 'idle';
+        attackerExpression = 'happy';
+        defenderAnimation = 'death';
+        defenderExpression = 'scared';
+      }, 860)
+    );
+
+    // Step 5: Readability Hold & Exit Transition (1500ms)
+    timeouts.push(
+      setTimeout(() => {
+        stagePhase = 'exit';
+      }, 1500)
+    );
+
+    // Step 6: Dismiss / Next Queue Event (1680ms)
+    timeouts.push(
+      setTimeout(() => {
+        handleDismiss();
+      }, 1680)
+    );
+  }
+
+  let lastActiveEventId: string | null = null;
+  $: if (active && currentEvent) {
+    if (currentEvent.id !== lastActiveEventId) {
+      lastActiveEventId = currentEvent.id;
+      runSequence();
+    }
+  } else {
+    lastActiveEventId = null;
+    clearAllTimeouts();
+  }
+
+  onDestroy(() => {
+    clearAllTimeouts();
+  });
+</script>
+
+<svelte:window on:keydown={handleKeyDown} />
+
+{#if active && currentEvent && isSupportedMatchup}
+  <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
+  <div
+    class="battle-overlay"
+    class:phase-exit={stagePhase === 'exit'}
+    data-testid="battle-animation-overlay"
+    role="dialog"
+    aria-modal="true"
+    aria-label="{currentEvent.attacker.piece} vs {currentEvent.defender.piece} battle capture cinematic"
+    tabindex="-1"
+    on:click={handleDismiss}
+    on:keydown={(e) => { if (e.key === 'Escape' || e.key === ' ') handleDismiss(); }}
+  >
+    <div class="backdrop-glow" aria-hidden="true"></div>
+
+    <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
+    <div class="battle-arena" class:shake={shakeActive} role="document" on:click|stopPropagation>
+      <header class="battle-header">
+        <span class="battle-tag">
+          {#if currentEvent.attacker.piece === 'King' || currentEvent.defender.piece === 'King'}
+            KING DUEL
+          {:else if currentEvent.attacker.piece === 'Queen' || currentEvent.defender.piece === 'Queen'}
+            QUEEN CLASH
+          {:else if currentEvent.attacker.piece === 'Bishop' || currentEvent.defender.piece === 'Bishop'}
+            BISHOP CLASH
+          {:else if currentEvent.attacker.piece === 'Rook' || currentEvent.defender.piece === 'Rook'}
+            ROOK CLASH
+          {:else if currentEvent.attacker.piece === 'Knight' || currentEvent.defender.piece === 'Knight'}
+            KNIGHT CLASH
+          {:else}
+            PAWN DUEL
+          {/if}
+        </span>
+        <h2 class="battle-title">
+          {currentEvent.attacker.color} {currentEvent.attacker.piece} strikes {currentEvent.defender.color} {currentEvent.defender.piece}
+        </h2>
+      </header>
+
+      <div class="combat-stage style-{attackStyle}">
+        <!-- Floor Ring Plinth -->
+        <div class="stage-plinth" aria-hidden="true">
+          <div class="plinth-ring ring-outer"></div>
+          <div class="plinth-ring ring-inner"></div>
+        </div>
+
+        <!-- Attacker Slot (Left) -->
+        <div class="combatant-slot slot-attacker piece-{currentEvent.attacker.piece.toLowerCase()} phase-{stagePhase}">
+          {#if currentEvent.attacker.piece === 'Knight'}
+            <KnightCharacter
+              team={attackerTeam}
+              animation={attackerAnimation}
+              expression={attackerExpression}
+              size={180}
+              testId="battle-attacker"
+            />
+          {:else if currentEvent.attacker.piece === 'Rook'}
+            <RookCharacter
+              team={attackerTeam}
+              animation={attackerAnimation}
+              expression={attackerExpression}
+              size={195}
+              testId="battle-attacker"
+            />
+          {:else if currentEvent.attacker.piece === 'Bishop'}
+            <BishopCharacter
+              team={attackerTeam}
+              animation={attackerAnimation}
+              expression={attackerExpression}
+              size={185}
+              testId="battle-attacker"
+            />
+          {:else if currentEvent.attacker.piece === 'Queen'}
+            <QueenCharacter
+              team={attackerTeam}
+              animation={attackerAnimation}
+              expression={attackerExpression}
+              size={190}
+              testId="battle-attacker"
+            />
+          {:else if currentEvent.attacker.piece === 'King'}
+            <KingCharacter
+              team={attackerTeam}
+              animation={attackerAnimation}
+              expression={attackerExpression}
+              size={195}
+              testId="battle-attacker"
+            />
+          {:else if currentEvent.attacker.piece === 'Pawn'}
+            <PawnCharacter
+              team={attackerTeam}
+              animation={attackerAnimation}
+              expression={attackerExpression}
+              size={180}
+              testId="battle-attacker"
+            />
+          {/if}
+        </div>
+
+        <!-- Arcane Beam Projectile (Spell Attack Style) -->
+        {#if attackStyle === 'spell' && (stagePhase === 'charge' || stagePhase === 'clash')}
+          <div class="spell-beam" aria-hidden="true"></div>
+        {/if}
+
+        <!-- Energy Slash Trail (Slash Attack Style) -->
+        {#if attackStyle === 'slash' && (stagePhase === 'charge' || stagePhase === 'clash')}
+          <div class="slash-trail" aria-hidden="true"></div>
+        {/if}
+
+        <!-- Royal Counterstrike Burst (Strike Attack Style) -->
+        {#if attackStyle === 'strike' && stagePhase === 'clash'}
+          <div class="royal-burst" aria-hidden="true"></div>
+        {/if}
+
+        <!-- Clash Center FX (Sparks, Flash, & Shockwave) -->
+        <div class="clash-origin" aria-hidden="true">
+          {#if flashActive}
+            <div class="clash-flash"></div>
+            <div class="clash-shockwave"></div>
+          {/if}
+          {#each sparks as s (s.id)}
+            <div
+              class="spark-particle"
+              style="--dx: {s.dx}px; --dy: {s.dy}px; --color: {s.color}; --size: {s.size}px;"
+            ></div>
+          {/each}
+        </div>
+
+        <!-- Defender Slot (Right, flipped) -->
+        <div class="combatant-slot slot-defender piece-{currentEvent.defender.piece.toLowerCase()} phase-{stagePhase}">
+          {#if currentEvent.defender.piece === 'Knight'}
+            <KnightCharacter
+              team={defenderTeam}
+              animation={defenderAnimation}
+              expression={defenderExpression}
+              size={180}
+              testId="battle-defender"
+            />
+          {:else if currentEvent.defender.piece === 'Rook'}
+            <RookCharacter
+              team={defenderTeam}
+              animation={defenderAnimation}
+              expression={defenderExpression}
+              size={195}
+              testId="battle-defender"
+            />
+          {:else if currentEvent.defender.piece === 'Bishop'}
+            <BishopCharacter
+              team={defenderTeam}
+              animation={defenderAnimation}
+              expression={defenderExpression}
+              size={185}
+              testId="battle-defender"
+            />
+          {:else if currentEvent.defender.piece === 'Queen'}
+            <QueenCharacter
+              team={defenderTeam}
+              animation={defenderAnimation}
+              expression={defenderExpression}
+              size={190}
+              testId="battle-defender"
+            />
+          {:else if currentEvent.defender.piece === 'King'}
+            <KingCharacter
+              team={defenderTeam}
+              animation={defenderAnimation}
+              expression={defenderExpression}
+              size={195}
+              testId="battle-defender"
+            />
+          {:else if currentEvent.defender.piece === 'Pawn'}
+            <PawnCharacter
+              team={defenderTeam}
+              animation={defenderAnimation}
+              expression={defenderExpression}
+              size={180}
+              testId="battle-defender"
+            />
+          {/if}
+        </div>
+      </div>
+
+      <footer class="battle-footer">
+        <button class="skip-btn" on:click|stopPropagation={handleDismiss} aria-label="Skip battle animation">
+          Skip ✕
+        </button>
+      </footer>
+    </div>
+  </div>
+{/if}
+
+<style>
+  .battle-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 1200;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle at 50% 48%, rgba(26, 20, 42, 0.82) 0%, rgba(10, 8, 17, 0.94) 80%);
+    backdrop-filter: blur(6px);
+    cursor: pointer;
+    animation: fadeIn 0.22s ease-out forwards;
+    user-select: none;
+  }
+
+  .battle-overlay.phase-exit {
+    animation: fadeOut 0.2s ease-in forwards;
+  }
+
+  .backdrop-glow {
+    position: absolute;
+    width: min(85vw, 640px);
+    height: min(85vw, 640px);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(243, 206, 115, 0.15) 0%, rgba(168, 85, 247, 0.08) 50%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .battle-arena {
+    position: relative;
+    width: min(92vw, 620px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: default;
+  }
+
+  .battle-arena.shake {
+    animation: screenRumble 0.24s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  }
+
+  .battle-header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+
+  .battle-tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 999px;
+    background: rgba(243, 206, 115, 0.15);
+    border: 1px solid rgba(243, 206, 115, 0.4);
+    color: #f3ce73;
+    font: 700 0.68rem var(--font-mono, monospace);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .battle-title {
+    margin: 8px 0 0;
+    color: #f8efd9;
+    font: 700 1.25rem var(--font-sans, sans-serif);
+    letter-spacing: -0.02em;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  }
+
+  .combat-stage {
+    position: relative;
+    width: 100%;
+    height: 260px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 40px;
+  }
+
+  .stage-plinth {
+    position: absolute;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 82%;
+    height: 48px;
+    pointer-events: none;
+  }
+
+  .plinth-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+  }
+
+  .ring-outer {
+    border: 1.5px solid rgba(248, 239, 217, 0.25);
+    background: radial-gradient(ellipse at center, rgba(243, 206, 115, 0.18), transparent 70%);
+    box-shadow: 0 0 24px rgba(243, 206, 115, 0.2);
+  }
+
+  .ring-inner {
+    inset: 6px;
+    border: 1px dashed rgba(243, 206, 115, 0.35);
+  }
+
+  .combatant-slot {
+    position: relative;
+    z-index: 2;
+    transition: transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.32s ease, filter 0.32s ease;
+  }
+
+  /* Attacker (Left) movement states */
+  .slot-attacker.phase-enter {
+    transform: translateX(-50px);
+    opacity: 0.85;
+  }
+
+  .slot-attacker.phase-charge {
+    transform: translateX(45px);
+  }
+
+  .slot-attacker.phase-clash {
+    transform: translateX(85px) scale(1.1);
+  }
+
+  .slot-attacker.phase-reaction {
+    transform: translateX(52px) scale(1.08);
+  }
+
+  /* Leaping Knight attack style */
+  .style-leap .slot-attacker.phase-charge {
+    transform: translateX(48px) translateY(-14px) rotate(4deg);
+  }
+
+  .style-leap .slot-attacker.phase-clash {
+    transform: translateX(88px) translateY(-4px) scale(1.12) rotate(2deg);
+  }
+
+  /* Powerful Rook smash attack style (Heavy grounded advance & downward slam) */
+  .style-smash .slot-attacker.phase-charge {
+    transform: translateX(40px) translateY(4px);
+  }
+
+  .style-smash .slot-attacker.phase-clash {
+    transform: translateX(82px) translateY(6px) scale(1.14);
+  }
+
+  /* Mysterious Bishop spell attack style (Levitating arcane surge & projectile cast) */
+  .style-spell .slot-attacker.phase-charge {
+    transform: translateX(32px) translateY(-14px) scale(1.06);
+    filter: drop-shadow(0 0 16px rgba(79, 209, 197, 0.65));
+  }
+
+  .style-spell .slot-attacker.phase-clash {
+    transform: translateX(68px) translateY(-6px) scale(1.1);
+    filter: drop-shadow(0 0 24px rgba(79, 209, 197, 0.9));
+  }
+
+  /* Shimmering Arcane Spell Beam */
+  .spell-beam {
+    position: absolute;
+    left: 42%;
+    top: 48%;
+    width: 140px;
+    height: 12px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #e6fffa 0%, #4fd1c5 55%, rgba(128, 90, 213, 0) 100%);
+    box-shadow: 0 0 20px #4fd1c5, 0 0 8px #ffffff;
+    transform-origin: left center;
+    animation: beamStreak 0.35s ease-out forwards;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  @keyframes beamStreak {
+    0% { transform: scaleX(0.1); opacity: 0; }
+    50% { transform: scaleX(1.15) translateY(-2px); opacity: 1; }
+    100% { transform: scaleX(1.35) translateX(24px); opacity: 0; }
+  }
+
+  /* Elegant Queen energy slash attack style (Rapid coiled dash & sword sweep) */
+  .style-slash .slot-attacker.phase-charge {
+    transform: translateX(36px) translateY(2px) scale(0.98);
+    filter: drop-shadow(0 0 14px rgba(99, 179, 237, 0.65));
+  }
+
+  .style-slash .slot-attacker.phase-clash {
+    transform: translateX(86px) translateY(-2px) scale(1.14);
+    filter: drop-shadow(0 0 26px rgba(99, 179, 237, 0.95));
+  }
+
+  /* Crescent Energy Slash Trail */
+  .slash-trail {
+    position: absolute;
+    left: 44%;
+    top: 40%;
+    width: 130px;
+    height: 54px;
+    border-radius: 50%;
+    border: 4px solid #63b3ed;
+    border-top-color: #ffffff;
+    border-right-color: transparent;
+    border-bottom-color: transparent;
+    box-shadow: 0 0 20px #63b3ed, 0 0 8px #ffffff;
+    transform: rotate(-35deg) scale(0.3);
+    animation: slashArc 0.28s ease-out forwards;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  @keyframes slashArc {
+    0% { transform: rotate(-45deg) scale(0.2); opacity: 0; }
+    40% { transform: rotate(15deg) scale(1.25); opacity: 1; }
+    100% { transform: rotate(45deg) scale(1.5) translateX(18px); opacity: 0; }
+  }
+
+  /* Powerful King Royal Counterstrike style */
+  .style-strike .slot-attacker.phase-charge {
+    transform: translateX(28px) translateY(4px) scale(0.97);
+    filter: drop-shadow(0 0 16px rgba(236, 201, 75, 0.7));
+  }
+
+  .style-strike .slot-attacker.phase-clash {
+    transform: translateX(84px) translateY(-2px) scale(1.12);
+    filter: drop-shadow(0 0 28px rgba(246, 224, 94, 0.95));
+  }
+
+  /* Royal Crest Counterstrike Shockwave */
+  .royal-burst {
+    position: absolute;
+    left: 48%;
+    top: 44%;
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    border: 4px solid #f6e05e;
+    background: radial-gradient(circle, rgba(246, 224, 94, 0.35) 0%, transparent 70%);
+    box-shadow: 0 0 24px #ecc94b;
+    transform: translate(-50%, -50%) scale(0.3);
+    animation: royalBurstExpand 0.32s ease-out forwards;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  @keyframes royalBurstExpand {
+    0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+  }
+
+  /* Defender (Right) flipped facing left */
+  .slot-defender {
+    transform: scaleX(-1);
+    transform-origin: center bottom;
+  }
+
+  .slot-defender.phase-enter {
+    transform: scaleX(-1) translateX(-50px);
+    opacity: 0.85;
+  }
+
+  .slot-defender.phase-charge {
+    transform: scaleX(-1) translateX(-10px);
+  }
+
+  .slot-defender.phase-clash {
+    transform: scaleX(-1) translateX(-55px) rotate(-16deg);
+  }
+
+  .slot-defender.phase-reaction {
+    transform: scaleX(-1) translateX(-98px) translateY(24px) rotate(-38deg);
+    opacity: 0.2;
+    filter: blur(0.7px);
+  }
+
+  /* Clash point FX */
+  .clash-origin {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+    z-index: 5;
+  }
+
+  .clash-flash {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 140px;
+    height: 140px;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.95) 0%, rgba(243, 206, 115, 0.6) 45%, transparent 75%);
+    animation: impactFlash 0.22s ease-out forwards;
+  }
+
+  .clash-shockwave {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 90px;
+    height: 90px;
+    border-radius: 50%;
+    border: 3px solid rgba(243, 206, 115, 0.9);
+    box-shadow: 0 0 16px rgba(243, 206, 115, 0.8);
+    transform: translate(-50%, -50%);
+    animation: shockwaveExpand 0.35s ease-out forwards;
+  }
+
+  .spark-particle {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: var(--size);
+    height: var(--size);
+    border-radius: 50%;
+    background: var(--color);
+    box-shadow: 0 0 8px var(--color);
+    animation: sparkFly 0.42s cubic-bezier(0.12, 0.8, 0.32, 1) forwards;
+  }
+
+  .battle-footer {
+    margin-top: 14px;
+    text-align: center;
+  }
+
+  .skip-btn {
+    background: rgba(248, 239, 217, 0.08);
+    border: 1px solid rgba(248, 239, 217, 0.2);
+    border-radius: 999px;
+    color: #c8bed1;
+    font: 600 0.72rem var(--font-mono, monospace);
+    padding: 5px 14px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .skip-btn:hover {
+    color: #f3ce73;
+    border-color: #f3ce73;
+    background: rgba(243, 206, 115, 0.12);
+  }
+
+  @keyframes impactFlash {
+    0% { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+  }
+
+  @keyframes shockwaveExpand {
+    0% { transform: translate(-50%, -50%) scale(0.2); opacity: 1; border-width: 4px; }
+    100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; border-width: 1px; }
+  }
+
+  @keyframes sparkFly {
+    0% { transform: translate(0, 0) scale(1); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(0.2); opacity: 0; }
+  }
+
+  @keyframes screenRumble {
+    0%, 100% { transform: translate(0, 0); }
+    20% { transform: translate(-4px, 2px); }
+    40% { transform: translate(4px, -3px); }
+    60% { transform: translate(-3px, -2px); }
+    80% { transform: translate(3px, 1px); }
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
+  @media (max-width: 640px) {
+    .battle-arena {
+      width: 95vw;
+    }
+
+    .combat-stage {
+      height: 200px;
+      padding: 0 10px;
+    }
+
+    .combatant-slot {
+      transform-origin: center bottom;
+      zoom: 0.82;
+    }
+
+    .battle-title {
+      font-size: 1.05rem;
+    }
+
+    .slot-attacker.phase-charge {
+      transform: translateX(30px);
+    }
+
+    .slot-attacker.phase-clash {
+      transform: translateX(54px) scale(1.08);
+    }
+
+    .slot-defender.phase-clash {
+      transform: scaleX(-1) translateX(-32px) rotate(-14deg);
+    }
+
+    .slot-defender.phase-reaction {
+      transform: scaleX(-1) translateX(-60px) translateY(18px) rotate(-32deg);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .battle-overlay,
+    .battle-overlay *,
+    .battle-arena.shake {
+      animation: none !important;
+      transition: none !important;
+    }
+  }
+</style>

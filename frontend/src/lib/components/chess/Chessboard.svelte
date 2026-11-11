@@ -144,6 +144,8 @@
       {@const showFile = perspective === 'White' ? square.charAt(1) === '1' : square.charAt(1) === '8'}
       {@const slide = getSlideOffset(square, lastMove, perspective)}
       {@const isCaptImpact = captureSquare === square}
+      {@const isRevivalTarget = mode === 'revival' && isDest}
+      {@const isSwapTarget = mode === 'swap' && isDest}
 
       <ChessSquare
         {square}
@@ -158,6 +160,8 @@
         isCaptureImpact={isCaptImpact}
         showCoordinateRank={showRank}
         showCoordinateFile={showFile}
+        {isRevivalTarget}
+        {isSwapTarget}
         on:select={handleSquareClick}
       />
     {/each}

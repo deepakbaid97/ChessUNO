@@ -5,7 +5,8 @@
     parseFenToMatrix,
     getSquareIndex,
     getEligibleSwapSquares,
-    getEligibleRevivalSquares
+    getEligibleRevivalSquares,
+    isKingInCheck
   } from '../../utils/boardUtils';
   import { gameStore } from '../../stores/gameStore';
   import { connectionStore } from '../../stores/connectionStore';
@@ -16,7 +17,9 @@
   import GameHistory from '../game/GameHistory.svelte';
   import GameOverModal from '../game/GameOverModal.svelte';
   import CardRevealOverlay from '../animation/CardRevealOverlay.svelte';
-  import { cardAnimationService } from '../../services/cardAnimationService';
+  import { cardAnimationService, cardRevealStore } from '../../services/cardAnimationService';
+  import BattleAnimationOverlay from '../animation/BattleAnimationOverlay.svelte';
+  import { battleAnimationService, detectCaptureEvent } from '../../services/battleAnimationService';
   import PushToTalkControl from '../game/PushToTalkControl.svelte';
   import TurnCoachBanner from '../game/TurnCoachBanner.svelte';
   import { computeCoachGuide } from '../../utils/coachGuide';
@@ -49,44 +52,46 @@
   let secondSwapSquare: string | null = null;
   let selectedRevivalPiece: string | null = null;
 
+  let storeState = $gameStore;
+  let connState = $connectionStore;
+
   $: storeState = $gameStore;
   $: connState = $connectionStore;
 
-  $: isMyTurn = storeState.activePlayer === storeState.assignedColor && !isGameOver;
-  $: opponentColor = (storeState.assignedColor === 'White' ? 'Black' : 'White') as PlayerColor;
+  $: isGameOver = ['Checkmate', 'Stalemate', 'Resigned', 'DrawByInsufficientMaterial', 'DrawByFiftyMoveRule', 'DrawByThreefoldRepetition'].includes(storeState?.gameStatus || '');
+  $: isMyTurn = !!(storeState?.activePlayer && storeState?.assignedColor && storeState.activePlayer === storeState.assignedColor && !isGameOver);
+  $: opponentColor = ((storeState?.assignedColor === 'White' ? 'Black' : 'White') || 'Black') as PlayerColor;
 
-  $: myReserves = storeState.assignedColor === 'White' ? storeState.whiteReserves : storeState.blackReserves;
-  $: opponentReserves = storeState.assignedColor === 'White' ? storeState.blackReserves : storeState.whiteReserves;
-
-  $: isGameOver = ['Checkmate', 'Stalemate', 'Resigned', 'DrawByInsufficientMaterial', 'DrawByFiftyMoveRule', 'DrawByThreefoldRepetition'].includes(storeState.gameStatus);
+  $: myReserves = storeState?.assignedColor === 'White' ? (storeState.whiteReserves || []) : (storeState?.blackReserves || []);
+  $: opponentReserves = storeState?.assignedColor === 'White' ? (storeState?.blackReserves || []) : (storeState?.whiteReserves || []);
 
   // Auto-activate ability mode when drawing swap or revival cards
-  $: if (isMyTurn && storeState.canSwap && activeAbilityMode === 'none') {
+  $: if (isMyTurn && storeState?.canSwap && activeAbilityMode === 'none') {
     activeAbilityMode = 'swap';
     firstSwapSquare = null;
     secondSwapSquare = null;
   }
-  $: if (!storeState.canSwap && activeAbilityMode === 'swap') {
+  $: if (!storeState?.canSwap && activeAbilityMode === 'swap') {
     activeAbilityMode = 'none';
     firstSwapSquare = null;
     secondSwapSquare = null;
   }
-  $: if (isMyTurn && storeState.remainingRevivals > 0 && myReserves.length > 0 && activeAbilityMode === 'none') {
+  $: if (isMyTurn && (storeState?.remainingRevivals || 0) > 0 && myReserves.length > 0 && activeAbilityMode === 'none') {
     activeAbilityMode = 'revival';
     if (!selectedRevivalPiece && myReserves.length === 1) {
       selectedRevivalPiece = myReserves[0];
     }
   }
-  $: if (storeState.remainingRevivals === 0 && activeAbilityMode === 'revival') {
+  $: if ((storeState?.remainingRevivals || 0) === 0 && activeAbilityMode === 'revival') {
     activeAbilityMode = 'none';
     selectedRevivalPiece = null;
   }
 
-  $: swapEligibleSquares = activeAbilityMode === 'swap'
+  $: swapEligibleSquares = activeAbilityMode === 'swap' && storeState?.boardFen && storeState?.assignedColor
     ? getEligibleSwapSquares(storeState.boardFen, storeState.assignedColor)
     : [];
 
-  $: revivalEligibleSquares = activeAbilityMode === 'revival' && selectedRevivalPiece
+  $: revivalEligibleSquares = activeAbilityMode === 'revival' && selectedRevivalPiece && storeState?.boardFen && storeState?.assignedColor
     ? getEligibleRevivalSquares(storeState.boardFen, storeState.assignedColor, selectedRevivalPiece)
     : [];
 
@@ -94,11 +99,11 @@
     ? swapEligibleSquares.filter(sq => sq !== firstSwapSquare)
     : activeAbilityMode === 'revival'
       ? revivalEligibleSquares
-      : storeState.validDestinations;
+      : (storeState?.validDestinations || []);
 
   $: displayedSelectedSquare = activeAbilityMode === 'swap'
     ? (firstSwapSquare || null)
-    : storeState.selectedSquare;
+    : (storeState?.selectedSquare || null);
 
   $: coachGuide = computeCoachGuide({
     isGameOver,
@@ -116,6 +121,7 @@
     const square = event.detail.square;
 
     if (activeAbilityMode === 'swap') {
+      if (!storeState?.boardFen || !storeState?.assignedColor) return;
       const eligible = getEligibleSwapSquares(storeState.boardFen, storeState.assignedColor);
       if (!eligible.includes(square)) {
         const matrix = parseFenToMatrix(storeState.boardFen);
@@ -153,9 +159,25 @@
         dispatch('showToast', { text: 'Please select a captured piece from your reserves first.', type: 'error' });
         return;
       }
+      if (!storeState?.boardFen || !storeState?.assignedColor) return;
       const eligible = getEligibleRevivalSquares(storeState.boardFen, storeState.assignedColor, selectedRevivalPiece);
       if (!eligible.includes(square)) {
-        dispatch('showToast', { text: 'Revival square must be an empty square in your half of the board.', type: 'error' });
+        const matrix = parseFenToMatrix(storeState.boardFen);
+        const { row, col } = getSquareIndex(square);
+        const piece = matrix[row]?.[col];
+        const rank = 8 - row;
+        const inOwnHalf = storeState.assignedColor === 'White' ? rank <= 4 : rank >= 5;
+        if (piece) {
+          dispatch('showToast', { text: `Square ${square} is already occupied.`, type: 'error' });
+        } else if (!inOwnHalf) {
+          dispatch('showToast', { text: 'Revival square must be on your half of the board.', type: 'error' });
+        } else if (selectedRevivalPiece === 'Pawn' && (rank === 1 || rank === 8)) {
+          dispatch('showToast', { text: 'Pawns cannot be revived on rank 1 or 8.', type: 'error' });
+        } else if (isKingInCheck(storeState.assignedColor, matrix)) {
+          dispatch('showToast', { text: `Revival on square '${square}' leaves your King in check.`, type: 'error' });
+        } else {
+          dispatch('showToast', { text: 'Revival square is not eligible.', type: 'error' });
+        }
         return;
       }
       dispatch('submitRevival', {
@@ -218,9 +240,9 @@
     showMatchStartBanner = false;
   }, 2400);
 
-  $: if (storeState.lastMove && (storeState.lastMove.from !== prevLastMove?.from || storeState.lastMove.to !== prevLastMove?.to)) {
+  $: if (storeState?.lastMove && (storeState.lastMove.from !== prevLastMove?.from || storeState.lastMove.to !== prevLastMove?.to)) {
     prevLastMove = storeState.lastMove;
-    const actor = storeState.activePlayer === storeState.assignedColor ? (storeState.opponentName || 'Opponent') : 'You';
+    const actor = storeState?.activePlayer === storeState?.assignedColor ? (storeState?.opponentName || 'Opponent') : 'You';
     floatingMoveToast = {
       actor,
       from: storeState.lastMove.from.toUpperCase(),
@@ -240,6 +262,8 @@
     return { x: r.left, y: r.top, width: r.width, height: r.height };
   }
 
+  let previousBoardFen: string = '';
+  let lastHandledMoveCounter: number = 0;
   let lastRevealedCardKey: string | null = null;
   let lastRevealedDrawCounter: number = 0;
   let previousActiveCardId: string | null = null;
@@ -247,64 +271,99 @@
 
   onMount(() => {
     // If mounting into an already active card (e.g. page reload mid-game), record it so we don't replay
-    if (storeState.activeCard?.id) {
-      lastRevealedCardKey = `${storeState.activeCard.id}-${storeState.activeCard.value}-${storeState.revision}`;
+    if (storeState?.activeCard?.id) {
+      const drawerColor: PlayerColor = (storeState?.lastDrawerColor || storeState?.activePlayer || 'White') as PlayerColor;
+      lastRevealedCardKey = `draw-${storeState.drawEventCounter || 0}-${storeState.activeCard.id}-${storeState.activeCard.value ?? 'x'}-${drawerColor}`;
       previousActiveCardId = storeState.activeCard.id;
-      lastRevealedDrawCounter = storeState.drawEventCounter;
+      lastRevealedDrawCounter = storeState.drawEventCounter || 0;
     }
+    previousBoardFen = storeState?.boardFen || '';
+    lastHandledMoveCounter = storeState?.moveEventCounter || 0;
   });
 
   onDestroy(() => {
     cardAnimationService.dismiss();
+    battleAnimationService.reset();
   });
 
   $: if (isGameOver) {
-    cardAnimationService.dismiss();
+    battleAnimationService.reset();
+  }
+
+  // Authoritative Battle Animation Trigger:
+  // Detects accepted captures between supported pieces (Pawn, Knight, Rook) when a new move is confirmed/accepted
+  $: if (storeState && (storeState.moveEventCounter || 0) > lastHandledMoveCounter) {
+    const moveData = storeState.lastAcceptedMove;
+    const currentFen = storeState.boardFen;
+    lastHandledMoveCounter = storeState.moveEventCounter || 0;
+
+    if (moveData && previousBoardFen && previousBoardFen !== currentFen) {
+      const battleEvent = detectCaptureEvent(previousBoardFen, currentFen, {
+        from: moveData.from,
+        to: moveData.to
+      });
+      if (battleEvent) {
+        const moveKey = `battle-${storeState.revision}-${storeState.moveEventCounter}-${moveData.from}-${moveData.to}`;
+        battleAnimationService.triggerBattle(battleEvent, moveKey);
+      }
+    }
+    previousBoardFen = currentFen;
+  } else if (storeState?.boardFen && storeState.boardFen !== previousBoardFen) {
+    previousBoardFen = storeState.boardFen;
   }
 
   // Authoritative Card Reveal Trigger:
-  // Detect fresh card draws reliably across turns for both local player and remote opponent
-  $: if (storeState.activeCard && storeState.activeCard.id) {
-    const cardKey = `${storeState.activeCard.id}-${storeState.activeCard.value}-${storeState.revision}`;
-    const isNewDrawEvent = storeState.drawEventCounter > lastRevealedDrawCounter;
-    const isNewCardArrival = previousActiveCardId === null;
-    const isTransitionFromDrawPhase = previousTurnPhase === 'DrawPhase';
+  // Detects fresh card draws reliably across turns (including Card 0, Draw cards, etc.) for both local player and remote opponent
+  $: {
+    const currentDrawCounter = storeState?.drawEventCounter || 0;
+    const isNewDrawEvent = currentDrawCounter > lastRevealedDrawCounter;
 
-    const isFreshDraw = (isNewDrawEvent || isNewCardArrival || isTransitionFromDrawPhase) && (cardKey !== lastRevealedCardKey);
+    // A card should be revealed ONLY when:
+    // 1. A new card draw event occurred (e.g. onCardDrawn fired, incrementing drawEventCounter)
+    // 2. Or a new activeCard arrives during an active ActionPhase/AwaitingChoice (e.g. initial game state or direct transition)
+    // CRITICAL: A card must NEVER be revealed when a turn ends and transitions back to DrawPhase!
+    const cardToReveal = isNewDrawEvent
+      ? (storeState?.lastDrawnCard || storeState?.activeCard)
+      : (storeState?.turnPhase !== 'DrawPhase' ? storeState?.activeCard : null);
 
-    if (isFreshDraw) {
-      lastRevealedCardKey = cardKey;
-      lastRevealedDrawCounter = storeState.drawEventCounter;
-      previousActiveCardId = storeState.activeCard.id;
+    if (cardToReveal?.id) {
+      const drawerColor: PlayerColor = (storeState?.lastDrawerColor || storeState?.activePlayer || 'White') as PlayerColor;
+      const cardKey = `draw-${currentDrawCounter}-${cardToReveal.id}-${cardToReveal.value ?? 'x'}-${drawerColor}`;
+      const isNewCardInActionPhase = storeState?.turnPhase !== 'DrawPhase' && cardToReveal.id !== previousActiveCardId;
 
-      const isLocal = storeState.activePlayer === storeState.assignedColor;
+      const isFreshDraw = (isNewDrawEvent || isNewCardInActionPhase) && (cardKey !== lastRevealedCardKey);
 
-      const sourceRect = isLocal
-        ? (getElementRect('[data-testid="draw-card-slot"]') || getElementRect('.draw-card-slot'))
-        : getElementRect('[data-testid="opponent-info"]');
+      if (isFreshDraw) {
+        lastRevealedCardKey = cardKey;
+        lastRevealedDrawCounter = currentDrawCounter;
+        previousActiveCardId = cardToReveal.id;
 
-      const targetRect = getElementRect('.card-column') || getElementRect('[data-testid="card-hand"]');
+        const isLocal = drawerColor === storeState?.assignedColor;
 
-      cardAnimationService.triggerCardReveal(storeState.activeCard, {
-        drawerColor: storeState.activePlayer,
-        isLocalPlayer: isLocal,
-        sourceRect,
-        targetRect,
-        revision: storeState.revision,
-        drawKey: `draw-${storeState.revision}-${storeState.activePlayer}-${storeState.activeCard.id}-${storeState.drawEventCounter}`
-      });
+        const sourceRect = isLocal
+          ? (getElementRect('[data-testid="draw-card-slot"]') || getElementRect('.draw-card-slot'))
+          : getElementRect('[data-testid="opponent-info"]');
+
+        const targetRect = getElementRect('.card-column') || getElementRect('[data-testid="card-hand"]');
+
+        cardAnimationService.triggerCardReveal(cardToReveal, {
+          drawerColor,
+          isLocalPlayer: isLocal,
+          sourceRect,
+          targetRect,
+          revision: storeState?.revision,
+          drawKey: cardKey
+        });
+      }
     }
   }
 
-  // Reset tracking when activeCard clears at turn end
-  $: if (!storeState.activeCard) {
+  // Reset active card id when returning to DrawPhase
+  $: if (!storeState?.activeCard && storeState?.turnPhase === 'DrawPhase') {
     previousActiveCardId = null;
-    if (storeState.turnPhase === 'DrawPhase') {
-      cardAnimationService.resetLastRevealed();
-    }
   }
 
-  $: previousTurnPhase = storeState.turnPhase;
+  $: previousTurnPhase = storeState?.turnPhase || '';
 </script>
 
 <div class="game-arena" data-testid="game-arena">
@@ -312,19 +371,19 @@
     <!-- Opponent Info -->
     <div class="area-opponent">
       <PlayerInfo
-        name={storeState.opponentName}
+        name={storeState?.opponentName || 'Opponent'}
         color={opponentColor}
-        isCurrentTurn={storeState.activePlayer === opponentColor && !isGameOver}
-        isConnected={connState.signalR === 'Connected'}
+        isCurrentTurn={storeState?.activePlayer === opponentColor && !isGameOver}
+        isConnected={connState?.signalR === 'Connected'}
         reserves={opponentReserves}
         isOpponent={true}
-        isSpeaking={$voiceStore.isOpponentSpeaking}
+        isSpeaking={$voiceStore?.isOpponentSpeaking}
       />
     </div>
 
     <!-- Chessboard -->
     <div class="area-board">
-      {#if showMatchStartBanner && storeState.revision <= 1}
+      {#if showMatchStartBanner && (storeState?.revision ?? 0) <= 1}
         <div class="match-start-pill" aria-live="polite">
           <span class="start-dot"></span>
           <span>MATCH START • WHITE TO MOVE</span>
@@ -337,15 +396,15 @@
       {/if}
 
       <Chessboard
-        fen={storeState.boardFen}
-        perspective={storeState.assignedColor}
-        activePlayer={storeState.activePlayer}
+        fen={storeState?.boardFen || '8/8/8/8/8/8/8/8'}
+        perspective={storeState?.assignedColor || 'White'}
+        activePlayer={storeState?.activePlayer || 'White'}
         {isMyTurn}
         selectedSquare={displayedSelectedSquare}
         validDestinations={displayedValidDestinations}
-        lastMove={storeState.lastMove}
-        inCheck={storeState.inCheck}
-        isCheckmate={storeState.gameStatus === 'Checkmate'}
+        lastMove={storeState?.lastMove || null}
+        inCheck={!!storeState?.inCheck}
+        isCheckmate={storeState?.gameStatus === 'Checkmate'}
         {isSubmitting}
         mode={activeAbilityMode === 'none' ? 'normal' : activeAbilityMode}
         on:squareSelected={handleSquareSelected}
@@ -356,16 +415,17 @@
     <!-- Player Info + Resign -->
     <div class="area-player">
       <PlayerInfo
-        name={storeState.playerName}
-        color={storeState.assignedColor}
+        name={storeState?.playerName || 'Player'}
+        color={storeState?.assignedColor || 'White'}
         isCurrentTurn={isMyTurn}
-        isConnected={connState.signalR === 'Connected'}
+        isConnected={connState?.signalR === 'Connected'}
         reserves={myReserves}
         isOpponent={false}
+        hasActiveRevivals={activeAbilityMode === 'revival' || (storeState?.remainingRevivals || 0) > 0}
       >
         <div slot="actions" class="player-actions-cluster">
           <PushToTalkControl
-            opponentName={storeState.opponentName || 'Opponent'}
+            opponentName={storeState?.opponentName || 'Opponent'}
             disabled={isGameOver}
             on:enableVoice={() => dispatch('enableVoice')}
             on:leaveVoice={() => dispatch('leaveVoice')}
@@ -390,15 +450,15 @@
     <aside class="area-command">
       <TurnCoachBanner
         {coachGuide}
-        inCheck={storeState.inCheck}
+        inCheck={!!storeState?.inCheck}
         {isGameOver}
-        activeCardName={storeState.activeCard?.name}
+        activeCardName={storeState?.activeCard?.name}
       />
 
       {#if activeAbilityMode !== 'none'}
         <CardTargetSelector
           mode={activeAbilityMode}
-          playerColor={storeState.assignedColor}
+          playerColor={storeState?.assignedColor || 'White'}
           reserves={myReserves}
           selectedPieceType={selectedRevivalPiece}
           {firstSwapSquare}
@@ -409,14 +469,15 @@
       {/if}
 
       <CardHand
-        activeCard={storeState.activeCard}
-        turnPhase={storeState.turnPhase}
+        activeCard={storeState?.activeCard || null}
+        turnPhase={storeState?.turnPhase || 'DrawPhase'}
         {isMyTurn}
-        remainingMoves={storeState.remainingMoves}
-        remainingRevivals={storeState.remainingRevivals}
-        canSwap={storeState.canSwap}
-        availableChoices={storeState.availableChoices || []}
-        remainingDeckCount={storeState.remainingDeckCount}
+        isDrawing={isSubmitting}
+        remainingMoves={storeState?.remainingMoves || 0}
+        remainingRevivals={storeState?.remainingRevivals || 0}
+        canSwap={!!storeState?.canSwap}
+        availableChoices={storeState?.availableChoices || []}
+        remainingDeckCount={storeState?.remainingDeckCount || 0}
         on:drawCard={() => dispatch('drawCard')}
         on:endTurn={() => dispatch('endTurn')}
         on:submitChoice={(e) => dispatch('submitChoice', e.detail)}
@@ -424,23 +485,26 @@
         on:activateRevival={handleActivateRevival}
       />
 
-      <GameHistory logs={storeState.logs} />
+      <GameHistory logs={storeState?.logs || []} />
     </aside>
   </div>
 
   <!-- Game Completion Overlay -->
   <GameOverModal
-    isOpen={isGameOver}
-    winner={storeState.winner}
-    playerColor={storeState.assignedColor}
-    gameStatus={storeState.gameStatus}
-    totalMoves={storeState.revision}
+    isOpen={isGameOver && !$cardRevealStore.isActive}
+    winner={storeState?.winner || null}
+    playerColor={storeState?.assignedColor || 'White'}
+    gameStatus={storeState?.gameStatus || ''}
+    totalMoves={storeState?.revision || 0}
     on:returnHome={() => dispatch('returnHome')}
     on:playAgain={() => dispatch('playAgain')}
   />
 
   <!-- Cinematic Card Reveal Animation Overlay -->
   <CardRevealOverlay />
+
+  <!-- Cinematic Battle Animation Overlay -->
+  <BattleAnimationOverlay />
 </div>
 
 <style>
@@ -535,6 +599,8 @@
   .area-player {
     grid-area: player;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   .area-command {
@@ -549,15 +615,21 @@
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-shrink: 0;
   }
 
   .btn-resign {
     padding: 5px 10px;
     font-size: 0.75rem;
+    white-space: nowrap;
   }
 
   /* Single-Screen Mobile Viewport Layout */
   @media (max-width: 900px) {
+    .game-arena {
+      padding: 6px 8px;
+    }
+
     .arena-layout {
       grid-template-columns: 1fr;
       grid-template-areas:
@@ -569,6 +641,7 @@
       max-width: 100%;
       margin: 0 auto;
       width: 100%;
+      box-sizing: border-box;
     }
 
     .area-command {
@@ -576,19 +649,28 @@
       min-width: 0;
     }
 
-    .coach-banner {
-      padding: 8px 10px;
-      gap: 2px;
-      min-width: 0;
+    .player-actions-cluster {
+      gap: 4px;
     }
 
-    .coach-headline {
-      font-size: 0.88rem;
+    .btn-resign {
+      padding: 3px 6px;
+      font-size: 0.7rem;
+    }
+  }
+
+  @media (max-width: 600px) {
+    .game-arena {
+      padding: 4px 6px;
     }
 
-    .coach-instruction {
-      font-size: 0.74rem;
-      line-height: 1.25;
+    .player-actions-cluster {
+      gap: 3px;
+    }
+
+    .btn-resign {
+      padding: 3px 5px;
+      font-size: 0.66rem;
     }
   }
 </style>

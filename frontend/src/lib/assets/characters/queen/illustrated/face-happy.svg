@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Queen Happy Face: Regal Radiant Triumph -->
+  <!-- Lifted Proud Eyebrows -->
+  <path d="M104 82c5-5 14-5 18-1" stroke="var(--queen-ink,#1a202c)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M134 82c5-5 14-5 18-1" stroke="var(--queen-ink,#1a202c)" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Left Eye: Proud Curved Eyelashes & Crescent Smile -->
+  <path d="M106 95c3-6 12-6 16 0" stroke="var(--queen-ink,#1a202c)" stroke-width="4.2" stroke-linecap="round"/>
+  <!-- Right Eye: Proud Curved Eyelashes -->
+  <path d="M134 95c3-6 12-6 16 0" stroke="var(--queen-ink,#1a202c)" stroke-width="4.2" stroke-linecap="round"/>
+
+  <!-- Subtle Royal Blush -->
+  <ellipse cx="104" cy="105" rx="5" ry="3" fill="#feb2b2" opacity=".6"/>
+  <ellipse cx="152" cy="105" rx="5" ry="3" fill="#feb2b2" opacity=".6"/>
+
+  <!-- Nose -->
+  <path d="M127 103l-1 5 3 0" stroke="var(--queen-skin-shadow,#dd6b20)" stroke-width="1.8" stroke-linecap="round"/>
+
+  <!-- Triumphant Royal Smile with White Teeth -->
+  <path d="M118 114c3 6 17 6 20 0" stroke="var(--queen-ink,#1a202c)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M120 114c3 5 13 5 16 0" fill="#ffffff"/>
+
+  <!-- Beauty Mark -->
+  <circle cx="148" cy="106" r="1.3" fill="var(--queen-ink,#1a202c)"/>
+</svg>
+

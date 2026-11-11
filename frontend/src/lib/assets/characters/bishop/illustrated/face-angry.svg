@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Bishop Angry Face: Intense Incantation & Arcane Wrath -->
+  <!-- Deep Furrowed Angled Brows -->
+  <path d="M106 88l18 6" stroke="var(--bishop-ink,#211e2f)" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M150 88l-18 6" stroke="var(--bishop-ink,#211e2f)" stroke-width="4.5" stroke-linecap="round"/>
+
+  <!-- Left Eye: Narrowed, Blazing with Power -->
+  <path d="M108 96c4-3 10-2 14 2-3 4-9 5-14-2Z" fill="var(--bishop-magic,#4fd1c5)" stroke="var(--bishop-ink,#211e2f)" stroke-width="3"/>
+  <circle cx="115" cy="96" r="2.5" fill="var(--bishop-magic-bright,#e6fffa)"/>
+
+  <!-- Right Eye: Narrowed, Blazing with Power -->
+  <path d="M148 96c-4-3-10-2-14 2 3 4 9 5 14-2Z" fill="var(--bishop-magic,#4fd1c5)" stroke="var(--bishop-ink,#211e2f)" stroke-width="3"/>
+  <circle cx="141" cy="96" r="2.5" fill="var(--bishop-magic-bright,#e6fffa)"/>
+
+  <!-- Small Nose -->
+  <circle cx="128" cy="106" r="1.5" fill="var(--bishop-skin-shadow,#dd6b20)"/>
+
+  <!-- Chanting Mouth (Teeth gritted / Spell casting aperture) -->
+  <path d="M120 115c2-2 14-2 16 0-1 4-14 4-16 0Z" fill="var(--bishop-ink,#211e2f)" stroke="var(--bishop-ink,#211e2f)" stroke-width="2.5"/>
+  <line x1="122" y1="115" x2="134" y2="115" stroke="#ffffff" stroke-width="1.8"/>
+
+  <!-- Forehead Arcane Diamond Shining brightly -->
+  <polygon points="128,80 132,86 128,92 124,86" fill="var(--bishop-magic-bright,#e6fffa)" stroke="var(--bishop-magic,#4fd1c5)" stroke-width="1.5"/>
+  <line x1="128" y1="78" x2="128" y2="94" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round"/>
+</svg>
+

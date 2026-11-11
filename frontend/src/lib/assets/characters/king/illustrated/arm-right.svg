@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- King Right Arm (Holding Royal Sceptre/Broadsword) -->
+  <!-- Heavy Layered Pauldron (Right Shoulder Plate) -->
+  <path d="M160 130c14-8 28-4 32 8 4 14-4 28-18 32l-18-12 4-28Z" fill="var(--king-metal-shadow,#cbd5e0)" stroke="var(--king-ink,#1a202c)" stroke-width="5.5" stroke-linejoin="round"/>
+  <!-- Gold Pauldron Rim -->
+  <path d="M188 134c4 10-2 20-14 26l-8-4c10-6 14-12 10-20l12-2Z" fill="var(--king-gold,#ecc94b)"/>
+  <circle cx="176" cy="146" r="3.5" fill="var(--king-gem,#e53e3e)"/>
+
+  <!-- Upper Arm & Forearm angled holding sceptre -->
+  <path d="M184 152l18 24c3 6 0 14-6 18l-22-6-8-18 18-18Z" fill="var(--king-metal,#edf2f7)" stroke="var(--king-ink,#1a202c)" stroke-width="5.5" stroke-linejoin="round"/>
+
+  <!-- Heavy Armored Royal Gauntlet gripping weapon -->
+  <path d="M186 178c-2-2-6-2-8 2-2 4 0 8 4 10l16 6c4 2 8 0 10-4 2-4 0-8-4-10l-18-4Z" fill="var(--king-gold,#ecc94b)" stroke="var(--king-ink,#1a202c)" stroke-width="4.5" stroke-linejoin="round"/>
+  <circle cx="194" cy="184" r="2.5" fill="var(--king-gem,#e53e3e)"/>
+  <circle cx="200" cy="186" r="2.5" fill="var(--king-metal-shadow,#cbd5e0)"/>
+</svg>
+

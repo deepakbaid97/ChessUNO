@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Right Leg: Armored Greave, Poleyn, Sabaton -->
+  <path d="M148 195h24l12 26 4 15h-22l-18-13v-28Z" fill="var(--knight-boot,#3c3247)" stroke="var(--knight-ink,#25203b)" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M150 182h20v24h-20z" fill="var(--knight-metal,#e4ecf2)" stroke="var(--knight-ink,#25203b)" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M160 182h10v24h-10z" fill="var(--knight-metal-shadow,#9eb4c3)"/>
+  <!-- Knee cap poleyn -->
+  <ellipse cx="160" cy="180" rx="9" ry="8" fill="var(--knight-gold,#f3c95f)" stroke="var(--knight-ink,#25203b)" stroke-width="4"/>
+  <!-- Sabaton toe highlight -->
+  <path d="M174 236h14l4-8h-14l-4 8Z" fill="var(--knight-metal,#e4ecf2)" stroke="var(--knight-ink,#25203b)" stroke-width="3"/>
+</svg>
+

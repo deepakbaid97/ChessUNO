@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Queen Royal Armor & Flowing Mantle -->
+  <!-- Flowing Royal Cape (Billowing out behind arms and legs) -->
+  <path d="M72 134l-26 78c-4 12 6 22 18 18l32-12-16-84h-8Z" fill="var(--queen-cape,#e53e3e)" stroke="var(--queen-ink,#1a202c)" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Cape Right Side (with velvet shadow) -->
+  <path d="M184 134l26 78c4 12-6 22-18 18l-32-12 16-84h8Z" fill="var(--queen-cape-shadow,#9b2c2c)" stroke="var(--queen-ink,#1a202c)" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Gold Cape Border Hem -->
+  <path d="M48 214l16 14 34-10-4-8-30 8-16-4Z" fill="var(--queen-gold,#ecc94b)"/>
+  <path d="M208 214l-16 14-34-10 4-8 30 8 16-4Z" fill="var(--queen-gold,#ecc94b)"/>
+
+  <!-- Sculpted Royal Cuirass / Breastplate -->
+  <!-- Left Half -->
+  <path d="M96 134c-6 16-4 32 4 44h28v-44h-32Z" fill="var(--queen-metal,#edf2f7)" stroke="var(--queen-ink,#1a202c)" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Right Half (with metallic shadow) -->
+  <path d="M160 134c6 16 4 32-4 44h-28v-44h32Z" fill="var(--queen-metal-shadow,#cbd5e0)" stroke="var(--queen-ink,#1a202c)" stroke-width="6" stroke-linejoin="round"/>
+
+  <!-- Breastplate Gold Trim & Center Medallion -->
+  <path d="M98 136c8 2 18 4 30 4s22-2 30-4" stroke="var(--queen-gold,#ecc94b)" stroke-width="4.5" stroke-linecap="round"/>
+  <!-- Center Imperial Crest (Four-pointed Star / Fleur) -->
+  <polygon points="128,142 134,152 128,162 122,152" fill="var(--queen-gold,#ecc94b)" stroke="var(--queen-ink,#1a202c)" stroke-width="3" stroke-linejoin="round"/>
+  <circle cx="128" cy="152" r="3" fill="var(--queen-gem,#e53e3e)"/>
+
+  <!-- Royal Waist Corset / Girdle -->
+  <path d="M102 176c16-2 36-2 52 0l-2 16c-16 4-34 4-48 0l-2-16Z" fill="var(--queen-gold,#ecc94b)" stroke="var(--queen-ink,#1a202c)" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M106 182h44v4h-44z" fill="var(--queen-gold-shadow,#b7791f)"/>
+
+  <!-- Layered Battle Tassets / Armored Skirt Plaque -->
+  <!-- Center Tasset Plaque -->
+  <polygon points="120,192 136,192 142,216 128,224 114,216" fill="var(--queen-metal,#edf2f7)" stroke="var(--queen-ink,#1a202c)" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Center Tasset Gold Inlay -->
+  <polygon points="124,194 132,194 136,212 128,218 120,212" fill="var(--queen-gold,#ecc94b)" stroke="var(--queen-ink,#1a202c)" stroke-width="2.5" stroke-linejoin="round"/>
+
+  <!-- Left Flank Tasset -->
+  <polygon points="98,190 114,190 110,212 94,204" fill="var(--queen-metal-shadow,#cbd5e0)" stroke="var(--queen-ink,#1a202c)" stroke-width="4.5" stroke-linejoin="round"/>
+  <!-- Right Flank Tasset -->
+  <polygon points="158,190 142,190 146,212 162,204" fill="var(--queen-metal-shadow,#cbd5e0)" stroke="var(--queen-ink,#1a202c)" stroke-width="4.5" stroke-linejoin="round"/>
+</svg>
+

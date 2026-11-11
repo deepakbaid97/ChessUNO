@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- King Left Arm & Heavy Pauldron (Defensive warding/parry posture) -->
+  <!-- Heavy Layered Pauldron (Shoulder Plate with Gold Lion Flange) -->
+  <path d="M96 130c-14-8-28-4-32 8-4 14 4 28 18 32l18-12-4-28Z" fill="var(--king-metal,#edf2f7)" stroke="var(--king-ink,#1a202c)" stroke-width="5.5" stroke-linejoin="round"/>
+  <!-- Gold Pauldron Rim -->
+  <path d="M68 134c-4 10 2 20 14 26l8-4c-10-6-14-12-10-20l-12-2Z" fill="var(--king-gold,#ecc94b)"/>
+  <circle cx="80" cy="146" r="3.5" fill="var(--king-gem,#e53e3e)"/>
+
+  <!-- Upper Arm & Forearm angled up in defensive ward -->
+  <path d="M72 152l-18 24c-3 6 0 14 6 18l22-6 8-18-18-18Z" fill="var(--king-metal-shadow,#cbd5e0)" stroke="var(--king-ink,#1a202c)" stroke-width="5.5" stroke-linejoin="round"/>
+
+  <!-- Heavy Armored Royal Gauntlet (Raised to parry/counter) -->
+  <path d="M78 178l-14 8c-4 2-4 8 0 10l18 10c4 2 10 0 12-4l4-12c2-4-2-8-6-10l-14-2Z" fill="var(--king-gold,#ecc94b)" stroke="var(--king-ink,#1a202c)" stroke-width="4.5" stroke-linejoin="round"/>
+  <circle cx="82" cy="192" r="2.5" fill="var(--king-gem,#e53e3e)"/>
+  <circle cx="90" cy="190" r="2.5" fill="var(--king-metal,#edf2f7)"/>
+</svg>
+

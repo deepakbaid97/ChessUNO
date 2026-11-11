@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <path d="M73 89c2-42 22-64 55-64s53 22 55 64l-10 13H83L73 89Z" fill="var(--pawn-metal,#e4ecf2)" stroke="var(--pawn-ink,#2b2440)" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M128 25c33 0 53 22 55 64l-10 13h-26c4-32-3-57-19-77Z" fill="var(--pawn-metal-shadow,#a7bbc8)" opacity=".82"/>
+  <path d="M72 87h112v22H72z" fill="var(--pawn-metal,#e4ecf2)" stroke="var(--pawn-ink,#2b2440)" stroke-width="7" stroke-linejoin="round"/>
+  <path d="M117 30V15h22v15" fill="var(--pawn-gold,#f3c95f)" stroke="var(--pawn-ink,#2b2440)" stroke-width="6" stroke-linejoin="round"/>
+  <circle cx="128" cy="14" r="10" fill="var(--pawn-gold,#f3c95f)" stroke="var(--pawn-ink,#2b2440)" stroke-width="5"/>
+  <circle cx="125" cy="11" r="3" fill="#ffffff" opacity=".65"/>
+  <circle cx="91" cy="96" r="5" fill="var(--pawn-gold,#f3c95f)" stroke="var(--pawn-ink,#2b2440)" stroke-width="3"/>
+  <circle cx="165" cy="96" r="5" fill="var(--pawn-gold,#f3c95f)" stroke="var(--pawn-ink,#2b2440)" stroke-width="3"/>
+  <path d="M93 51c10-13 22-19 35-19" stroke="white" stroke-width="7" stroke-linecap="round" opacity=".55"/>
+</svg>

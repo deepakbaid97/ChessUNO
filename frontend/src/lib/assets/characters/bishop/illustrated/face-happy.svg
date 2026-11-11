@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Bishop Happy Face: Sly Joy, Arcane Triumph -->
+  <!-- Lifted Happy Brows -->
+  <path d="M106 84c4-5 12-5 16-1" stroke="var(--bishop-ink,#211e2f)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M134 83c4-5 12-5 16-1" stroke="var(--bishop-ink,#211e2f)" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Left Eye: Delighted Curved Wink / Arcane Crescent -->
+  <path d="M108 98c2-6 10-6 12 0" stroke="var(--bishop-ink,#211e2f)" stroke-width="4" stroke-linecap="round"/>
+  <!-- Right Eye: Delighted Curved Wink -->
+  <path d="M136 98c2-6 10-6 12 0" stroke="var(--bishop-ink,#211e2f)" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- Rosy Mystic Cheeks -->
+  <ellipse cx="106" cy="106" rx="4.5" ry="3" fill="#f687b3" opacity=".6"/>
+  <ellipse cx="150" cy="106" rx="4.5" ry="3" fill="#f687b3" opacity=".6"/>
+
+  <!-- Small Nose -->
+  <circle cx="128" cy="105" r="1.5" fill="var(--bishop-skin-shadow,#dd6b20)"/>
+
+  <!-- Gleeful Smile -->
+  <path d="M118 114c3 6 17 6 20 0" stroke="var(--bishop-ink,#211e2f)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M120 114c3 5 13 5 16 0" fill="#ffffff"/>
+
+  <!-- Forehead Arcane Diamond Glowing -->
+  <polygon points="128,82 131,86 128,90 125,86" fill="var(--bishop-magic-bright,#e6fffa)"/>
+</svg>
+

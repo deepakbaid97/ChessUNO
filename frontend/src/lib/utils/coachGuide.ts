@@ -1,4 +1,5 @@
 import type { GameSessionState, PlayerColor } from '../types/game';
+import { isKingInCheck, parseFenToMatrix, getEligibleRevivalSquares } from './boardUtils';
 
 export interface CoachGuide {
   badge: string;
@@ -48,10 +49,16 @@ export function computeCoachGuide(input: CoachGuideInput): CoachGuide {
     };
   }
 
+  const boardMatrix = storeState.boardFen ? parseFenToMatrix(storeState.boardFen) : null;
+  const isMyKingAttacked = boardMatrix ? isKingInCheck(storeState.assignedColor, boardMatrix) : false;
+  const isOpponentKingAttacked = boardMatrix ? isKingInCheck(opponentColor, boardMatrix) : false;
+  const myKingInCheck = storeState.inCheck && (isMyKingAttacked || !isOpponentKingAttacked);
+  const opponentInCheck = storeState.inCheck && isOpponentKingAttacked && !isMyKingAttacked;
+
   if (storeState.turnPhase === 'DrawPhase') {
     return {
-      badge: storeState.inCheck ? 'YOUR TURN • IN CHECK' : 'YOUR TURN • STEP 1',
-      tone: storeState.inCheck ? 'check' : 'your-turn',
+      badge: myKingInCheck ? 'YOUR TURN • IN CHECK' : 'YOUR TURN • STEP 1',
+      tone: myKingInCheck ? 'check' : 'your-turn',
       headline: 'Draw Your Turn Card',
       instruction: 'Tap "Draw Turn Card" below to reveal your action for this turn.'
     };
@@ -92,6 +99,37 @@ export function computeCoachGuide(input: CoachGuideInput): CoachGuide {
         instruction: 'Your reserve pool is empty. Tap "End Turn Early" below to finish your turn.'
       };
     }
+    if (myKingInCheck) {
+      const eligible = selectedRevivalPiece
+        ? getEligibleRevivalSquares(storeState.boardFen, storeState.assignedColor, selectedRevivalPiece)
+        : getEligibleRevivalSquares(storeState.boardFen, storeState.assignedColor);
+
+      if (eligible.length === 0) {
+        return {
+          badge: 'IN CHECK • NO REVIVAL SQUARES',
+          tone: 'check',
+          headline: 'Cannot Revive While in Check',
+          instruction: 'No placement can protect your King from check. Tap "Pass / End Turn" to continue.'
+        };
+      }
+
+      if (!selectedRevivalPiece) {
+        return {
+          badge: `IN CHECK • REVIVAL (${storeState.remainingRevivals} LEFT)`,
+          tone: 'check',
+          headline: 'Select Piece to Block Check',
+          instruction: 'Tap a reserve piece to place it between the attacker and your King.'
+        };
+      }
+
+      return {
+        badge: `IN CHECK • REVIVAL (${storeState.remainingRevivals} LEFT)`,
+        tone: 'check',
+        headline: `Deploy ${selectedRevivalPiece} to Block Check`,
+        instruction: 'Tap a highlighted green square to block the enemy check on your King.'
+      };
+    }
+
     if (!selectedRevivalPiece) {
       return {
         badge: `REVIVAL (${storeState.remainingRevivals} LEFT) • STEP 1`,
@@ -112,18 +150,32 @@ export function computeCoachGuide(input: CoachGuideInput): CoachGuide {
   if (storeState.remainingMoves > 0) {
     const moveWord = storeState.remainingMoves === 1 ? 'move' : 'moves';
     if (!storeState.selectedSquare) {
+      if (myKingInCheck) {
+        return {
+          badge: `IN CHECK • ${storeState.remainingMoves} ${moveWord.toUpperCase()} LEFT`,
+          tone: 'check',
+          headline: 'Protect Your King',
+          instruction: `Tap one of your pieces on the board to view legal destinations (${storeState.remainingMoves} ${moveWord} remaining).`
+        };
+      }
+      if (opponentInCheck) {
+        return {
+          badge: `OPPONENT IN CHECK • ${storeState.remainingMoves} ${moveWord.toUpperCase()} LEFT`,
+          tone: 'your-turn',
+          headline: `Attack! ${opponentColor} King is in Check`,
+          instruction: `Select a ${storeState.assignedColor} piece to press your advantage (${storeState.remainingMoves} ${moveWord} remaining).`
+        };
+      }
       return {
-        badge: storeState.inCheck
-          ? `IN CHECK • ${storeState.remainingMoves} ${moveWord.toUpperCase()} LEFT`
-          : `YOUR TURN • ${storeState.remainingMoves} ${moveWord.toUpperCase()} LEFT`,
-        tone: storeState.inCheck ? 'check' : 'your-turn',
-        headline: storeState.inCheck ? 'Protect Your King' : `Select a ${storeState.assignedColor} Piece to Move`,
+        badge: `YOUR TURN • ${storeState.remainingMoves} ${moveWord.toUpperCase()} LEFT`,
+        tone: 'your-turn',
+        headline: `Select a ${storeState.assignedColor} Piece to Move`,
         instruction: `Tap one of your pieces on the board to view legal destinations (${storeState.remainingMoves} ${moveWord} remaining).`
       };
     }
     return {
       badge: `PIECE ${storeState.selectedSquare.toUpperCase()} SELECTED`,
-      tone: storeState.inCheck ? 'check' : 'your-turn',
+      tone: myKingInCheck ? 'check' : 'your-turn',
       headline: `Choose Destination for ${storeState.selectedSquare.toUpperCase()}`,
       instruction: `Tap a green dot (or red capture ring) on the board to move, or tap another piece.`
     };
