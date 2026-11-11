@@ -20,10 +20,19 @@ export interface P2PMessage<T = any> {
   timestamp: number;
 }
 
+interface QueuedCandidate {
+  epoch: number;
+  candidate: RTCIceCandidateInit;
+}
+
 export class WebRtcService {
   private peerConnection: RTCPeerConnection | null = null;
   private dataChannel: RTCDataChannel | null = null;
-  private pendingCandidates: RTCIceCandidateInit[] = [];
+  private connectionEpoch: number = 0;
+  private remoteEpoch?: number;
+  private isMakingOffer: boolean = false;
+  private isPolite: boolean = false;
+  private pendingCandidates: QueuedCandidate[] = [];
   private connectionTimeoutTimer: any = null;
 
   // Voice Chat / Audio Properties
@@ -32,8 +41,14 @@ export class WebRtcService {
   private audioTransceiver: RTCRtpTransceiver | null = null;
   private audioSender: RTCRtpSender | null = null;
   private remoteAudioElement: HTMLAudioElement | null = null;
+  private audioPlaybackPending: boolean = false;
+  private isOpponentAudioMuted: boolean = false;
+  private opponentSpeakingWatchdogTimer: any = null;
+
   private onRemoteStreamCallback?: (stream: MediaStream | null) => void;
   private onVoiceStatusCallback?: (sender: string, payload: VoiceStatusPayload) => void;
+  private onLocalTrackEndedCallback?: () => void;
+  private onFallbackSignalNeeded?: (signalType: string, payload: string) => void;
 
   private onSignalNeeded: (signalType: string, payload: string) => void;
   private onDataMessage: (data: string) => void;
@@ -59,6 +74,35 @@ export class WebRtcService {
     );
   }
 
+  // Diagnostics and State Inspection
+  getPeerConnection(): RTCPeerConnection | null {
+    return this.peerConnection;
+  }
+
+  getConnectionEpoch(): number {
+    return this.connectionEpoch;
+  }
+
+  getLocalAudioStream(): MediaStream | null {
+    return this.localAudioStream;
+  }
+
+  getRemoteAudioStream(): MediaStream | null {
+    return this.remoteAudioStream;
+  }
+
+  isAudioPlaybackPending(): boolean {
+    return this.audioPlaybackPending;
+  }
+
+  isOpponentMuted(): boolean {
+    return this.isOpponentAudioMuted;
+  }
+
+  getQueuedCandidatesCount(): number {
+    return this.pendingCandidates.length;
+  }
+
   setOnRemoteStream(cb: (stream: MediaStream | null) => void): void {
     this.onRemoteStreamCallback = cb;
   }
@@ -67,11 +111,20 @@ export class WebRtcService {
     this.onVoiceStatusCallback = cb;
   }
 
+  setOnLocalTrackEnded(cb: () => void): void {
+    this.onLocalTrackEndedCallback = cb;
+  }
+
+  setOnFallbackSignalNeeded(cb: (signalType: string, payload: string) => void): void {
+    this.onFallbackSignalNeeded = cb;
+  }
+
   setAudioElement(el: HTMLAudioElement | null): void {
     this.remoteAudioElement = el;
     if (this.remoteAudioElement) {
       this.remoteAudioElement.autoplay = true;
       (this.remoteAudioElement as any).playsInline = true;
+      this.remoteAudioElement.muted = this.isOpponentAudioMuted;
       if (this.remoteAudioStream) {
         this.remoteAudioElement.srcObject = this.remoteAudioStream;
         this.playRemoteAudio();
@@ -79,14 +132,34 @@ export class WebRtcService {
     }
   }
 
-  getQueuedCandidatesCount(): number {
-    return this.pendingCandidates.length;
-  }
+  // ==========================================
+  // Connection Lifecycle & Negotiation Flow
+  // ==========================================
 
-  initializePeerConnection(config?: RtcConfig): void {
-    if (this.peerConnection) {
-      this.close(true);
+  /**
+   * Idempotent peer connection initialization.
+   * If an active or connecting peer connection already exists, it is reused.
+   */
+  initializePeerConnection(config?: RtcConfig): RTCPeerConnection | null {
+    if (
+      this.peerConnection &&
+      this.peerConnection.signalingState !== 'closed' &&
+      this.peerConnection.connectionState !== 'closed' &&
+      this.peerConnection.iceConnectionState !== 'failed' &&
+      this.peerConnection.iceConnectionState !== 'disconnected'
+    ) {
+      console.log(
+        `[WebRTC Diagnostic] initializePeerConnection called but connection is already active (epoch: ${this.connectionEpoch}, signalingState: ${this.peerConnection.signalingState}, iceState: ${this.peerConnection.iceConnectionState}). Reusing existing connection.`
+      );
+      return this.peerConnection;
     }
+
+    if (this.peerConnection) {
+      this.closePeerConnection();
+    }
+
+    this.connectionEpoch++;
+    console.log(`[WebRTC Diagnostic] Initializing new RTCPeerConnection (epoch: ${this.connectionEpoch})`);
 
     let iceServers: RTCIceServer[] = [
       { urls: 'stun:stun.l.google.com:19302' },
@@ -105,64 +178,77 @@ export class WebRtcService {
     if (typeof RTCPeerConnection !== 'undefined') {
       this.peerConnection = new RTCPeerConnection(iceConfig);
 
-      // Pre-add audio transceiver so SDP offer/answer negotiates audio upfront
+      // Pre-add audio transceiver direction 'sendrecv' so SDP offer/answer negotiates audio upfront
       if (typeof this.peerConnection.addTransceiver === 'function') {
         try {
           this.audioTransceiver = this.peerConnection.addTransceiver('audio', {
             direction: 'sendrecv'
           });
           this.audioSender = this.audioTransceiver.sender;
+          console.log('[WebRTC Diagnostic] Added audio transceiver direction: sendrecv');
         } catch (err) {
-          console.warn('[WebRTC] Audio transceiver setup warning:', err);
+          console.warn('[WebRTC Diagnostic] Audio transceiver setup warning:', err);
         }
       }
 
-      // If local audio stream was already obtained, attach to new peer connection
+      // If a live local audio track already exists, attach it to the new connection's sender
       if (this.localAudioStream) {
-        const audioTrack = this.localAudioStream.getAudioTracks()[0];
-        if (audioTrack) {
-          if (this.audioSender && typeof this.audioSender.replaceTrack === 'function') {
-            this.audioSender.replaceTrack(audioTrack).catch(err => {
-              console.warn('[WebRTC] replaceTrack warning:', err);
-            });
-          } else if (typeof this.peerConnection.addTrack === 'function') {
-            this.audioSender = this.peerConnection.addTrack(audioTrack, this.localAudioStream);
-          }
+        const audioTracks = this.localAudioStream.getAudioTracks();
+        if (audioTracks.length > 0 && audioTracks[0].readyState === 'live') {
+          this.attachLocalTrackToSender(audioTracks[0]).catch(err => {
+            console.warn('[WebRTC Diagnostic] Failed to re-attach existing local track:', err);
+          });
         }
       }
+
+      const currentEpoch = this.connectionEpoch;
 
       this.peerConnection.onicecandidate = (event) => {
         if (event.candidate) {
-          this.onSignalNeeded('candidate', JSON.stringify(event.candidate));
+          console.log(`[WebRTC Diagnostic] ICE candidate generated (epoch ${currentEpoch})`);
+          this.onSignalNeeded(
+            'candidate',
+            JSON.stringify({
+              epoch: currentEpoch,
+              inReplyToEpoch: this.remoteEpoch,
+              candidate: event.candidate
+            })
+          );
         }
       };
 
       this.peerConnection.oniceconnectionstatechange = () => {
         if (this.peerConnection) {
           const state = this.peerConnection.iceConnectionState;
+          console.log(`[WebRTC Diagnostic] ICE connection state changed to: ${state} (epoch ${currentEpoch})`);
           if (state === 'connected' || state === 'completed') {
             this.clearConnectionTimeout();
+          } else if (state === 'failed' || state === 'disconnected' || state === 'closed') {
+            this.resetOpponentVoiceStatus();
           }
           this.onConnectionStateChange(state);
         }
       };
 
       this.peerConnection.ondatachannel = (event) => {
+        console.log(`[WebRTC Diagnostic] Received remote data channel: ${event.channel.label}`);
         this.setDataChannel(event.channel);
       };
 
       this.peerConnection.ontrack = (event) => {
-        console.log('[WebRTC Audio] ontrack event received:', {
+        console.log('[WebRTC Diagnostic] Remote track received:', {
           kind: event.track.kind,
           id: event.track.id,
           enabled: event.track.enabled,
-          streamsCount: event.streams ? event.streams.length : 0
+          readyState: event.track.readyState
         });
 
-        // Some browsers provide an empty event.streams array when SDP lacked msid
-        const stream = (event.streams && event.streams.length > 0 && event.streams[0])
-          ? event.streams[0]
-          : (typeof MediaStream !== 'undefined' ? new MediaStream([event.track]) : null);
+        const stream =
+          event.streams && event.streams.length > 0 && event.streams[0]
+            ? event.streams[0]
+            : typeof MediaStream !== 'undefined'
+            ? new MediaStream([event.track])
+            : null;
 
         if (stream) {
           this.remoteAudioStream = stream;
@@ -171,21 +257,66 @@ export class WebRtcService {
         }
 
         event.track.onunmute = () => {
-          console.log('[WebRTC Audio] Remote track unmuted, initiating playback');
+          console.log('[WebRTC Diagnostic] Remote track unmuted, initiating audio playback');
           this.playRemoteAudio();
+        };
+
+        event.track.onmute = () => {
+          console.log('[WebRTC Diagnostic] Remote track muted');
+          this.resetOpponentVoiceStatus();
+        };
+
+        event.track.onended = () => {
+          console.log('[WebRTC Diagnostic] Remote track ended');
+          this.remoteAudioStream = null;
+          this.resetOpponentVoiceStatus();
+          this.onRemoteStreamCallback?.(null);
         };
       };
     }
 
-    // 12-second negotiation timeout: if connection not established, notify fallback
     this.startConnectionTimeout();
+    return this.peerConnection;
+  }
+
+  /**
+   * Centralized idempotent session check.
+   * If isInitiator is true and connection is stable without offer in flight, creates offer.
+   */
+  ensurePeerConnection(isInitiator: boolean = false, config?: RtcConfig): RTCPeerConnection | null {
+    this.isPolite = !isInitiator;
+    const pc = this.initializePeerConnection(config);
+
+    if (isInitiator && pc && pc.signalingState === 'stable' && !this.isMakingOffer) {
+      console.log('[WebRTC Diagnostic] Designated initiator starting negotiation offer');
+      this.createOffer().catch(err => {
+        console.warn('[WebRTC Diagnostic] createOffer error in ensurePeerConnection:', err);
+      });
+    }
+
+    return pc;
+  }
+
+  /**
+   * Controlled connection restart for recovering from failure or reconnecting.
+   * Preserves local audio track and sender configuration while refreshing the peer connection.
+   */
+  async restartConnection(isInitiator: boolean = false, config?: RtcConfig): Promise<void> {
+    console.log(`[WebRTC Diagnostic] Controlled connection restart initiated (isInitiator: ${isInitiator})`);
+    this.closePeerConnection();
+    this.pendingCandidates = [];
+    this.ensurePeerConnection(isInitiator, config);
   }
 
   private startConnectionTimeout(): void {
     this.clearConnectionTimeout();
     this.connectionTimeoutTimer = setTimeout(() => {
-      if (this.peerConnection && this.peerConnection.iceConnectionState !== 'connected' && this.peerConnection.iceConnectionState !== 'completed') {
-        console.warn('[WebRTC] Connection negotiation timed out. Falling back to SignalR.');
+      if (
+        this.peerConnection &&
+        this.peerConnection.iceConnectionState !== 'connected' &&
+        this.peerConnection.iceConnectionState !== 'completed'
+      ) {
+        console.warn('[WebRTC Diagnostic] Connection negotiation timed out. Falling back.');
         this.onConnectionStateChange('failed');
       }
     }, 12000);
@@ -201,41 +332,187 @@ export class WebRtcService {
   async createOffer(): Promise<void> {
     if (!this.peerConnection) return;
 
-    // Create DataChannel from initiating side
-    const channel = this.peerConnection.createDataChannel('chess-uno-p2p', {
-      ordered: true
-    });
-    this.setDataChannel(channel);
+    if (this.isMakingOffer) {
+      console.warn('[WebRTC Diagnostic] Skipping duplicate createOffer: offer already in progress.');
+      return;
+    }
 
-    const offer = await this.peerConnection.createOffer();
-    await this.peerConnection.setLocalDescription(offer);
-    this.onSignalNeeded('offer', JSON.stringify(offer));
+    if (this.peerConnection.signalingState !== 'stable') {
+      console.warn(
+        `[WebRTC Diagnostic] Skipping createOffer: signalingState is ${this.peerConnection.signalingState} (expected stable).`
+      );
+      return;
+    }
+
+    this.isMakingOffer = true;
+    console.log(`[WebRTC Diagnostic] Creating offer (epoch: ${this.connectionEpoch})`);
+
+    try {
+      // Ensure local DataChannel exists for initiator
+      if (!this.dataChannel || this.dataChannel.readyState === 'closed') {
+        const channel = this.peerConnection.createDataChannel('chess-uno-p2p', {
+          ordered: true
+        });
+        this.setDataChannel(channel);
+      }
+
+      const offer = await this.peerConnection.createOffer();
+      if (!this.peerConnection) return;
+      if (this.peerConnection.signalingState !== 'stable') {
+        console.warn('[WebRTC Diagnostic] Signaling state changed during createOffer; aborting local description.');
+        return;
+      }
+
+      await this.peerConnection.setLocalDescription(offer);
+      this.onSignalNeeded(
+        'offer',
+        JSON.stringify({
+          epoch: this.connectionEpoch,
+          type: offer.type,
+          sdp: offer.sdp
+        })
+      );
+    } catch (err) {
+      console.error('[WebRTC Diagnostic] createOffer failed:', err);
+      throw err;
+    } finally {
+      this.isMakingOffer = false;
+    }
   }
 
   async handleSignal(signalType: string, payload: string): Promise<void> {
+    if (!this.peerConnection) {
+      this.initializePeerConnection();
+    }
     if (!this.peerConnection) return;
 
+    let parsed: any;
+    try {
+      parsed = JSON.parse(payload);
+    } catch (err) {
+      console.error('[WebRTC Diagnostic] Failed to parse signaling payload:', err);
+      return;
+    }
+
+    // Validate epoch matching to discard stale messages from older connection generations
+    if (
+      signalType === 'answer' &&
+      parsed.inReplyToEpoch !== undefined &&
+      parsed.inReplyToEpoch < this.connectionEpoch
+    ) {
+      console.warn(
+        `[WebRTC Diagnostic] Discarding answer replying to stale offer epoch ${parsed.inReplyToEpoch} (current: ${this.connectionEpoch})`
+      );
+      return;
+    }
+
+    if (signalType === 'candidate') {
+      if (parsed.inReplyToEpoch !== undefined && parsed.inReplyToEpoch < this.connectionEpoch) {
+        console.warn(`[WebRTC Diagnostic] Discarding candidate for stale epoch ${parsed.inReplyToEpoch}`);
+        return;
+      }
+      if (
+        parsed.inReplyToEpoch === undefined &&
+        parsed.epoch !== undefined &&
+        parsed.epoch < this.connectionEpoch
+      ) {
+        console.warn(
+          `[WebRTC Diagnostic] Discarding stale candidate from epoch ${parsed.epoch} (current: ${this.connectionEpoch})`
+        );
+        return;
+      }
+    }
+
+    const currentEpoch = this.connectionEpoch;
+
     if (signalType === 'offer') {
-      const offer = JSON.parse(payload);
-      const desc = typeof RTCSessionDescription !== 'undefined' ? new RTCSessionDescription(offer) : offer;
+      console.log(`[WebRTC Diagnostic] Received offer signal (epoch: ${currentEpoch})`);
+      if (parsed.epoch !== undefined) {
+        this.remoteEpoch = parsed.epoch;
+      }
+      const offerData = parsed.sdp ? parsed : (parsed.offer || parsed);
+      const desc =
+        typeof RTCSessionDescription !== 'undefined'
+          ? new RTCSessionDescription(offerData)
+          : offerData;
+
+      // Handle offer collision / glare
+      const isCollision =
+        this.isMakingOffer || this.peerConnection.signalingState !== 'stable';
+
+      if (isCollision) {
+        if (!this.isPolite) {
+          console.warn('[WebRTC Diagnostic] Impolite peer detected offer collision, ignoring incoming offer.');
+          return;
+        }
+        console.log('[WebRTC Diagnostic] Polite peer detected offer collision, rolling back local description.');
+        if (typeof this.peerConnection.setLocalDescription === 'function') {
+          try {
+            await this.peerConnection.setLocalDescription({ type: 'rollback' } as any);
+          } catch {}
+        }
+      }
+
       await this.peerConnection.setRemoteDescription(desc);
+      if (!this.peerConnection) return;
       await this.drainPendingCandidates();
+      if (!this.peerConnection) return;
 
       const answer = await this.peerConnection.createAnswer();
+      if (!this.peerConnection) return;
       await this.peerConnection.setLocalDescription(answer);
-      this.onSignalNeeded('answer', JSON.stringify(answer));
+
+      this.onSignalNeeded(
+        'answer',
+        JSON.stringify({
+          epoch: currentEpoch,
+          inReplyToEpoch: parsed.epoch,
+          type: answer.type,
+          sdp: answer.sdp
+        })
+      );
     } else if (signalType === 'answer') {
-      const answer = JSON.parse(payload);
-      const desc = typeof RTCSessionDescription !== 'undefined' ? new RTCSessionDescription(answer) : answer;
-      await this.peerConnection.setRemoteDescription(desc);
-      await this.drainPendingCandidates();
-    } else if (signalType === 'candidate') {
-      const candidate = JSON.parse(payload);
-      if (!this.peerConnection.remoteDescription || !this.peerConnection.remoteDescription.type) {
-        // Queue candidates until remote description is set
-        this.pendingCandidates.push(candidate);
+      console.log(`[WebRTC Diagnostic] Received answer signal (epoch: ${currentEpoch})`);
+      const answerData = parsed.sdp ? parsed : (parsed.answer || parsed);
+      const desc =
+        typeof RTCSessionDescription !== 'undefined'
+          ? new RTCSessionDescription(answerData)
+          : answerData;
+
+      if (this.peerConnection.signalingState === 'have-local-offer') {
+        await this.peerConnection.setRemoteDescription(desc);
+        if (!this.peerConnection) return;
+        await this.drainPendingCandidates();
       } else {
-        await this.addCandidateSafe(candidate);
+        console.warn(
+          `[WebRTC Diagnostic] Received answer but signalingState is ${this.peerConnection.signalingState}, ignoring.`
+        );
+      }
+    } else if (signalType === 'candidate') {
+      const candidateData =
+        parsed.candidate && typeof parsed.candidate === 'object'
+          ? parsed.candidate
+          : parsed;
+
+      if (
+        !candidateData ||
+        (typeof candidateData.candidate !== 'string' && typeof candidateData !== 'string')
+      ) {
+        return;
+      }
+
+      if (
+        !this.peerConnection.remoteDescription ||
+        !this.peerConnection.remoteDescription.type
+      ) {
+        // Queue candidates until remote description is set
+        console.log(`[WebRTC Diagnostic] Queueing ICE candidate (epoch ${currentEpoch})`);
+        this.pendingCandidates.push({
+          epoch: currentEpoch,
+          candidate: candidateData
+        });
+      } else {
+        await this.addCandidateSafe(candidateData);
       }
     }
   }
@@ -244,45 +521,86 @@ export class WebRtcService {
     if (!this.peerConnection || this.pendingCandidates.length === 0) return;
     const toDrain = [...this.pendingCandidates];
     this.pendingCandidates = [];
-    for (const c of toDrain) {
-      await this.addCandidateSafe(c);
+
+    console.log(`[WebRTC Diagnostic] Draining ${toDrain.length} queued ICE candidates`);
+    for (const item of toDrain) {
+      if (item.epoch === this.connectionEpoch) {
+        await this.addCandidateSafe(item.candidate);
+      } else {
+        console.log(`[WebRTC Diagnostic] Discarded candidate from stale epoch ${item.epoch}`);
+      }
     }
   }
 
   private async addCandidateSafe(candidate: RTCIceCandidateInit): Promise<void> {
     try {
-      const cand = typeof RTCIceCandidate !== 'undefined' ? new RTCIceCandidate(candidate) : candidate;
+      const cand =
+        typeof RTCIceCandidate !== 'undefined' ? new RTCIceCandidate(candidate) : candidate;
       await this.peerConnection?.addIceCandidate(cand);
     } catch (err) {
-      console.warn('[WebRTC] Safe candidate addition handled warning:', err);
+      console.warn('[WebRTC Diagnostic] Safe candidate addition handled warning:', err);
     }
   }
+
+  // ==========================================
+  // Data Channel & Voice Status
+  // ==========================================
 
   private setDataChannel(channel: RTCDataChannel): void {
     this.dataChannel = channel;
     this.dataChannel.onopen = () => {
       this.clearConnectionTimeout();
-      console.log('[WebRTC] DataChannel open and ready');
+      console.log('[WebRTC Diagnostic] DataChannel open and ready');
     };
     this.dataChannel.onerror = (err) => {
-      console.warn('[WebRTC] DataChannel error:', err);
+      console.warn('[WebRTC Diagnostic] DataChannel error:', err);
     };
     this.dataChannel.onclose = () => {
-      console.log('[WebRTC] DataChannel closed');
+      console.log('[WebRTC Diagnostic] DataChannel closed');
+      this.resetOpponentVoiceStatus();
     };
     this.dataChannel.onmessage = (event) => {
       try {
         const parsed = typeof event.data === 'string' ? JSON.parse(event.data) : null;
         if (parsed && parsed.type === 'voice-status' && parsed.payload) {
-          this.onVoiceStatusCallback?.(parsed.sender, parsed.payload);
-          // If opponent is transmitting, ensure audio element playback is active
-          if (parsed.payload.speaking) {
-            this.playRemoteAudio();
-          }
+          this.handleIncomingVoiceStatus(parsed.sender, parsed.payload);
         }
       } catch {}
       this.onDataMessage(event.data);
     };
+  }
+
+  private handleIncomingVoiceStatus(sender: string, payload: VoiceStatusPayload): void {
+    console.log('[WebRTC Diagnostic] Received voice-status message:', { sender, payload });
+    this.onVoiceStatusCallback?.(sender, payload);
+
+    if (this.opponentSpeakingWatchdogTimer) {
+      clearTimeout(this.opponentSpeakingWatchdogTimer);
+      this.opponentSpeakingWatchdogTimer = null;
+    }
+
+    if (payload.speaking) {
+      this.playRemoteAudio();
+      // Watchdog: If speaking=false is lost or sender disconnects, clear after 15 seconds
+      this.opponentSpeakingWatchdogTimer = setTimeout(() => {
+        console.warn('[WebRTC Diagnostic] Opponent speaking watchdog timeout triggered, clearing speaking indicator.');
+        this.onVoiceStatusCallback?.(sender, {
+          speaking: false,
+          voiceActive: payload.voiceActive
+        });
+      }, 15000);
+    }
+  }
+
+  resetOpponentVoiceStatus(): void {
+    if (this.opponentSpeakingWatchdogTimer) {
+      clearTimeout(this.opponentSpeakingWatchdogTimer);
+      this.opponentSpeakingWatchdogTimer = null;
+    }
+    this.onVoiceStatusCallback?.('Opponent', {
+      speaking: false,
+      voiceActive: false
+    });
   }
 
   sendData(message: string): boolean {
@@ -290,12 +608,15 @@ export class WebRtcService {
       this.dataChannel.send(message);
       return true;
     }
-    return false; // Fallback to SignalR needed
+    return false;
   }
 
   sendTypedMessage<T = any>(type: P2PMessageType, sender: string, payload?: T): boolean {
     const msg: P2PMessage<T> = {
-      id: typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      id:
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `msg-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       version: PROTOCOL_VERSION,
       type,
       sender,
@@ -318,15 +639,50 @@ export class WebRtcService {
   }
 
   // ==========================================
-  // Audio & Push-to-Talk Implementation
+  // Microphone Stream & Track Lifecycle
   // ==========================================
 
+  private async attachLocalTrackToSender(track: MediaStreamTrack): Promise<void> {
+    const sender =
+      this.audioSender ||
+      this.audioTransceiver?.sender ||
+      this.peerConnection?.getSenders().find(s => !s.track || s.track.kind === 'audio');
+
+    if (sender && typeof sender.replaceTrack === 'function') {
+      await sender.replaceTrack(track);
+      this.audioSender = sender;
+      console.log('[WebRTC Audio Diagnostic] Replaced sender track without SDP renegotiation:', track.id);
+    } else if (this.peerConnection && typeof this.peerConnection.addTrack === 'function') {
+      this.audioSender = this.peerConnection.addTrack(track, this.localAudioStream!);
+      console.log('[WebRTC Audio Diagnostic] Added track to peerConnection:', track.id);
+    }
+  }
+
+  /**
+   * Enables microphone access.
+   * Reuses an existing live stream if already available; requests a new stream only when needed.
+   */
   async enableMicrophone(): Promise<boolean> {
     if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
       throw new Error('Microphone access is not supported by your browser.');
     }
 
+    // 1. Check if an active, live microphone track is already present
+    if (this.localAudioStream) {
+      const liveTracks = this.localAudioStream.getAudioTracks().filter(t => t.readyState === 'live');
+      if (liveTracks.length > 0) {
+        console.log(`[WebRTC Audio Diagnostic] Reusing existing live microphone track: ${liveTracks[0].id}`);
+        const track = liveTracks[0];
+        track.enabled = false; // Always start muted until PTT is held
+        await this.attachLocalTrackToSender(track);
+        this.unlockAudio();
+        return true;
+      }
+    }
+
+    // 2. Request new audio stream
     try {
+      console.log('[WebRTC Audio Diagnostic] Requesting getUserMedia audio stream');
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -338,32 +694,48 @@ export class WebRtcService {
       this.localAudioStream = stream;
       const audioTrack = stream.getAudioTracks()[0];
       if (audioTrack) {
-        // Start muted by default — Push-to-Talk enables it while pressed
-        audioTrack.enabled = false;
+        audioTrack.enabled = false; // Muted by default
 
-        const sender = this.audioSender || this.audioTransceiver?.sender || this.peerConnection?.getSenders().find(s => !s.track || s.track.kind === 'audio');
-        if (sender && typeof sender.replaceTrack === 'function') {
-          await sender.replaceTrack(audioTrack);
-          this.audioSender = sender;
-        } else if (this.peerConnection && typeof this.peerConnection.addTrack === 'function') {
-          this.audioSender = this.peerConnection.addTrack(audioTrack, stream);
-        }
+        audioTrack.onended = () => {
+          console.warn('[WebRTC Audio Diagnostic] Local microphone track ended unexpectedly.');
+          this.onLocalTrackEndedCallback?.();
+        };
+
+        audioTrack.onmute = () => {
+          console.log('[WebRTC Audio Diagnostic] Local microphone track muted at hardware/OS level.');
+        };
+
+        audioTrack.onunmute = () => {
+          console.log('[WebRTC Audio Diagnostic] Local microphone track unmuted at hardware/OS level.');
+        };
+
+        await this.attachLocalTrackToSender(audioTrack);
       }
 
-      // Unlock incoming audio playback on this direct user gesture
       this.unlockAudio();
-
       return true;
     } catch (err: any) {
-      console.error('[WebRTC Audio] getUserMedia error:', err);
+      console.error('[WebRTC Audio Diagnostic] getUserMedia error:', err);
+      if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+        throw new Error('Microphone permission denied.');
+      } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+        throw new Error('No microphone device found.');
+      }
       throw err;
     }
   }
 
+  // ==========================================
+  // Push-to-Talk Transmission
+  // ==========================================
+
+  /**
+   * Sets push-to-talk transmission state.
+   * Audio track transmission is independent of DataChannel availability.
+   */
   setPushToTalk(speaking: boolean, sender: string): boolean {
     if (this.localAudioStream) {
-      const tracks = this.localAudioStream.getAudioTracks();
-      for (const track of tracks) {
+      for (const track of this.localAudioStream.getAudioTracks()) {
         track.enabled = speaking;
       }
     }
@@ -372,11 +744,37 @@ export class WebRtcService {
       this.audioSender.track.enabled = speaking;
     }
 
-    return this.sendTypedMessage<VoiceStatusPayload>('voice-status', sender, {
+    const payload: VoiceStatusPayload = {
       speaking,
       voiceActive: !!this.localAudioStream
-    });
+    };
+
+    // Attempt sending over DataChannel
+    const sent = this.sendTypedMessage<VoiceStatusPayload>('voice-status', sender, payload);
+
+    // Fallback to SignalR if DataChannel is unavailable
+    if (!sent && this.onFallbackSignalNeeded) {
+      try {
+        this.onFallbackSignalNeeded(
+          'voice-status',
+          JSON.stringify({
+            id: `vs-${Date.now()}`,
+            version: PROTOCOL_VERSION,
+            type: 'voice-status',
+            sender,
+            payload,
+            timestamp: Date.now()
+          })
+        );
+      } catch {}
+    }
+
+    return true;
   }
+
+  // ==========================================
+  // Remote Audio Playback & Muting
+  // ==========================================
 
   private attachRemoteAudio(stream: MediaStream): void {
     if (typeof document !== 'undefined') {
@@ -393,6 +791,7 @@ export class WebRtcService {
         this.remoteAudioElement = el;
       }
 
+      this.remoteAudioElement.muted = this.isOpponentAudioMuted;
       this.remoteAudioElement.srcObject = stream;
       this.remoteAudioElement.volume = 1.0;
       this.playRemoteAudio();
@@ -401,28 +800,49 @@ export class WebRtcService {
 
   playRemoteAudio(): void {
     if (this.remoteAudioElement && this.remoteAudioElement.srcObject) {
-      const p = this.remoteAudioElement.play();
-      if (p !== undefined) {
-        p.catch(err => {
-          console.warn('[WebRTC Audio] Remote audio playback waiting for user gesture:', err.message);
-        });
+      const playPromise = this.remoteAudioElement.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            this.audioPlaybackPending = false;
+          })
+          .catch((err) => {
+            if (err.name === 'NotAllowedError') {
+              this.audioPlaybackPending = true;
+              console.warn(
+                '[WebRTC Audio Diagnostic] Remote audio playback blocked by autoplay policy. Waiting for user interaction.'
+              );
+            } else {
+              console.warn('[WebRTC Audio Diagnostic] Remote audio playback error:', err.message);
+            }
+          });
       }
     }
   }
 
   unlockAudio(): void {
-    this.playRemoteAudio();
-  }
-
-  muteOpponent(muted: boolean): void {
-    if (this.remoteAudioElement) {
-      this.remoteAudioElement.muted = muted;
+    if (this.audioPlaybackPending || (this.remoteAudioElement && this.remoteAudioElement.paused)) {
+      console.log('[WebRTC Audio Diagnostic] User interaction detected; unlocking remote audio playback.');
+      this.playRemoteAudio();
     }
   }
 
+  muteOpponent(muted: boolean): void {
+    this.isOpponentAudioMuted = muted;
+    if (this.remoteAudioElement) {
+      this.remoteAudioElement.muted = muted;
+    }
+    console.log(`[WebRTC Audio Diagnostic] Opponent audio muted: ${muted}`);
+  }
+
+  // ==========================================
+  // Cleanup & Teardown
+  // ==========================================
+
   closeAudio(): void {
+    console.log('[WebRTC Audio Diagnostic] Closing audio: stopping local tracks and detaching sender');
     if (this.localAudioStream) {
-      this.localAudioStream.getTracks().forEach(track => track.stop());
+      this.localAudioStream.getTracks().forEach((track) => track.stop());
       this.localAudioStream = null;
     }
     if (this.audioSender && typeof this.audioSender.replaceTrack === 'function') {
@@ -432,17 +852,17 @@ export class WebRtcService {
       this.audioSender = null;
     }
     if (this.remoteAudioElement) {
-      this.remoteAudioElement.pause();
-      this.remoteAudioElement.srcObject = null;
-      if (this.remoteAudioElement.parentNode && this.remoteAudioElement.id === 'chessuno-remote-audio') {
-        this.remoteAudioElement.parentNode.removeChild(this.remoteAudioElement);
+      if (typeof this.remoteAudioElement.pause === 'function') {
+        this.remoteAudioElement.pause();
       }
-      this.remoteAudioElement = null;
+      this.remoteAudioElement.srcObject = null;
     }
     this.remoteAudioStream = null;
+    this.resetOpponentVoiceStatus();
   }
 
   closePeerConnection(): void {
+    console.log(`[WebRTC Diagnostic] Closing peer connection (epoch ${this.connectionEpoch})`);
     this.clearConnectionTimeout();
     this.pendingCandidates = [];
     this.dataChannel?.close();
@@ -451,6 +871,7 @@ export class WebRtcService {
     this.peerConnection = null;
     this.audioTransceiver = null;
     this.audioSender = null;
+    this.isMakingOffer = false;
   }
 
   close(preserveAudio: boolean = false): void {

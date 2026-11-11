@@ -20,7 +20,7 @@
 
   function handleStart(e?: Event) {
     if (disabled || !$voiceStore.isVoiceEnabled || !$voiceStore.isMicActive || isHolding) return;
-    if (e) {
+    if (e && e.cancelable) {
       e.preventDefault();
     }
     isHolding = true;
@@ -30,12 +30,38 @@
 
   function handleEnd(e?: Event) {
     if (!isHolding) return;
-    if (e) {
+    if (e && e.cancelable) {
       e.preventDefault();
     }
     isHolding = false;
     voiceStore.setPushToTalkActive(false);
     dispatch('pushToTalkEnd');
+  }
+
+  function handlePointerDown(e: PointerEvent) {
+    if (disabled || !$voiceStore.isVoiceEnabled || !$voiceStore.isMicActive || isHolding) return;
+    try {
+      (e.currentTarget as HTMLElement)?.setPointerCapture?.(e.pointerId);
+    } catch {}
+    handleStart(e);
+  }
+
+  function handlePointerUp(e: PointerEvent) {
+    try {
+      (e.currentTarget as HTMLElement)?.releasePointerCapture?.(e.pointerId);
+    } catch {}
+    handleEnd(e);
+  }
+
+  function handlePointerCancel(e: PointerEvent) {
+    try {
+      (e.currentTarget as HTMLElement)?.releasePointerCapture?.(e.pointerId);
+    } catch {}
+    handleEnd(e);
+  }
+
+  function handleLostPointerCapture(e: Event) {
+    handleEnd(e);
   }
 
   function handleKeyDown(e: KeyboardEvent) {
@@ -44,7 +70,13 @@
 
     const target = e.target as HTMLElement | null;
     const tagName = target?.tagName?.toLowerCase();
-    if (tagName === 'input' || tagName === 'textarea' || target?.isContentEditable) {
+    if (
+      tagName === 'input' ||
+      tagName === 'textarea' ||
+      tagName === 'select' ||
+      target?.isContentEditable ||
+      target?.getAttribute?.('role') === 'textbox'
+    ) {
       return;
     }
 
@@ -114,12 +146,10 @@
         type="button"
         class="btn btn-ptt"
         class:transmitting={state.isPushToTalkActive}
-        on:mousedown={handleStart}
-        on:mouseup={handleEnd}
-        on:mouseleave={handleEnd}
-        on:touchstart={handleStart}
-        on:touchend={handleEnd}
-        on:touchcancel={handleEnd}
+        on:pointerdown={handlePointerDown}
+        on:pointerup={handlePointerUp}
+        on:pointercancel={handlePointerCancel}
+        on:lostpointercapture={handleLostPointerCapture}
         {disabled}
         title="Hold Space or V key, or press and hold this button to speak"
         data-testid="btn-push-to-talk"

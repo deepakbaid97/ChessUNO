@@ -83,6 +83,21 @@
     }
   }
 
+  function syncWebRtcSession(forceRestart: boolean = false) {
+    const session = get(gameStore);
+    const isWhite = session.assignedColor === 'White';
+    const isBlack = session.assignedColor === 'Black';
+    const opponentPresent = !!session.opponentName || session.gameStatus !== 'WaitingForPlayer';
+
+    if ((isWhite || isBlack) && opponentPresent) {
+      if (forceRestart) {
+        webrtcService?.restartConnection(isWhite);
+      } else {
+        webrtcService?.ensurePeerConnection(isWhite);
+      }
+    }
+  }
+
   onMount(() => {
     // Setup WebRTC Service
     webrtcService = new WebRtcService(
@@ -109,23 +124,33 @@
       }
     });
 
+    webrtcService.setOnLocalTrackEnded(() => {
+      voiceStore.setMicActive(false);
+      voiceStore.setError('Microphone track ended unexpectedly.');
+      showToast('Microphone disconnected.', 'error');
+    });
+
+    webrtcService.setOnFallbackSignalNeeded((signalType, payload) => {
+      const session = get(gameStore);
+      if (session.gameId && session.playerToken) {
+        signalRService.sendSignal(session.gameId, session.playerToken, signalType, payload).catch(() => {});
+      }
+    });
+
     // Setup SignalR Callbacks
     signalRService.onGameStateSnapshot((snapshot) => {
       gameStore.applySnapshot(snapshot);
       connectionStore.setSignalR('Connected');
-      // If reconnecting as White and opponent exists, initiate WebRTC negotiation
-      if (snapshot.assignedColor === 'White' && (snapshot.playerBlackName || snapshot.status !== 'WaitingForPlayer')) {
-        try {
-          webrtcService?.initializePeerConnection();
-          webrtcService?.createOffer()?.catch(() => {});
-        } catch {}
-      }
+      syncWebRtcSession();
     });
 
     signalRService.onPlayerDisconnected((data) => {
       console.log('[SignalR Event] onPlayerDisconnected received:', data);
       showToast(`${data.playerName} (${data.color}) disconnected. Waiting for reconnection...`, 'error');
       connectionStore.setWebRtc('Disconnected');
+      voiceStore.setOpponentSpeaking(false);
+      voiceStore.setOpponentVoiceActive(false);
+      webrtcService?.resetOpponentVoiceStatus();
     });
 
     signalRService.onActionRejected(async (data) => {
@@ -172,14 +197,8 @@
       showToast(`${data.playerName} joined as ${data.color}!`, 'success');
 
       currentView = 'GAME';
-      try {
-        if ($gameStore.assignedColor === 'White') {
-          webrtcService?.initializePeerConnection();
-          webrtcService?.createOffer()?.catch(() => {});
-        } else {
-          webrtcService?.initializePeerConnection();
-        }
-      } catch {}
+      const isWhite = get(gameStore).assignedColor === 'White';
+      syncWebRtcSession(isWhite);
     });
 
     signalRService.onPieceRevived((data) => {
@@ -198,6 +217,19 @@
     });
 
     signalRService.onReceiveSignal(async (signalType, payload) => {
+      if (signalType === 'voice-status') {
+        try {
+          const parsed = JSON.parse(payload);
+          if (parsed.payload) {
+            voiceStore.setOpponentSpeaking(parsed.payload.speaking);
+            voiceStore.setOpponentVoiceActive(parsed.payload.voiceActive);
+            if (parsed.payload.speaking) {
+              webrtcService?.unlockAudio();
+            }
+          }
+        } catch {}
+        return;
+      }
       await webrtcService.handleSignal(signalType, payload);
     });
 
@@ -245,9 +277,7 @@
         const joined = await signalRService.joinGameRoom(savedSession.gameId, savedSession.playerToken);
         if (joined) {
           currentView = 'GAME';
-          try {
-            webrtcService?.initializePeerConnection();
-          } catch {}
+          syncWebRtcSession();
           showToast('Reconnected to active match.', 'success');
         } else {
           sessionStorage.removeItem('chess_uno_session');
@@ -339,7 +369,7 @@
       connectionStore.setSignalR('Connected');
       await signalRService.joinGameRoom(res.gameId, res.playerToken);
 
-      webrtcService.initializePeerConnection();
+      syncWebRtcSession();
       try {
         window.history.replaceState({}, '', '/');
       } catch {}

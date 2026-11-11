@@ -249,7 +249,11 @@ test.describe('Chess UNO Two-Player End-to-End Experience', () => {
 
     // Alice draws card and plays move e2-e4
     await pageA.getByTestId('draw-card-btn').click();
+    await expect(pageA.getByTestId('draw-card-slot')).not.toBeVisible({ timeout: 10000 });
+    await expect(pageA.getByTestId('card-hand')).toBeVisible();
+
     await pageA.getByTestId('square-e2').click();
+    await expect(pageA.getByTestId('dest-dot-e4')).toBeVisible({ timeout: 10000 });
     await pageA.getByTestId('square-e4').click();
     await expect(pageB.getByTestId('square-e4').getByTestId('piece-white-pawn')).toBeVisible({ timeout: 10000 });
 

@@ -3,7 +3,7 @@
 **Date**: November 2026  
 **Auditor**: Antigravity Pair Programming Agent  
 **Verdict**: **READY FOR PHASE 6**  
-**Total Automated Tests**: 197 Passing (159 Backend .NET + 34 Frontend Vitest + 4 Playwright Dual-Browser E2E Tests)
+**Total Automated Tests**: 258 Passing (163 Backend .NET + 88 Frontend Vitest + 7 Playwright Dual-Browser E2E Tests)
 
 ---
 
@@ -51,19 +51,39 @@ All requirements have been developed and verified using strict **Test-Driven Dev
    - Verified that sessions survive backend process restarts. `PostgreSqlGameSessionRepository` reconstructs full game state, chess FEN, deck state, reserve pools, and player authentication hashes directly from PostgreSQL snapshots.
    - Added automated regression test `PostgreSql_GameplaySurvivesRestart_AndAppliesSubsequentActionsWithIdempotency` in `Api.Tests`.
 
+### 2.4. WebRTC Push-to-Talk Voice Chat Hardening
+1. **Centralized & Idempotent Peer Connection Orchestration**:
+   - WebRTC session management centralized in `syncWebRtcSession()`, eliminating fragmented and race-prone `initializePeerConnection()` and `createOffer()` calls across individual event handlers.
+   - Initialization made idempotent: active or connecting peer connections are preserved rather than torn down.
+   - Deterministic negotiation with White as designated initiator and Black as responder, with polite peer rollback handling for offer collisions.
+   - Correlation-based epoch tracking on offers, answers, and candidates to cleanly discard stale signals from past connection attempts or across browser reloads without dropping valid messages from the remote peer.
+2. **Persistent Microphone Stream Lifecycle & Seamless Track Swapping**:
+   - Live microphone streams are persisted and reused across repeated voice chat joins, eliminating redundant `getUserMedia()` calls and permission prompts.
+   - Local audio tracks are attached to the RTP sender via `replaceTrack()`, eliminating unnecessary SDP renegotiations.
+   - Releasing the PTT button only disables audio transmission (`track.enabled = false`); tracks are stopped only on explicit voice exit or disconnection.
+   - Handled track events (`ended`, `mute`, `unmute`) and surface clear user notifications on hardware disconnects or permission errors.
+3. **Robust Push-to-Talk Input Controls**:
+   - Replaced fragmented mouse/touch event listeners with unified Pointer Events (`pointerdown`, `pointerup`, `pointercancel`, `lostpointercapture`) with pointer capture.
+   - Added keyboard shortcut triggers (`KeyV`, `Space` with scroll prevention), window blur auto-release, and component destruction cleanup.
+   - Prevented keyboard shortcuts from triggering while typing in text inputs or editable elements.
+4. **Decoupled Voice Status & Resilient Playback**:
+   - RTP audio media transmission is independent of DataChannel status, with SignalR fallback for `voice-status` messages when the DataChannel is unavailable.
+   - Opponent speaking watchdog (15s timeout) and disconnect listener prevent stuck speaking indicators.
+   - Maintained a stable remote `<audio>` DOM element with autoplay handling (`unlockAudio()` retries playback on document interaction) and opponent muting that suppresses playback without dropping incoming tracks.
+
 ---
 
 ## 3. Test Verification Matrix
 
 | Test Suite | Total Tests | Passed | Failed | Focus Areas |
 |---|---|---|---|---|
-| `Engine.Tests` | 46 | 46 | 0 | Authoritative chess legality, check/checkmate detection, reserve drops, draw rules |
-| `CardEngine.Tests` | 44 | 44 | 0 | Deck management, card effect registry, turn transitions, seeded reproducible shuffles |
+| `Engine.Tests` | 47 | 47 | 0 | Authoritative chess legality, check/checkmate detection, reserve drops, draw rules |
+| `CardEngine.Tests` | 47 | 47 | 0 | Deck management, card effect registry, turn transitions, seeded reproducible shuffles |
 | `Config.Tests` | 10 | 10 | 0 | JSON configuration schema validation, card definitions |
 | `Api.Tests` | 59 | 59 | 0 | SignalR Hub, PostgreSQL persistence, process restart recovery, HMAC key security, snapshot sanitization, action idempotency, atomic mutations, test isolation, secret scanning |
-| `frontend` (Vitest) | 34 | 34 | 0 | Svelte stores, Chessboard, CardHand action buttons, WebRTC signal handling, candidate queuing |
-| `frontend` (Playwright E2E) | 4 | 4 | 0 | Dual-browser multiplayer match, Wild special card choice & move, out-of-turn rejection, disconnect/reconnect recovery |
-| **Total Automated Tests** | **197** | **197** | **0** | **100% Pass Rate** |
+| `frontend` (Vitest) | 88 | 88 | 0 | Svelte stores, Chessboard, CardHand action buttons, WebRTC lifecycle, candidate queuing, microphone lifecycle, PTT controls, voice status, remote playback, two-peer integration suite |
+| `frontend` (Playwright E2E) | 7 | 7 | 0 | Dual-browser multiplayer match, Wild special card choice & move, out-of-turn rejection, disconnect/reconnect recovery, real WebRTC voice chat & PTT transmission |
+| **Total Automated Tests** | **258** | **258** | **0** | **100% Pass Rate** |
 
 ---
 

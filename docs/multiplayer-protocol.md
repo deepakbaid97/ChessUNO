@@ -74,10 +74,19 @@ export interface P2PMessage<T = any> {
 ```
 
 ### Reliability, Candidate Queuing & Voice Chat
-1. **Candidate Queuing**: ICE candidates arriving before `setRemoteDescription` are queued and drained safely after remote description installation, avoiding browser `InvalidStateError`.
+1. **Candidate Queuing & Epoch Correlation**: ICE candidates arriving before `setRemoteDescription` are queued per connection epoch and drained safely after remote description installation, avoiding browser `InvalidStateError`. Stale candidates from past connection epochs are discarded.
 2. **Negotiation Timeout & Fallback**: If peer connection does not connect within 12 seconds, WebRTC transitions to fallback mode and the UI notifies the user that communication is routed via SignalR.
-3. **WebRTC Push-to-Talk Voice Chat**:
+3. **Idempotent Connection Lifecycle**:
+   - `ensurePeerConnection()` and `initializePeerConnection()` are idempotent.
+   - White is the designated initiator; Black is responder.
+   - Built-in polite peer rollback handling for offer collisions (glare).
+   - Competing duplicate offer creation is blocked while an offer is in-flight.
+4. **WebRTC Push-to-Talk Voice Chat Architecture**:
    - Initial SDP offers and answers include an audio transceiver (`direction: 'sendrecv'`) pre-negotiated upfront.
-   - Microphone capture is opt-in via `navigator.mediaDevices.getUserMedia(...)`.
-   - Audio tracks are muted by default (`track.enabled = false`) and actively unmuted only while the Push-to-Talk button or keyboard key (`Space` or `V`) is held down.
-   - P2P message `voice-status` synchronizes speaking wave indicators and opponent mute status across peers in real time without SDP renegotiation glare.
+   - Live microphone streams are persisted and reused; subsequent voice activations do not trigger redundant `getUserMedia()` calls.
+   - Audio tracks are attached to the RTP sender via `replaceTrack()`, eliminating unnecessary SDP renegotiations.
+   - Local tracks start muted (`track.enabled = false`) and are enabled exclusively while Push-to-Talk is actively held down.
+   - Audio transmission occurs directly over RTP media tracks and is completely decoupled from DataChannel status.
+   - PTT controls utilize unified Pointer Events (`pointerdown`, `pointerup`, `pointercancel`, `lostpointercapture`) with pointer capture, alongside keyboard shortcuts (`KeyV`, `Space` with scroll prevention), window blur auto-release, and component destruction cleanup.
+   - Remote audio uses a stable DOM `<audio>` element with autoplay policy handling (`unlockAudio()` retries playback on document interaction) and opponent muting that suppresses playback without dropping incoming tracks.
+   - A speaking watchdog (15s timeout) and disconnect listener prevent stale or indefinitely stuck speaking indicators.
