@@ -3,6 +3,7 @@ import { get } from 'svelte/store';
 import {
   battleAnimationService,
   battleAnimationStore,
+  detectCaptureEvent,
   detectPawnCaptureEvent
 } from './battleAnimationService';
 
@@ -11,7 +12,7 @@ describe('battleAnimationService', () => {
     battleAnimationService.reset();
   });
 
-  describe('detectPawnCaptureEvent', () => {
+  describe('detectCaptureEvent (generalized piece capture detection)', () => {
     it('detects a standard white pawn capturing a black pawn', () => {
       // White pawn on d4, Black pawn on e5
       const prevFen = 'rnbqkbnr/pppp1ppp/8/4p3/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2';
@@ -19,52 +20,115 @@ describe('battleAnimationService', () => {
       const currentFen = 'rnbqkbnr/pppp1ppp/8/4P3/8/8/PPP1PPPP/RNBQKBNR b KQkq - 0 2';
       const lastMove = { from: 'd4', to: 'e5' };
 
-      const event = detectPawnCaptureEvent(prevFen, currentFen, lastMove);
+      const event = detectCaptureEvent(prevFen, currentFen, lastMove);
       expect(event).not.toBeNull();
       expect(event?.attacker).toEqual({ piece: 'Pawn', color: 'White' });
       expect(event?.defender).toEqual({ piece: 'Pawn', color: 'Black' });
+      expect(event?.attackStyle).toBe('charge');
       expect(event?.from).toBe('d4');
       expect(event?.to).toBe('e5');
     });
 
-    it('detects a black pawn capturing a white pawn', () => {
-      // White pawn on e4, Black pawn on d5
-      const prevFen = 'rnbqkbnr/ppp1pppp/8/3p4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 2';
-      // After d5xe4
-      const currentFen = 'rnbqkbnr/ppp1pppp/8/8/4p3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3';
-      const lastMove = { from: 'd5', to: 'e4' };
-
-      const event = detectPawnCaptureEvent(prevFen, currentFen, lastMove);
-      expect(event).not.toBeNull();
-      expect(event?.attacker).toEqual({ piece: 'Pawn', color: 'Black' });
-      expect(event?.defender).toEqual({ piece: 'Pawn', color: 'White' });
-    });
-
     it('detects an en-passant pawn capture', () => {
-      // Black just played f7-f5 adjacent to White pawn on e5
       const prevFen = 'rnbqkbnr/pppp2pp/8/4Pp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3';
-      // White plays e5xf6 (en-passant)
       const currentFen = 'rnbqkbnr/pppp2pp/5P2/8/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 3';
       const lastMove = { from: 'e5', to: 'f6' };
 
-      const event = detectPawnCaptureEvent(prevFen, currentFen, lastMove);
+      const event = detectCaptureEvent(prevFen, currentFen, lastMove);
       expect(event).not.toBeNull();
       expect(event?.isEnPassant).toBe(true);
       expect(event?.attacker).toEqual({ piece: 'Pawn', color: 'White' });
       expect(event?.defender).toEqual({ piece: 'Pawn', color: 'Black' });
     });
 
-    it('returns null for normal pawn movement without capture', () => {
-      const prevFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
-      const currentFen = 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1';
-      const lastMove = { from: 'e2', to: 'e4' };
+    it('detects a White Knight capturing a Black Pawn', () => {
+      // White Knight on f3, Black Pawn on e5
+      const prevFen = 'rnbqkbnr/pppp1ppp/8/4p3/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 0 2';
+      // After f3xe5 (Nxe5)
+      const currentFen = 'rnbqkbnr/pppp1ppp/8/4N3/8/8/PPPPPPPP/RNBQKB1R b KQkq - 0 2';
+      const lastMove = { from: 'f3', to: 'e5' };
 
-      const event = detectPawnCaptureEvent(prevFen, currentFen, lastMove);
+      const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+      expect(event).not.toBeNull();
+      expect(event?.attacker).toEqual({ piece: 'Knight', color: 'White' });
+      expect(event?.defender).toEqual({ piece: 'Pawn', color: 'Black' });
+      expect(event?.attackStyle).toBe('leap');
+      expect(event?.from).toBe('f3');
+      expect(event?.to).toBe('e5');
+    });
+
+    it('detects a White Pawn capturing a Black Knight', () => {
+      // White Pawn on e4, Black Knight on d5
+      const prevFen = 'rnbqkb1r/ppp1pppp/8/3n4/4P3/8/PPPP1PPP/RNBQKBNR w KQkq - 0 3';
+      // After e4xd5 (exd5)
+      const currentFen = 'rnbqkb1r/ppp1pppp/8/3P4/8/8/PPPP1PPP/RNBQKBNR b KQkq - 0 3';
+      const lastMove = { from: 'e4', to: 'd5' };
+
+      const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+      expect(event).not.toBeNull();
+      expect(event?.attacker).toEqual({ piece: 'Pawn', color: 'White' });
+      expect(event?.defender).toEqual({ piece: 'Knight', color: 'Black' });
+      expect(event?.attackStyle).toBe('charge');
+    });
+
+    it('detects a Knight capturing another Knight', () => {
+      // White Knight on c3, Black Knight on d5
+      const prevFen = 'r1bqkbnr/ppp1pppp/8/3n4/8/2N5/PPPPPPPP/R1BQKBNR w KQkq - 0 3';
+      // After c3xd5 (Nxd5)
+      const currentFen = 'r1bqkbnr/ppp1pppp/8/3N4/8/8/PPPPPPPP/R1BQKBNR b KQkq - 0 3';
+      const lastMove = { from: 'c3', to: 'd5' };
+
+      const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+      expect(event).not.toBeNull();
+      expect(event?.attacker).toEqual({ piece: 'Knight', color: 'White' });
+      expect(event?.defender).toEqual({ piece: 'Knight', color: 'Black' });
+      expect(event?.attackStyle).toBe('leap');
+    });
+
+    it('returns null when an unsupported piece type is the attacker (e.g. Queen captures Knight)', () => {
+      // Queen on d1 captures Knight on d5
+      const prevFen = 'r1bqkbnr/ppp1pppp/8/3n4/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 3';
+      const currentFen = 'r1bqkbnr/ppp1pppp/8/3Q4/8/8/PPPPPPPP/RNB1KBNR b KQkq - 0 3';
+      const lastMove = { from: 'd1', to: 'd5' };
+
+      const event = detectCaptureEvent(prevFen, currentFen, lastMove);
       expect(event).toBeNull();
     });
 
-    it('returns null when a non-pawn piece captures or is captured', () => {
-      // Knight on f3 captures pawn on e5
+    it('returns null when an unsupported piece type is the defender (e.g. Knight captures Rook)', () => {
+      // White Knight on c7 captures Black Rook on a8
+      const prevFen = 'rnbqkbnr/ppNp1ppp/8/8/8/8/PPPPPPPP/R1BQKBNR w KQkq - 0 4';
+      const currentFen = 'Nnbqkbnr/pp1p1ppp/8/8/8/8/PPPPPPPP/R1BQKBNR b KQkq - 0 4';
+      const lastMove = { from: 'c7', to: 'a8' };
+
+      const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+      expect(event).toBeNull();
+    });
+
+    it('returns null for non-capture knight movement', () => {
+      // White Knight on b1 moves to c3 (empty square)
+      const prevFen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1';
+      const currentFen = 'rnbqkbnr/pppppppp/8/8/8/2N5/PPPPPPPP/R1BQKBNR b KQkq - 1 1';
+      const lastMove = { from: 'b1', to: 'c3' };
+
+      const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+      expect(event).toBeNull();
+    });
+  });
+
+  describe('detectPawnCaptureEvent (legacy compatibility)', () => {
+    it('detects pawn-vs-pawn captures', () => {
+      const prevFen = 'rnbqkbnr/pppp1ppp/8/4p3/3P4/8/PPP1PPPP/RNBQKBNR w KQkq - 0 2';
+      const currentFen = 'rnbqkbnr/pppp1ppp/8/4P3/8/8/PPP1PPPP/RNBQKBNR b KQkq - 0 2';
+      const lastMove = { from: 'd4', to: 'e5' };
+
+      const event = detectPawnCaptureEvent(prevFen, currentFen, lastMove);
+      expect(event).not.toBeNull();
+      expect(event?.attacker.piece).toBe('Pawn');
+      expect(event?.defender.piece).toBe('Pawn');
+    });
+
+    it('returns null when knight is involved in capture for detectPawnCaptureEvent', () => {
       const prevFen = 'rnbqkbnr/pppp1ppp/8/4p3/8/5N2/PPPPPPPP/RNBQKB1R w KQkq - 0 2';
       const currentFen = 'rnbqkbnr/pppp1ppp/8/4N3/8/8/PPPPPPPP/RNBQKB1R b KQkq - 0 2';
       const lastMove = { from: 'f3', to: 'e5' };

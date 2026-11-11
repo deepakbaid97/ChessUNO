@@ -194,5 +194,47 @@ describe('BattleAnimationOverlay Component', () => {
     expect(defender.getAttribute('aria-label')).toContain('knight');
     expect(defender.dataset.team).toBe('light');
   });
+
+  it('renders Pawn attacker against Knight defender', async () => {
+    const { getByTestId, getByRole } = render(BattleAnimationOverlay);
+
+    battleAnimationService.triggerBattle({
+      id: 'pawn-vs-knight',
+      attacker: { piece: 'Pawn', color: 'White' },
+      defender: { piece: 'Knight', color: 'Black' },
+      from: 'e4',
+      to: 'd5',
+      attackStyle: 'charge'
+    });
+    await tick();
+
+    const attacker = getByTestId('battle-attacker');
+    expect(attacker.getAttribute('aria-label')).toContain('pawn');
+    expect(attacker.dataset.team).toBe('light');
+
+    const defender = getByTestId('battle-defender');
+    expect(defender.getAttribute('aria-label')).toContain('knight');
+    expect(defender.dataset.team).toBe('dark');
+
+    const heading = getByRole('heading', { level: 2 });
+    expect(heading.textContent).toContain('White Pawn strikes Black Knight');
+  });
+
+  it('safely skips cinematic and never renders substitute Pawn for unsupported piece types', async () => {
+    const { queryByTestId } = render(BattleAnimationOverlay);
+
+    battleAnimationService.triggerBattle({
+      id: 'queen-vs-knight',
+      attacker: { piece: 'Queen' as any, color: 'White' },
+      defender: { piece: 'Knight', color: 'Black' },
+      from: 'd1',
+      to: 'd5'
+    });
+    await tick();
+
+    // Must NOT render overlay or substitute pawn
+    expect(queryByTestId('battle-animation-overlay')).toBeNull();
+    expect(queryByTestId('battle-attacker')).toBeNull();
+  });
 });
 

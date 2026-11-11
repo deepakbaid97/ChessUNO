@@ -18,7 +18,7 @@
   import CardRevealOverlay from '../animation/CardRevealOverlay.svelte';
   import { cardAnimationService } from '../../services/cardAnimationService';
   import BattleAnimationOverlay from '../animation/BattleAnimationOverlay.svelte';
-  import { battleAnimationService, detectPawnCaptureEvent } from '../../services/battleAnimationService';
+  import { battleAnimationService, detectCaptureEvent } from '../../services/battleAnimationService';
   import PushToTalkControl from '../game/PushToTalkControl.svelte';
   import TurnCoachBanner from '../game/TurnCoachBanner.svelte';
   import { computeCoachGuide } from '../../utils/coachGuide';
@@ -271,19 +271,19 @@
   }
 
   // Authoritative Battle Animation Trigger:
-  // Detects accepted pawn-on-pawn captures strictly when a new move is confirmed/accepted
+  // Detects accepted captures between supported pieces (Pawn, Knight) when a new move is confirmed/accepted
   $: if (storeState && storeState.moveEventCounter > lastHandledMoveCounter) {
     const moveData = storeState.lastAcceptedMove;
     const currentFen = storeState.boardFen;
     lastHandledMoveCounter = storeState.moveEventCounter;
 
     if (moveData && previousBoardFen && previousBoardFen !== currentFen) {
-      const battleEvent = detectPawnCaptureEvent(previousBoardFen, currentFen, {
+      const battleEvent = detectCaptureEvent(previousBoardFen, currentFen, {
         from: moveData.from,
         to: moveData.to
       });
       if (battleEvent) {
-        const moveKey = `pawn-battle-${storeState.revision}-${storeState.moveEventCounter}-${moveData.from}-${moveData.to}`;
+        const moveKey = `battle-${storeState.revision}-${storeState.moveEventCounter}-${moveData.from}-${moveData.to}`;
         battleAnimationService.triggerBattle(battleEvent, moveKey);
       }
     }

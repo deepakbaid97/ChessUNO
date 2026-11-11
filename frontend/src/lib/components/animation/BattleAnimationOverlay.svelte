@@ -2,13 +2,28 @@
   import { onDestroy } from 'svelte';
   import PawnCharacter from '../characters/PawnCharacter.svelte';
   import KnightCharacter from '../characters/KnightCharacter.svelte';
-  import { battleAnimationStore, battleAnimationService } from '../../services/battleAnimationService';
+  import {
+    battleAnimationStore,
+    battleAnimationService,
+    isSupportedBattlePiece
+  } from '../../services/battleAnimationService';
   import { prefersReducedMotion } from '../../utils/cardDisplayUtils';
   import type { AttackStyle } from '../../types/battle';
 
   $: state = $battleAnimationStore;
   $: active = state.isActive;
   $: currentEvent = state.currentEvent;
+
+  $: isSupportedMatchup = !!(
+    currentEvent &&
+    isSupportedBattlePiece(currentEvent.attacker.piece) &&
+    isSupportedBattlePiece(currentEvent.defender.piece)
+  );
+
+  $: if (active && currentEvent && !isSupportedMatchup) {
+    // Unsupported pieces never render substitutes; safely skip cinematic
+    handleDismiss();
+  }
 
   $: attackerTeam = currentEvent?.attacker.color === 'White' ? 'light' : 'dark';
   $: defenderTeam = currentEvent?.defender.color === 'White' ? 'light' : 'dark';
@@ -143,7 +158,7 @@
 
 <svelte:window on:keydown={handleKeyDown} />
 
-{#if active && currentEvent}
+{#if active && currentEvent && isSupportedMatchup}
   <!-- svelte-ignore a11y-click-events-have-key-events a11y-no-noninteractive-element-interactions -->
   <div
     class="battle-overlay"
@@ -151,7 +166,7 @@
     data-testid="battle-animation-overlay"
     role="dialog"
     aria-modal="true"
-    aria-label="Pawn battle capture cinematic"
+    aria-label="{currentEvent.attacker.piece} vs {currentEvent.defender.piece} battle capture cinematic"
     tabindex="-1"
     on:click={handleDismiss}
     on:keydown={(e) => { if (e.key === 'Escape' || e.key === ' ') handleDismiss(); }}
@@ -186,7 +201,7 @@
               size={180}
               testId="battle-attacker"
             />
-          {:else}
+          {:else if currentEvent.attacker.piece === 'Pawn'}
             <PawnCharacter
               team={attackerTeam}
               animation={attackerAnimation}
@@ -221,7 +236,7 @@
               size={180}
               testId="battle-defender"
             />
-          {:else}
+          {:else if currentEvent.defender.piece === 'Pawn'}
             <PawnCharacter
               team={defenderTeam}
               animation={defenderAnimation}

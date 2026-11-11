@@ -1,8 +1,15 @@
 import { writable } from 'svelte/store';
 import { parseFenToMatrix, getSquareIndex } from '../utils/boardUtils';
 import type { BattleAnimationState, BattleEvent, BattlePhase } from '../types/battle';
+import type { PieceType } from '../types/game';
 
-export function detectPawnCaptureEvent(
+export const SUPPORTED_BATTLE_PIECES = new Set<PieceType>(['Pawn', 'Knight']);
+
+export function isSupportedBattlePiece(piece: string): piece is PieceType {
+  return SUPPORTED_BATTLE_PIECES.has(piece as PieceType);
+}
+
+export function detectCaptureEvent(
   prevFen: string,
   currentFen: string,
   lastMove: { from: string; to: string } | null
@@ -21,7 +28,7 @@ export function detectPawnCaptureEvent(
   const { row: toRow, col: toCol } = getSquareIndex(lastMove.to);
 
   const movedPiece = prevBoard[fromRow]?.[fromCol];
-  if (!movedPiece || movedPiece.type !== 'Pawn') {
+  if (!movedPiece || !SUPPORTED_BATTLE_PIECES.has(movedPiece.type)) {
     return null;
   }
 
@@ -38,24 +45,26 @@ export function detectPawnCaptureEvent(
 
   const directCapturedPiece = prevBoard[toRow]?.[toCol];
 
-  // Standard Pawn-on-Pawn Capture
+  // Standard Direct Capture between supported pieces
   if (
     directCapturedPiece &&
-    directCapturedPiece.type === 'Pawn' &&
-    directCapturedPiece.color !== movedPiece.color
+    directCapturedPiece.color !== movedPiece.color &&
+    SUPPORTED_BATTLE_PIECES.has(directCapturedPiece.type)
   ) {
+    const attackStyle = movedPiece.type === 'Knight' ? 'leap' : 'charge';
     return {
-      id: `pawn-capture-${lastMove.from}-${lastMove.to}-${Date.now()}`,
-      attacker: { piece: 'Pawn', color: movedPiece.color },
-      defender: { piece: 'Pawn', color: directCapturedPiece.color },
+      id: `battle-capture-${lastMove.from}-${lastMove.to}-${Date.now()}`,
+      attacker: { piece: movedPiece.type, color: movedPiece.color },
+      defender: { piece: directCapturedPiece.type, color: directCapturedPiece.color },
       from: lastMove.from,
       to: lastMove.to,
-      isEnPassant: false
+      isEnPassant: false,
+      attackStyle
     };
   }
 
-  // En-Passant Pawn Capture
-  if (lastMove.from[0] !== lastMove.to[0] && !directCapturedPiece) {
+  // En-Passant Pawn Capture (strictly Pawn captures Pawn diagonally)
+  if (movedPiece.type === 'Pawn' && lastMove.from[0] !== lastMove.to[0] && !directCapturedPiece) {
     const enPassantCapturedPiece = prevBoard[fromRow]?.[toCol];
     if (
       enPassantCapturedPiece &&
@@ -69,11 +78,24 @@ export function detectPawnCaptureEvent(
         defender: { piece: 'Pawn', color: enPassantCapturedPiece.color },
         from: lastMove.from,
         to: lastMove.to,
-        isEnPassant: true
+        isEnPassant: true,
+        attackStyle: 'charge'
       };
     }
   }
 
+  return null;
+}
+
+export function detectPawnCaptureEvent(
+  prevFen: string,
+  currentFen: string,
+  lastMove: { from: string; to: string } | null
+): BattleEvent | null {
+  const event = detectCaptureEvent(prevFen, currentFen, lastMove);
+  if (event && event.attacker.piece === 'Pawn' && event.defender.piece === 'Pawn') {
+    return event;
+  }
   return null;
 }
 
