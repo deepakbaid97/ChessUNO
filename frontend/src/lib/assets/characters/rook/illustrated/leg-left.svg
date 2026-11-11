@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Left Leg: Heavy Fortress Sabaton & Reinforced Greave -->
+  <!-- Heavy Wide Plate Boot / Sabaton -->
+  <path d="M72 196h28v26l-20 16h-28l4-18 16-24Z" fill="var(--rook-boot,#334e68)" stroke="var(--rook-ink,#211e2f)" stroke-width="7" stroke-linejoin="round"/>
+  <!-- Stone-plated Greave Shin Guard -->
+  <path d="M74 180h26v26H74z" fill="var(--rook-stone,#d9e2ec)" stroke="var(--rook-ink,#211e2f)" stroke-width="6.5" stroke-linejoin="round"/>
+  <path d="M88 180h12v26H88z" fill="var(--rook-stone-shadow,#8da2b5)"/>
+  <!-- Heavy Poleyn (Square fortress knee guard) -->
+  <rect x="74" y="172" width="24" height="15" rx="3" fill="var(--rook-metal,#f0f4f8)" stroke="var(--rook-ink,#211e2f)" stroke-width="5" stroke-linejoin="round"/>
+  <circle cx="86" cy="179" r="3" fill="var(--rook-gold,#e9b949)"/>
+  <!-- Sabaton Plate Trim -->
+  <path d="M52 238h18l4-10H56l-4 10Z" fill="var(--rook-metal,#f0f4f8)" stroke="var(--rook-ink,#211e2f)" stroke-width="4"/>
+</svg>
+

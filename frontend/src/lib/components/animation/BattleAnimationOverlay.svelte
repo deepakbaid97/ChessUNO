@@ -2,6 +2,7 @@
   import { onDestroy } from 'svelte';
   import PawnCharacter from '../characters/PawnCharacter.svelte';
   import KnightCharacter from '../characters/KnightCharacter.svelte';
+  import RookCharacter from '../characters/RookCharacter.svelte';
   import {
     battleAnimationStore,
     battleAnimationService,
@@ -27,7 +28,12 @@
 
   $: attackerTeam = currentEvent?.attacker.color === 'White' ? 'light' : 'dark';
   $: defenderTeam = currentEvent?.defender.color === 'White' ? 'light' : 'dark';
-  $: attackStyle = (currentEvent?.attackStyle || (currentEvent?.attacker.piece === 'Knight' ? 'leap' : 'charge')) as AttackStyle;
+  $: attackStyle = (currentEvent?.attackStyle ||
+    (currentEvent?.attacker.piece === 'Knight'
+      ? 'leap'
+      : currentEvent?.attacker.piece === 'Rook'
+        ? 'smash'
+        : 'charge')) as AttackStyle;
 
   type CharacterAnimation = 'idle' | 'walk' | 'attack' | 'death';
   type CharacterExpression = 'neutral' | 'happy' | 'scared' | 'angry';
@@ -177,7 +183,13 @@
     <div class="battle-arena" class:shake={shakeActive} role="document" on:click|stopPropagation>
       <header class="battle-header">
         <span class="battle-tag">
-          {currentEvent.attacker.piece === 'Knight' || currentEvent.defender.piece === 'Knight' ? 'KNIGHT CLASH' : 'PAWN DUEL'}
+          {#if currentEvent.attacker.piece === 'Rook' || currentEvent.defender.piece === 'Rook'}
+            ROOK CLASH
+          {:else if currentEvent.attacker.piece === 'Knight' || currentEvent.defender.piece === 'Knight'}
+            KNIGHT CLASH
+          {:else}
+            PAWN DUEL
+          {/if}
         </span>
         <h2 class="battle-title">
           {currentEvent.attacker.color} {currentEvent.attacker.piece} strikes {currentEvent.defender.color} {currentEvent.defender.piece}
@@ -199,6 +211,14 @@
               animation={attackerAnimation}
               expression={attackerExpression}
               size={180}
+              testId="battle-attacker"
+            />
+          {:else if currentEvent.attacker.piece === 'Rook'}
+            <RookCharacter
+              team={attackerTeam}
+              animation={attackerAnimation}
+              expression={attackerExpression}
+              size={195}
               testId="battle-attacker"
             />
           {:else if currentEvent.attacker.piece === 'Pawn'}
@@ -234,6 +254,14 @@
               animation={defenderAnimation}
               expression={defenderExpression}
               size={180}
+              testId="battle-defender"
+            />
+          {:else if currentEvent.defender.piece === 'Rook'}
+            <RookCharacter
+              team={defenderTeam}
+              animation={defenderAnimation}
+              expression={defenderExpression}
+              size={195}
               testId="battle-defender"
             />
           {:else if currentEvent.defender.piece === 'Pawn'}
@@ -391,6 +419,15 @@
 
   .style-leap .slot-attacker.phase-clash {
     transform: translateX(88px) translateY(-4px) scale(1.12) rotate(2deg);
+  }
+
+  /* Powerful Rook smash attack style (Heavy grounded advance & downward slam) */
+  .style-smash .slot-attacker.phase-charge {
+    transform: translateX(40px) translateY(4px);
+  }
+
+  .style-smash .slot-attacker.phase-clash {
+    transform: translateX(82px) translateY(6px) scale(1.14);
   }
 
   /* Defender (Right) flipped facing left */

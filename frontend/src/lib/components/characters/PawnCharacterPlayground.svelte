@@ -33,6 +33,8 @@
       <span class="current-lab">Pawn Lab</span>
       <span class="nav-divider">|</span>
       <a href="/knight-playground" class="nav-sublink">Knight Lab</a>
+      <span class="nav-divider">|</span>
+      <a href="/rook-playground" class="nav-sublink">Rook Lab</a>
     </div>
     <span>Character Lab / Pawn Prototype</span>
   </header>

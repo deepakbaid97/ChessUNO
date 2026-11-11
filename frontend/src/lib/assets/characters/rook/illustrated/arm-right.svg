@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Right Arm: Heavy Plated Vambrace and Massive Fortress Gauntlet -->
+  <!-- Upper Arm -->
+  <path d="M178 136l26 20 18-12-20-26-24 18Z" fill="var(--rook-metal,#f0f4f8)" stroke="var(--rook-ink,#211e2f)" stroke-width="6" stroke-linejoin="round"/>
+  
+  <!-- Elbow Couter (Heavy faceted fortress guard) -->
+  <path d="M222 144l12 6-6 12-12-6 6-12Z" fill="var(--rook-stone,#d9e2ec)" stroke="var(--rook-ink,#211e2f)" stroke-width="4"/>
+
+  <!-- Forearm Vambrace -->
+  <path d="M198 152l16 28 20-10-14-26-22 8Z" fill="var(--rook-metal,#f0f4f8)" stroke="var(--rook-ink,#211e2f)" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M212 156l12 22 8-4-10-20-10 2Z" fill="var(--rook-metal-shadow,#9aaec4)"/>
+
+  <!-- Heavy Plate Gauntlet gripping the hammer shaft -->
+  <ellipse cx="212" cy="186" rx="12" ry="13" fill="var(--rook-metal,#f0f4f8)" stroke="var(--rook-ink,#211e2f)" stroke-width="5.5"/>
+  <!-- Segmented Knuckle Guard -->
+  <rect x="202" y="178" width="20" height="8" rx="3" fill="var(--rook-stone,#d9e2ec)" stroke="var(--rook-ink,#211e2f)" stroke-width="3"/>
+  <circle cx="207" cy="182" r="1.5" fill="var(--rook-gold,#e9b949)"/>
+  <circle cx="217" cy="182" r="1.5" fill="var(--rook-gold,#e9b949)"/>
+</svg>
+

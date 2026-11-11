@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Castle Fortress Turret Helmet with Crenellated Battlements -->
+  <!-- Upper Turret Merlons (The 5 castle battlement teeth on the crown) -->
+  <path d="M68 52h18v16h16v-16h16v16h20v-16h16v16h16v-16h18l-6 38H74l-6-38Z" fill="var(--rook-stone,#d9e2ec)" stroke="var(--rook-ink,#211e2f)" stroke-width="7" stroke-linejoin="round"/>
+  <!-- Turret Shadow (Right half) -->
+  <path d="M128 52v16h16v-16h16v16h16v-16h18l-6 38h-60V52Z" fill="var(--rook-stone-shadow,#8da2b5)" opacity=".75"/>
+
+  <!-- Turret Stone Masonry Band & Gold Trim -->
+  <path d="M72 86h112v12H72z" fill="var(--rook-gold,#e9b949)" stroke="var(--rook-ink,#211e2f)" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Stone Crack details on turret -->
+  <path d="M102 56l-4 8 4 6M156 60l6 8-3 6" stroke="var(--rook-ink,#211e2f)" stroke-width="3" stroke-linecap="round" opacity=".5"/>
+
+  <!-- Main Helmet Base Dome (Heavy fortress bascinet) -->
+  <path d="M70 94c0-4 10-8 58-8s58 4 58 8l-6 16H76l-6-16Z" fill="var(--rook-metal,#f0f4f8)" stroke="var(--rook-ink,#211e2f)" stroke-width="6" stroke-linejoin="round"/>
+
+  <!-- Heavy Brow Guard Visor (Extending down at sides, open in center for face) -->
+  <!-- Left Cheek Plate -->
+  <path d="M72 96l6 36 14-4-6-32H72z" fill="var(--rook-stone,#d9e2ec)" stroke="var(--rook-ink,#211e2f)" stroke-width="6" stroke-linejoin="round"/>
+  <!-- Right Cheek Plate -->
+  <path d="M184 96l-6 36-14-4 6-32h14z" fill="var(--rook-stone-shadow,#8da2b5)" stroke="var(--rook-ink,#211e2f)" stroke-width="6" stroke-linejoin="round"/>
+
+  <!-- Visor Brow Plate (Arched above eyes) -->
+  <path d="M84 94c12-4 28-6 44-6s32 2 44 6l-2 14c-12-3-26-4-42-4s-30 1-42 4l-2-14Z" fill="var(--rook-metal,#f0f4f8)" stroke="var(--rook-ink,#211e2f)" stroke-width="5" stroke-linejoin="round"/>
+  <!-- Eyebrow Visor Ridge Highlight -->
+  <line x1="94" y1="98" x2="162" y2="98" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" opacity=".7"/>
+
+  <!-- Heavy Iron Pivot Studs on Brow -->
+  <circle cx="80" cy="98" r="4.5" fill="var(--rook-gold,#e9b949)" stroke="var(--rook-ink,#211e2f)" stroke-width="3"/>
+  <circle cx="176" cy="98" r="4.5" fill="var(--rook-gold,#e9b949)" stroke="var(--rook-ink,#211e2f)" stroke-width="3"/>
+  <circle cx="128" cy="94" r="3.5" fill="var(--rook-gold,#e9b949)" stroke="var(--rook-ink,#211e2f)" stroke-width="2.5"/>
+</svg>
+

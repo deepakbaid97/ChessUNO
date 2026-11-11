@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Rook Torso, Heavy Fortress Cuirass & Broad Shoulders -->
+  <!-- Underlying Cape / Fortress Mantle -->
+  <path d="M60 128c-4 28-6 60-2 88h138c4-28 2-60-2-88l-24 4H84l-24-4Z" fill="var(--rook-cloth-shadow,#243b53)" stroke="var(--rook-ink,#211e2f)" stroke-width="7" stroke-linejoin="round"/>
+  
+  <!-- Heavy Barrel Chest & Surcoat Base -->
+  <path d="M68 122c8-16 28-24 60-24s52 8 60 24l10 82H58l10-82Z" fill="var(--rook-cloth,#486581)" stroke="var(--rook-ink,#211e2f)" stroke-width="7.5" stroke-linejoin="round"/>
+
+  <!-- Heavy Stone Cuirass Plate (Front) -->
+  <path d="M84 116c12-10 26-14 44-14s32 4 44 14l-4 50H88l-4-50Z" fill="var(--rook-stone,#d9e2ec)" stroke="var(--rook-ink,#211e2f)" stroke-width="6.5" stroke-linejoin="round"/>
+  <!-- Stone Shadow right half -->
+  <path d="M128 102c18 0 32 4 44 14l-4 50h-40V102Z" fill="var(--rook-stone-shadow,#8da2b5)" opacity=".75"/>
+
+  <!-- Fortress Keystone / Hexagonal Chest Insignia (Like Reference Image 1) -->
+  <polygon points="128,124 142,132 142,148 128,156 114,148 114,132" fill="var(--rook-metal,#f0f4f8)" stroke="var(--rook-ink,#211e2f)" stroke-width="4.5" stroke-linejoin="round"/>
+  <polygon points="128,129 137,134 137,144 128,150 119,144 119,134" fill="var(--rook-gold,#e9b949)" stroke="var(--rook-ink,#211e2f)" stroke-width="2.5" stroke-linejoin="round"/>
+  <circle cx="128" cy="139" r="3.5" fill="var(--rook-stone,#d9e2ec)"/>
+
+  <!-- Broad Fortress Pauldrons (Left & Right Shoulders) -->
+  <!-- Left Pauldron (Broad heavy round fortress dome) -->
+  <path d="M48 126c-6-16 6-32 24-36l18 18-10 28c-16 2-28-4-32-10Z" fill="var(--rook-stone,#d9e2ec)" stroke="var(--rook-ink,#211e2f)" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M72 90c6-2 12 0 18 18l-10 28c-4 1-8 0-10-2l2-44Z" fill="var(--rook-stone-shadow,#8da2b5)"/>
+  <!-- Pauldron crenellation rim -->
+  <path d="M52 118l6 14M64 120l6 14M76 122l6 14" stroke="var(--rook-ink,#211e2f)" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Right Pauldron (Broad heavy fortress dome) -->
+  <path d="M208 126c6-16-6-32-24-36l-18 18 10 28c16 2 28-4 32-10Z" fill="var(--rook-stone,#d9e2ec)" stroke="var(--rook-ink,#211e2f)" stroke-width="6" stroke-linejoin="round"/>
+  <path d="M184 90c-6-2-12 0-18 18l10 28c4 1 8 0 10-2l-2-44Z" fill="var(--rook-stone-shadow,#8da2b5)"/>
+  <path d="M204 118l-6 14M192 120l-6 14M180 122l-6 14" stroke="var(--rook-ink,#211e2f)" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Thick Fortress Belt & Heavy Castle Buckle -->
+  <path d="M62 176h132v18H62z" fill="var(--rook-belt,#3e2c3a)" stroke="var(--rook-ink,#211e2f)" stroke-width="7"/>
+  <!-- Castle Gateway Shaped Buckle -->
+  <path d="M112 170h32v28h-8v-12h-16v12h-8v-28Z" fill="var(--rook-gold,#e9b949)" stroke="var(--rook-ink,#211e2f)" stroke-width="5" stroke-linejoin="round"/>
+  <circle cx="120" cy="177" r="2.5" fill="var(--rook-ink,#211e2f)"/>
+  <circle cx="136" cy="177" r="2.5" fill="var(--rook-ink,#211e2f)"/>
+
+  <!-- Segmented Armored Tassets (Castle brick pattern skirt) -->
+  <path d="M66 194h124l-8 22H74l-8-22Z" fill="var(--rook-stone,#d9e2ec)" stroke="var(--rook-ink,#211e2f)" stroke-width="6.5" stroke-linejoin="round"/>
+  <line x1="102" y1="194" x2="100" y2="216" stroke="var(--rook-ink,#211e2f)" stroke-width="4.5"/>
+  <line x1="154" y1="194" x2="156" y2="216" stroke="var(--rook-ink,#211e2f)" stroke-width="4.5"/>
+  <!-- Center Tasset Plaque -->
+  <polygon points="128,194 140,204 136,220 120,220 116,204" fill="var(--rook-metal,#f0f4f8)" stroke="var(--rook-ink,#211e2f)" stroke-width="4.5" stroke-linejoin="round"/>
+  <circle cx="128" cy="208" r="3" fill="var(--rook-gold,#e9b949)"/>
+</svg>
+

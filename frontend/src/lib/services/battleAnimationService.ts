@@ -4,9 +4,10 @@ import type { BattleAnimationState, BattleEvent, BattlePhase } from '../types/ba
 import type { PieceType } from '../types/game';
 
 export const SUPPORTED_BATTLE_PIECES = new Set<PieceType>(['Pawn', 'Knight']);
+export const SUPPORTED_RENDER_PIECES = new Set<PieceType>(['Pawn', 'Knight', 'Rook']);
 
 export function isSupportedBattlePiece(piece: string): piece is PieceType {
-  return SUPPORTED_BATTLE_PIECES.has(piece as PieceType);
+  return SUPPORTED_RENDER_PIECES.has(piece as PieceType);
 }
 
 export function detectCaptureEvent(

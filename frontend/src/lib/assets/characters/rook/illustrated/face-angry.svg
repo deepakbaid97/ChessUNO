@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Rook Angry Expression: Immovable Wall of Fury -->
+  <!-- Heavy Inward-Slanted V-Eyebrows (Stone-crushing scowl) -->
+  <path d="M94 114l28-12M162 114l-28-12" stroke="var(--rook-ink,#211e2f)" stroke-width="7" stroke-linecap="round"/>
+  <!-- Forehead furrow crease -->
+  <line x1="128" y1="104" x2="128" y2="114" stroke="var(--rook-ink,#211e2f)" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Narrow Glowing Furious Eyes (Slit glow like fortress visor in Image 1) -->
+  <path d="M102 120l18 4-3 8-16-2 1-10Z" fill="#ffedd5" stroke="var(--rook-ink,#211e2f)" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M154 120l-18 4 3 8 16-2-1-10Z" fill="#ffedd5" stroke="var(--rook-ink,#211e2f)" stroke-width="4" stroke-linejoin="round"/>
+  <!-- Glowing pupils -->
+  <circle cx="112" cy="123" r="3.5" fill="#f59e0b"/>
+  <circle cx="144" cy="123" r="3.5" fill="#f59e0b"/>
+  <circle cx="111" cy="122" r="1.5" fill="#ffffff"/>
+  <circle cx="143" cy="122" r="1.5" fill="#ffffff"/>
+
+  <!-- Square Bared Teeth Fortress Roar -->
+  <path d="M110 136h36l-3 18c-3 4-8 6-15 6s-12-2-15-6l-3-18Z" fill="#450a0a" stroke="var(--rook-ink,#211e2f)" stroke-width="5.5" stroke-linejoin="round"/>
+  <!-- Blocky Castle Teeth -->
+  <rect x="113" y="138" width="30" height="7" fill="#ffffff" stroke="var(--rook-ink,#211e2f)" stroke-width="1.5"/>
+  <line x1="123" y1="138" x2="123" y2="145" stroke="var(--rook-ink,#211e2f)" stroke-width="2"/>
+  <line x1="133" y1="138" x2="133" y2="145" stroke="var(--rook-ink,#211e2f)" stroke-width="2"/>
+</svg>
+

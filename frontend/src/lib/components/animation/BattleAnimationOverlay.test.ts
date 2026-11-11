@@ -236,5 +236,56 @@ describe('BattleAnimationOverlay Component', () => {
     expect(queryByTestId('battle-animation-overlay')).toBeNull();
     expect(queryByTestId('battle-attacker')).toBeNull();
   });
+
+  it('renders Rook attacker against Pawn defender with smash style and ROOK CLASH tag', async () => {
+    const { getByTestId, getByText, getByRole } = render(BattleAnimationOverlay);
+
+    battleAnimationService.triggerBattle({
+      id: 'rook-vs-pawn',
+      attacker: { piece: 'Rook', color: 'White' },
+      defender: { piece: 'Pawn', color: 'Black' },
+      from: 'a1',
+      to: 'a7',
+      attackStyle: 'smash'
+    });
+    await tick();
+
+    expect(getByText('ROOK CLASH')).toBeTruthy();
+
+    const attacker = getByTestId('battle-attacker');
+    expect(attacker.getAttribute('aria-label')).toContain('rook');
+    expect(attacker.dataset.team).toBe('light');
+
+    const defender = getByTestId('battle-defender');
+    expect(defender.getAttribute('aria-label')).toContain('pawn');
+    expect(defender.dataset.team).toBe('dark');
+
+    const heading = getByRole('heading', { level: 2 });
+    expect(heading.textContent).toContain('White Rook strikes Black Pawn');
+  });
+
+  it('renders Rook vs Rook battle correctly', async () => {
+    const { getByTestId, getByText } = render(BattleAnimationOverlay);
+
+    battleAnimationService.triggerBattle({
+      id: 'rook-vs-rook',
+      attacker: { piece: 'Rook', color: 'Black' },
+      defender: { piece: 'Rook', color: 'White' },
+      from: 'h8',
+      to: 'h1',
+      attackStyle: 'smash'
+    });
+    await tick();
+
+    expect(getByText('ROOK CLASH')).toBeTruthy();
+
+    const attacker = getByTestId('battle-attacker');
+    expect(attacker.getAttribute('aria-label')).toContain('rook');
+    expect(attacker.dataset.team).toBe('dark');
+
+    const defender = getByTestId('battle-defender');
+    expect(defender.getAttribute('aria-label')).toContain('rook');
+    expect(defender.dataset.team).toBe('light');
+  });
 });
 
