@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { render } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import PawnCharacter from './PawnCharacter.svelte';
-import pawnCharacterSource from './PawnCharacter.svelte?raw';
 
 describe('PawnCharacter', () => {
   it('renders the requested team and its independent character layers', () => {
@@ -13,6 +12,7 @@ describe('PawnCharacter', () => {
     expect(container.querySelector('.pawn-head')).toBeTruthy();
     expect(container.querySelector('.pawn-body')).toBeTruthy();
     expect(container.querySelectorAll('.pawn-arm, .pawn-leg')).toHaveLength(4);
+    expect(container.querySelectorAll('.pawn-layer svg')).toHaveLength(9);
   });
 
   it.each(['neutral', 'happy', 'scared', 'angry'] as const)('accepts the %s expression', expression => {
@@ -20,29 +20,20 @@ describe('PawnCharacter', () => {
     expect(getByTestId('pawn-character').dataset.expression).toBe(expression);
   });
 
-  it('anchors every facial layer within an explicitly positioned face rig', () => {
+  it('swaps to distinct illustrated artwork for every expression', () => {
+    const faceMarkup = (['neutral', 'happy', 'scared', 'angry'] as const).map(expression => {
+      const { container } = render(PawnCharacter, { props: { expression } });
+      return container.querySelector('.pawn-face-rig')?.innerHTML;
+    });
+    expect(new Set(faceMarkup).size).toBe(4);
+  });
+
+  it('renders an illustrated face layer on the shared character canvas', () => {
     const { getByTestId } = render(PawnCharacter, { props: { size: 320 } });
-
-    for (const id of [
-      'pawn-face-rig',
-      'pawn-face',
-      'pawn-eye-left',
-      'pawn-eye-right',
-      'pawn-brow-left',
-      'pawn-brow-right',
-      'pawn-mouth',
-      'pawn-cheek-left',
-      'pawn-cheek-right'
-    ]) {
-      expect(getByTestId(id), id).toBeTruthy();
-    }
-
-    expect(pawnCharacterSource).toMatch(/\.pawn-face-rig\s*\{\s*position:\s*absolute;\s*left:\s*0;\s*top:\s*0;/);
-    expect(pawnCharacterSource).toMatch(/\.pawn-face\s*\{\s*position:\s*absolute;[^}]*width:\s*84%;[^}]*left:\s*8%;[^}]*bottom:\s*7%/s);
-    expect(pawnCharacterSource).toMatch(/\.pawn-eye\s*\{\s*position:\s*absolute;/);
-    expect(pawnCharacterSource).toMatch(/\.pawn-brow\s*\{\s*display:\s*none;\s*position:\s*absolute;/);
-    expect(pawnCharacterSource).toMatch(/\.pawn-mouth\s*\{\s*position:\s*absolute;/);
-    expect(pawnCharacterSource).toMatch(/\.pawn-cheek\s*\{\s*display:\s*none;\s*position:\s*absolute;/);
+    const faceSvg = getByTestId('pawn-face-rig').querySelector('svg');
+    expect(faceSvg?.getAttribute('viewBox')).toBe('0 0 256 256');
+    expect(getByTestId('pawn-head').querySelector('svg')).toBeTruthy();
+    expect(getByTestId('pawn-helmet').querySelector('svg')).toBeTruthy();
   });
 
   it.each(['idle', 'walk', 'attack', 'death'] as const)('accepts the %s animation', animation => {
@@ -59,7 +50,7 @@ describe('PawnCharacter', () => {
     const pawn = getByTestId('pawn-character');
     expect(pawn.dataset).toMatchObject({ expression, animation });
     expect(container.querySelector('.pawn-action-rig .pawn-expression-rig')).toBeTruthy();
-    expect(container.querySelector('.pawn-face-rig .pawn-face')).toBeTruthy();
+    expect(container.querySelector('.pawn-face-rig svg')).toBeTruthy();
   });
 
   it.each([

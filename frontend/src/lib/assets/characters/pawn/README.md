@@ -1,7 +1,13 @@
 # Pawn character layers
 
-The first pawn uses CSS/vector placeholders so it ships without external artwork.
-Replace the corresponding layers with transparent `head`, `body`, `arms`, `legs`,
-`helmet`, and `sword` PNG/WebP assets. `PawnCharacter.svelte` deliberately keeps
-each layer in its own element and owns all animation transforms, so the public API
-does not need to change when final illustrations arrive.
+`illustrated/` contains the production-ready transparent SVG kit for the pawn.
+Every file uses a shared `256 × 256` canvas and is injected into its own animation
+layer by `PawnCharacter.svelte`:
+
+- `body`, `head`, `helmet`, `arm-left`, `arm-right`, `leg-left`, `leg-right`, `weapon`
+- one face layer per expression: `face-neutral`, `face-happy`, `face-scared`, `face-angry`
+
+SVG colors use the pawn's semantic CSS variables, allowing light and dark factions
+to share the illustrated geometry while retaining distinct palettes. Replacement
+PNG/WebP or SVG artwork must retain the shared canvas and layer names so no public
+component API or animation rig needs to change.
