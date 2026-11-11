@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Bishop Neutral Face: Enigmatic, Clever, Mysterious Smirk -->
+  <!-- Arched, Knowing Eyebrows -->
+  <path d="M106 88c4-4 12-4 16 0" stroke="var(--bishop-ink,#211e2f)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M134 88c4-4 12-4 16 0" stroke="var(--bishop-ink,#211e2f)" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Left Eye: Sharp, focused almond shape with glowing star pupil -->
+  <ellipse cx="114" cy="98" rx="6" ry="7" fill="var(--bishop-ink,#211e2f)"/>
+  <circle cx="113" cy="96" r="3" fill="var(--bishop-magic,#4fd1c5)"/>
+  <circle cx="112" cy="95" r="1.5" fill="#ffffff"/>
+
+  <!-- Right Eye: Sharp, focused with knowing half-squint -->
+  <ellipse cx="142" cy="98" rx="6" ry="6.5" fill="var(--bishop-ink,#211e2f)"/>
+  <circle cx="143" cy="96" r="3" fill="var(--bishop-magic,#4fd1c5)"/>
+  <circle cx="144" cy="95" r="1.5" fill="#ffffff"/>
+
+  <!-- Small Button Nose -->
+  <circle cx="128" cy="106" r="1.5" fill="var(--bishop-skin-shadow,#dd6b20)"/>
+
+  <!-- Clever, Enigmatic Asymmetric Smirk -->
+  <path d="M120 115c4 4 12 3 17-2" stroke="var(--bishop-ink,#211e2f)" stroke-width="3.5" stroke-linecap="round"/>
+  <circle cx="138" cy="113" r="1.2" fill="var(--bishop-ink,#211e2f)"/>
+
+  <!-- Subtle Arcane Mark / Mystic Bindi on Forehead -->
+  <polygon points="128,84 130,87 128,90 126,87" fill="var(--bishop-magic,#4fd1c5)"/>
+</svg>

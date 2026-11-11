@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Bishop Arcane Crozier / Mystical Staff -->
+  <!-- Staff Shaft (Gold-bound polished runic timber) -->
+  <line x1="202" y1="236" x2="202" y2="76" stroke="var(--bishop-boot,#2d3748)" stroke-width="9" stroke-linecap="round"/>
+  <line x1="202" y1="236" x2="202" y2="76" stroke="var(--bishop-ink,#211e2f)" stroke-width="9" stroke-linecap="round" opacity=".2"/>
+
+  <!-- Gold Spiral Bands wrapping shaft -->
+  <line x1="198" y1="210" x2="206" y2="204" stroke="var(--bishop-gold,#ecc94b)" stroke-width="3"/>
+  <line x1="198" y1="170" x2="206" y2="164" stroke="var(--bishop-gold,#ecc94b)" stroke-width="3"/>
+  <line x1="198" y1="130" x2="206" y2="124" stroke="var(--bishop-gold,#ecc94b)" stroke-width="3"/>
+
+  <!-- Staff Base Ferrulle / Pommel -->
+  <rect x="197" y="232" width="10" height="12" rx="2" fill="var(--bishop-gold,#ecc94b)" stroke="var(--bishop-ink,#211e2f)" stroke-width="3"/>
+
+  <!-- Staff Head Collar / Capital -->
+  <path d="M192 78h20l-4 12h-12l-4-12Z" fill="var(--bishop-gold,#ecc94b)" stroke="var(--bishop-ink,#211e2f)" stroke-width="4.5" stroke-linejoin="round"/>
+
+  <!-- Ornate Bishop Crozier Spiral Finial (Curved Shepherd's Hook / Arcane Crescent) -->
+  <!-- Outer Gold Curve -->
+  <path d="M202 78c0-26 18-46 36-36 12 7 8 28-8 30-10 1-14-8-10-14 3-4 8-4 10 0" fill="none" stroke="var(--bishop-gold,#ecc94b)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M202 78c0-26 18-46 36-36 12 7 8 28-8 30-10 1-14-8-10-14 3-4 8-4 10 0" fill="none" stroke="var(--bishop-ink,#211e2f)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".4"/>
+
+  <!-- Inner Radiant Arcane Focus Gem Cradled in Spiral -->
+  <!-- Outer Glow -->
+  <circle cx="218" cy="56" r="14" fill="var(--bishop-magic,#4fd1c5)" opacity=".3"/>
+  <!-- Faceted Arcane Crystal Diamond -->
+  <polygon points="218,46 226,56 218,66 210,56" fill="var(--bishop-magic,#4fd1c5)" stroke="var(--bishop-ink,#211e2f)" stroke-width="3" stroke-linejoin="round"/>
+  <polygon points="218,49 223,56 218,63 213,56" fill="var(--bishop-magic-bright,#e6fffa)"/>
+  <circle cx="218" cy="56" r="2.5" fill="#ffffff"/>
+
+  <!-- Radiating Energy Sparkles -->
+  <circle cx="236" cy="38" r="2" fill="var(--bishop-magic-bright,#e6fffa)"/>
+  <circle cx="204" cy="42" r="2" fill="var(--bishop-magic,#4fd1c5)"/>
+  <circle cx="228" cy="74" r="1.5" fill="var(--bishop-magic-bright,#e6fffa)"/>
+</svg>

@@ -3,6 +3,7 @@
   import PawnCharacter from '../characters/PawnCharacter.svelte';
   import KnightCharacter from '../characters/KnightCharacter.svelte';
   import RookCharacter from '../characters/RookCharacter.svelte';
+  import BishopCharacter from '../characters/BishopCharacter.svelte';
   import {
     battleAnimationStore,
     battleAnimationService,
@@ -33,7 +34,9 @@
       ? 'leap'
       : currentEvent?.attacker.piece === 'Rook'
         ? 'smash'
-        : 'charge')) as AttackStyle;
+        : currentEvent?.attacker.piece === 'Bishop'
+          ? 'spell'
+          : 'charge')) as AttackStyle;
 
   type CharacterAnimation = 'idle' | 'walk' | 'attack' | 'death';
   type CharacterExpression = 'neutral' | 'happy' | 'scared' | 'angry';
@@ -67,7 +70,9 @@
   }
 
   function generateSparks() {
-    const colors = ['#f3ce73', '#ffffff', '#f43f5e', '#fbbf24', '#ffedd5'];
+    const colors = attackStyle === 'spell'
+      ? ['#4fd1c5', '#805ad5', '#e6fffa', '#ecc94b', '#f687b3']
+      : ['#f3ce73', '#ffffff', '#f43f5e', '#fbbf24', '#ffedd5'];
     return Array.from({ length: 18 }, (_, i) => ({
       id: i,
       dx: (Math.random() - 0.45) * 160,
@@ -183,7 +188,9 @@
     <div class="battle-arena" class:shake={shakeActive} role="document" on:click|stopPropagation>
       <header class="battle-header">
         <span class="battle-tag">
-          {#if currentEvent.attacker.piece === 'Rook' || currentEvent.defender.piece === 'Rook'}
+          {#if currentEvent.attacker.piece === 'Bishop' || currentEvent.defender.piece === 'Bishop'}
+            BISHOP CLASH
+          {:else if currentEvent.attacker.piece === 'Rook' || currentEvent.defender.piece === 'Rook'}
             ROOK CLASH
           {:else if currentEvent.attacker.piece === 'Knight' || currentEvent.defender.piece === 'Knight'}
             KNIGHT CLASH
@@ -221,6 +228,14 @@
               size={195}
               testId="battle-attacker"
             />
+          {:else if currentEvent.attacker.piece === 'Bishop'}
+            <BishopCharacter
+              team={attackerTeam}
+              animation={attackerAnimation}
+              expression={attackerExpression}
+              size={185}
+              testId="battle-attacker"
+            />
           {:else if currentEvent.attacker.piece === 'Pawn'}
             <PawnCharacter
               team={attackerTeam}
@@ -231,6 +246,11 @@
             />
           {/if}
         </div>
+
+        <!-- Arcane Beam Projectile (Spell Attack Style) -->
+        {#if attackStyle === 'spell' && (stagePhase === 'charge' || stagePhase === 'clash')}
+          <div class="spell-beam" aria-hidden="true"></div>
+        {/if}
 
         <!-- Clash Center FX (Sparks, Flash, & Shockwave) -->
         <div class="clash-origin" aria-hidden="true">
@@ -262,6 +282,14 @@
               animation={defenderAnimation}
               expression={defenderExpression}
               size={195}
+              testId="battle-defender"
+            />
+          {:else if currentEvent.defender.piece === 'Bishop'}
+            <BishopCharacter
+              team={defenderTeam}
+              animation={defenderAnimation}
+              expression={defenderExpression}
+              size={185}
               testId="battle-defender"
             />
           {:else if currentEvent.defender.piece === 'Pawn'}
@@ -428,6 +456,39 @@
 
   .style-smash .slot-attacker.phase-clash {
     transform: translateX(82px) translateY(6px) scale(1.14);
+  }
+
+  /* Mysterious Bishop spell attack style (Levitating arcane surge & projectile cast) */
+  .style-spell .slot-attacker.phase-charge {
+    transform: translateX(32px) translateY(-14px) scale(1.06);
+    filter: drop-shadow(0 0 16px rgba(79, 209, 197, 0.65));
+  }
+
+  .style-spell .slot-attacker.phase-clash {
+    transform: translateX(68px) translateY(-6px) scale(1.1);
+    filter: drop-shadow(0 0 24px rgba(79, 209, 197, 0.9));
+  }
+
+  /* Shimmering Arcane Spell Beam */
+  .spell-beam {
+    position: absolute;
+    left: 42%;
+    top: 48%;
+    width: 140px;
+    height: 12px;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #e6fffa 0%, #4fd1c5 55%, rgba(128, 90, 213, 0) 100%);
+    box-shadow: 0 0 20px #4fd1c5, 0 0 8px #ffffff;
+    transform-origin: left center;
+    animation: beamStreak 0.35s ease-out forwards;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  @keyframes beamStreak {
+    0% { transform: scaleX(0.1); opacity: 0; }
+    50% { transform: scaleX(1.15) translateY(-2px); opacity: 1; }
+    100% { transform: scaleX(1.35) translateX(24px); opacity: 0; }
   }
 
   /* Defender (Right) flipped facing left */

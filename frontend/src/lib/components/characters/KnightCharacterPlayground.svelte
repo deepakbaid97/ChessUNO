@@ -51,6 +51,8 @@
       <span class="current-lab">Knight Lab</span>
       <span class="nav-divider">|</span>
       <a href="/rook-playground" class="nav-sublink">Rook Lab</a>
+      <span class="nav-divider">|</span>
+      <a href="/bishop-playground" class="nav-sublink">Bishop Lab</a>
     </div>
     <span>Character Lab / Knight Prototype</span>
   </header>

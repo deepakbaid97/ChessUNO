@@ -1,6 +1,6 @@
 import type { PlayerColor, PieceType } from './game';
 
-export type AttackStyle = 'strike' | 'charge' | 'leap' | 'slash' | 'smash';
+export type AttackStyle = 'strike' | 'charge' | 'leap' | 'slash' | 'smash' | 'spell';
 
 export interface BattleCombatant {
   piece: PieceType;

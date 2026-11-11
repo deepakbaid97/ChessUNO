@@ -341,5 +341,56 @@ describe('BattleAnimationOverlay Component', () => {
     const heading = getByRole('heading', { level: 2 });
     expect(heading.textContent).toContain('Black Knight strikes White Rook');
   });
+
+  it('renders Bishop attacker against Pawn defender with spell style and BISHOP CLASH tag', async () => {
+    const { getByTestId, getByText, getByRole } = render(BattleAnimationOverlay);
+
+    battleAnimationService.triggerBattle({
+      id: 'bishop-vs-pawn',
+      attacker: { piece: 'Bishop', color: 'White' },
+      defender: { piece: 'Pawn', color: 'Black' },
+      from: 'c1',
+      to: 'f4',
+      attackStyle: 'spell'
+    });
+    await tick();
+
+    expect(getByText('BISHOP CLASH')).toBeTruthy();
+
+    const attacker = getByTestId('battle-attacker');
+    expect(attacker.getAttribute('aria-label')).toContain('bishop');
+    expect(attacker.dataset.team).toBe('light');
+
+    const defender = getByTestId('battle-defender');
+    expect(defender.getAttribute('aria-label')).toContain('pawn');
+    expect(defender.dataset.team).toBe('dark');
+
+    const heading = getByRole('heading', { level: 2 });
+    expect(heading.textContent).toContain('White Bishop strikes Black Pawn');
+  });
+
+  it('renders Bishop attacker against Bishop defender', async () => {
+    const { getByTestId, getByText } = render(BattleAnimationOverlay);
+
+    battleAnimationService.triggerBattle({
+      id: 'bishop-vs-bishop',
+      attacker: { piece: 'Bishop', color: 'Black' },
+      defender: { piece: 'Bishop', color: 'White' },
+      from: 'f8',
+      to: 'c5',
+      attackStyle: 'spell'
+    });
+    await tick();
+
+    expect(getByText('BISHOP CLASH')).toBeTruthy();
+
+    const attacker = getByTestId('battle-attacker');
+    expect(attacker.getAttribute('aria-label')).toContain('bishop');
+    expect(attacker.dataset.team).toBe('dark');
+
+    const defender = getByTestId('battle-defender');
+    expect(defender.getAttribute('aria-label')).toContain('bishop');
+    expect(defender.dataset.team).toBe('light');
+  });
 });
 

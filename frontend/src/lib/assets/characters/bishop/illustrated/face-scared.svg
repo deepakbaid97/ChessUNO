@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <!-- Bishop Scared Face: Spell Backfire, Startled Shock -->
+  <!-- High Angled Worried Brows -->
+  <path d="M106 86c4 3 12 1 16-3" stroke="var(--bishop-ink,#211e2f)" stroke-width="3.5" stroke-linecap="round"/>
+  <path d="M134 83c4-4 12-6 16-3" stroke="var(--bishop-ink,#211e2f)" stroke-width="3.5" stroke-linecap="round"/>
+
+  <!-- Left Eye: Wide, Dilated in Surprise -->
+  <ellipse cx="114" cy="98" rx="8" ry="9" fill="#ffffff" stroke="var(--bishop-ink,#211e2f)" stroke-width="3"/>
+  <circle cx="114" cy="98" r="3.5" fill="var(--bishop-ink,#211e2f)"/>
+  <circle cx="112" cy="96" r="1.5" fill="#ffffff"/>
+
+  <!-- Right Eye: Wide, Dilated -->
+  <ellipse cx="142" cy="98" rx="8" ry="9" fill="#ffffff" stroke="var(--bishop-ink,#211e2f)" stroke-width="3"/>
+  <circle cx="142" cy="98" r="3.5" fill="var(--bishop-ink,#211e2f)"/>
+  <circle cx="140" cy="96" r="1.5" fill="#ffffff"/>
+
+  <!-- Nervous Sweat Drop on Temple -->
+  <path d="M98 90c-2 4 0 7 3 7s5-3 3-7c-1-2-5-2-6 0Z" fill="var(--bishop-magic,#4fd1c5)" opacity=".85"/>
+
+  <!-- Trembling Open Mouth (Wobbly O) -->
+  <ellipse cx="128" cy="116" rx="5" ry="6" fill="var(--bishop-ink,#211e2f)"/>
+  <ellipse cx="128" cy="118" rx="3" ry="3" fill="#e53e3e"/>
+
+  <!-- Disrupted Forehead Arcane Mark (Flickering) -->
+  <polygon points="128,84 130,87 128,90 126,87" fill="var(--bishop-skin-shadow,#dd6b20)" opacity=".6"/>
+</svg>
