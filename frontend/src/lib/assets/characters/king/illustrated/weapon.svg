@@ -28,3 +28,4 @@
   <!-- Energy Aura Gleam -->
   <circle cx="216" cy="64" r="14" fill="var(--king-energy,#f6e05e)" opacity=".25"/>
 </svg>
+

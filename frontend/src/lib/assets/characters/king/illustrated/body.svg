@@ -38,3 +38,4 @@
   <polygon points="112,196 144,196 138,220 128,226 118,220" fill="var(--king-metal,#edf2f7)" stroke="var(--king-ink,#1a202c)" stroke-width="5" stroke-linejoin="round"/>
   <polygon points="116,198 140,198 135,216 128,220 121,216" fill="var(--king-gold,#ecc94b)" stroke="var(--king-ink,#1a202c)" stroke-width="2.5"/>
 </svg>
+

@@ -93,3 +93,4 @@ describe('KingCharacter Component', () => {
     expect(faceRig.contains(faceExpr)).toBe(true);
   });
 });
+
