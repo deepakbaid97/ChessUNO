@@ -11,6 +11,7 @@
   import { toastStore, showToast } from './lib/stores/toastStore';
   import { setupSignalRListeners } from './lib/services/sessionCoordinator';
   import * as gameActions from './lib/services/gameActions';
+  import { trackScreen, trackGameEvent } from './lib/services/analytics';
   import type { PieceType } from './lib/types/game';
 
   import HomeScreen from './lib/components/screens/HomeScreen.svelte';
@@ -37,6 +38,24 @@
 
   $: storeState = $gameStore;
   $: connState = $connectionStore;
+
+  $: if (currentView) {
+    trackScreen(currentView);
+  }
+
+  let hasTrackedGameOver = false;
+  $: if (storeState.status === 'Completed' || storeState.winner || (storeState.gameStatus && ['Checkmate', 'Resignation', 'Draw', 'Stalemate'].includes(storeState.gameStatus))) {
+    if (!hasTrackedGameOver && storeState.gameId) {
+      hasTrackedGameOver = true;
+      trackGameEvent('game_completed', {
+        winner: storeState.winner || 'Draw',
+        status: storeState.gameStatus || storeState.status,
+        turn_number: storeState.turnNumber
+      });
+    }
+  } else {
+    hasTrackedGameOver = false;
+  }
 
   $: if (currentView === 'WAITING' && ($gameStore.status === 'Ready' || $gameStore.status === 'InProgress' || !!$gameStore.playerBlackName)) {
     currentView = 'GAME';
@@ -220,6 +239,11 @@
       connectionStore.setSignalR('Connected');
       await signalRService.joinGameRoom(res.gameId, res.playerToken);
 
+      trackGameEvent('create_game', {
+        assigned_color: res.assignedColor,
+        has_custom_seed: event.detail.seed !== undefined
+      });
+
       currentView = 'WAITING';
       showToast('Game session created! Share the link to start.', 'success');
     } catch (err: any) {
@@ -263,6 +287,11 @@
       try {
         window.history.replaceState({}, '', '/');
       } catch {}
+
+      trackGameEvent('join_game', {
+        assigned_color: res.assignedColor
+      });
+
       currentView = 'GAME';
       showToast(`Joined match as ${res.assignedColor}!`, 'success');
     } catch (err: any) {
@@ -274,6 +303,11 @@
   async function handleProposeMove(event: CustomEvent<{ from: string; to: string; promotion?: PieceType }>) {
     if (isSubmitting) return;
     isSubmitting = true;
+    trackGameEvent('propose_move', {
+      from: event.detail.from,
+      to: event.detail.to,
+      promotion: event.detail.promotion || null
+    });
     const ok = await gameActions.proposeMove(
       signalRService,
       event.detail.from,
@@ -286,6 +320,7 @@
   async function handleDrawCard() {
     if (isSubmitting) return;
     isSubmitting = true;
+    trackGameEvent('draw_card');
     try {
       await gameActions.drawCard(signalRService);
     } finally {
@@ -294,22 +329,27 @@
   }
 
   async function handleSubmitChoice(event: CustomEvent<{ choice: string }>) {
+    trackGameEvent('submit_choice', { choice: event.detail.choice });
     await gameActions.submitChoice(signalRService, event.detail.choice);
   }
 
   async function handleEndTurn() {
+    trackGameEvent('end_turn');
     await gameActions.endTurn(signalRService);
   }
 
   async function handleSubmitSwap(event: CustomEvent<{ sq1: string; sq2: string }>) {
+    trackGameEvent('submit_swap');
     await gameActions.submitSwap(signalRService, event.detail.sq1, event.detail.sq2);
   }
 
   async function handleSubmitRevival(event: CustomEvent<{ pieceType: string; targetSquare: string }>) {
+    trackGameEvent('submit_revival', { piece_type: event.detail.pieceType });
     await gameActions.submitRevival(signalRService, event.detail.pieceType, event.detail.targetSquare);
   }
 
   async function handleResign() {
+    trackGameEvent('resign_match');
     await gameActions.resignMatch(signalRService);
   }
 
@@ -332,6 +372,7 @@
       webrtcService.setPushToTalk(false, storeState.playerName || storeState.assignedColor);
       voiceStore.setVoiceEnabled(true);
       voiceStore.setMicActive(true);
+      trackGameEvent('voice_enabled');
       showToast('Voice connected! Hold Space or V to speak.', 'success');
     } catch (err: any) {
       const msg =
