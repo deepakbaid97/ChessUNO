@@ -1,5 +1,6 @@
 import './app.css';
 import App from './App.svelte';
+import { initAnalytics } from './lib/services/analytics';
 import PawnCharacterPlayground from './lib/components/characters/PawnCharacterPlayground.svelte';
 import KnightCharacterPlayground from './lib/components/characters/KnightCharacterPlayground.svelte';
 import RookCharacterPlayground from './lib/components/characters/RookCharacterPlayground.svelte';
@@ -22,6 +23,9 @@ const RootComponent = path.endsWith('/king-playground')
           : path.endsWith('/pawn-playground')
             ? PawnCharacterPlayground
             : App;
+
+// Initialize Google Analytics if configured
+initAnalytics();
 
 const app = new RootComponent({
   target: document.getElementById('app')!

@@ -3,6 +3,7 @@ import { gameStore } from '../stores/gameStore';
 import { connectionStore } from '../stores/connectionStore';
 import { voiceStore } from '../stores/voiceStore';
 import { showToast } from '../stores/toastStore';
+import { trackGameEvent } from './analytics';
 import type { SignalRService } from './signalrService';
 import type { WebRtcService } from './webrtcService';
 
@@ -81,12 +82,14 @@ export function setupSignalRListeners(options: SessionCoordinatorOptions): void 
 
   signalRService.onCardDrawn((data) => {
     gameStore.onCardDrawn(data);
+    trackGameEvent('card_drawn', { player: data.player, card_name: data.cardName });
     showToast(`${data.player} drew ${data.cardName}`, 'info');
   });
 
   signalRService.onPlayerConnected((data) => {
     console.log('[SignalR Event] onPlayerConnected received:', data);
     gameStore.onPlayerConnected(data);
+    trackGameEvent('player_connected', { player_name: data.playerName, color: data.color });
     showToast(`${data.playerName} joined as ${data.color}!`, 'success');
 
     onNavigateToGame();
